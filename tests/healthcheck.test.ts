@@ -5,9 +5,7 @@ import type { HealthCheckResponse } from '../src/healthcheck.js';
 
 describe('Health Check Endpoint', () => {
   it('should return 200 status code', async () => {
-    await request(app)
-      .get('/health')
-      .expect(200);
+    await request(app).get('/health').expect(200);
   });
 
   it('should return JSON content type', async () => {
@@ -17,9 +15,7 @@ describe('Health Check Endpoint', () => {
   });
 
   it('should return correct health check structure', async () => {
-    const response = await request(app)
-      .get('/health')
-      .expect(200);
+    const response = await request(app).get('/health').expect(200);
 
     const body: HealthCheckResponse = response.body;
 
@@ -33,18 +29,14 @@ describe('Health Check Endpoint', () => {
   });
 
   it('should return healthy status', async () => {
-    const response = await request(app)
-      .get('/health')
-      .expect(200);
+    const response = await request(app).get('/health').expect(200);
 
     const body: HealthCheckResponse = response.body;
     expect(body.status).toBe('healthy');
   });
 
   it('should return correct service name and version', async () => {
-    const response = await request(app)
-      .get('/health')
-      .expect(200);
+    const response = await request(app).get('/health').expect(200);
 
     const body: HealthCheckResponse = response.body;
     expect(body.service).toBe('demo-todo');
@@ -52,19 +44,17 @@ describe('Health Check Endpoint', () => {
   });
 
   it('should return valid memory information', async () => {
-    const response = await request(app)
-      .get('/health')
-      .expect(200);
+    const response = await request(app).get('/health').expect(200);
 
     const body: HealthCheckResponse = response.body;
     expect(body.memory).toHaveProperty('used');
     expect(body.memory).toHaveProperty('total');
     expect(body.memory).toHaveProperty('percentage');
-    
+
     expect(typeof body.memory.used).toBe('number');
     expect(typeof body.memory.total).toBe('number');
     expect(typeof body.memory.percentage).toBe('number');
-    
+
     expect(body.memory.used).toBeGreaterThan(0);
     expect(body.memory.total).toBeGreaterThan(0);
     expect(body.memory.percentage).toBeGreaterThanOrEqual(0);
@@ -72,21 +62,17 @@ describe('Health Check Endpoint', () => {
   });
 
   it('should return valid timestamp', async () => {
-    const response = await request(app)
-      .get('/health')
-      .expect(200);
+    const response = await request(app).get('/health').expect(200);
 
     const body: HealthCheckResponse = response.body;
     const timestamp = new Date(body.timestamp);
-    
+
     expect(timestamp.toString()).not.toBe('Invalid Date');
     expect(timestamp.getTime()).toBeLessThanOrEqual(Date.now());
   });
 
   it('should return non-negative uptime', async () => {
-    const response = await request(app)
-      .get('/health')
-      .expect(200);
+    const response = await request(app).get('/health').expect(200);
 
     const body: HealthCheckResponse = response.body;
     expect(body.uptime).toBeGreaterThanOrEqual(0);

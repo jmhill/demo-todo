@@ -10,7 +10,7 @@ describe('Request Size Limits', () => {
 
   it('should reject JSON payloads exceeding size limit', async () => {
     const largePayload = { data: 'x'.repeat(20 * 1024 * 1024) }; // 20MB payload
-    
+
     const response = await request(app)
       .post('/test')
       .send(largePayload)
@@ -21,10 +21,7 @@ describe('Request Size Limits', () => {
 
   it('should accept JSON payloads within size limit', async () => {
     const smallPayload = { data: 'test' };
-    
-    await request(app)
-      .post('/test')
-      .send(smallPayload)
-      .expect(200);
+
+    await request(app).post('/test').send(smallPayload).expect(200);
   });
 });

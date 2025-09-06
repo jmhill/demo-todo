@@ -4,7 +4,9 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8'));
+const packageJson = JSON.parse(
+  readFileSync(join(__dirname, '../package.json'), 'utf-8'),
+);
 
 const startTime = Date.now();
 
@@ -26,7 +28,7 @@ export const healthCheckHandler = (req: Request, res: Response): void => {
   const memUsage = process.memoryUsage();
   const totalMem = memUsage.heapTotal;
   const usedMem = memUsage.heapUsed;
-  
+
   const healthCheck: HealthCheckResponse = {
     status: 'healthy',
     service: packageJson.name,
@@ -37,8 +39,8 @@ export const healthCheckHandler = (req: Request, res: Response): void => {
     memory: {
       used: Math.round(usedMem / 1024 / 1024),
       total: Math.round(totalMem / 1024 / 1024),
-      percentage: Math.round((usedMem / totalMem) * 100)
-    }
+      percentage: Math.round((usedMem / totalMem) * 100),
+    },
   };
 
   res.status(200).json(healthCheck);

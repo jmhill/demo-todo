@@ -23,13 +23,13 @@ describe('CORS Configuration', () => {
       .set('Origin', 'http://localhost:3001')
       .expect(200);
 
-    expect(response.headers['access-control-allow-origin']).toBe('http://localhost:3001');
+    expect(response.headers['access-control-allow-origin']).toBe(
+      'http://localhost:3001',
+    );
   });
 
   it('should allow requests with no origin', async () => {
-    const response = await request(app)
-      .get('/test')
-      .expect(200);
+    const response = await request(app).get('/test').expect(200);
 
     expect(response.headers['access-control-allow-origin']).toBeUndefined();
   });
