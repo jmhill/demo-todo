@@ -26,6 +26,11 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
-    "express": "^5.1.0"
+    "@types/cors": "^2.8.19",
+    "@types/helmet": "^0.0.48",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.1.0",
+    "helmet": "^8.1.0"
   }
 }
