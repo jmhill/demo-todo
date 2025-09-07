@@ -1,84 +1,54 @@
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { deepmergeCustom } from 'deepmerge-ts';
 import { configSchema, type AppConfig } from './schema.js';
 
-const loadJsonFile = (path: string): unknown => {
-  try {
-    const content = readFileSync(path, 'utf-8');
-    return JSON.parse(content);
-  } catch {
-    // File might not exist, which is okay for environment-specific configs
-    return {};
-  }
-};
+// Create custom deepmerge that replaces arrays instead of concatenating
+const deepmerge = deepmergeCustom({
+  mergeArrays: false, // Replace arrays instead of concatenating
+});
 
-type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
-type JsonObject = { [Key in string]?: JsonValue };
-type JsonArray = JsonValue[];
-
-const mergeDeep = (target: JsonObject, source: JsonObject): JsonObject => {
-  const output = { ...target };
-
-  if (isObject(target) && isObject(source)) {
-    Object.keys(source).forEach((key) => {
-      if (isObject(source[key])) {
-        if (!(key in target)) {
-          Object.assign(output, { [key]: source[key] });
-        } else {
-          output[key] = mergeDeep(
-            target[key] as JsonObject,
-            source[key] as JsonObject,
-          );
-        }
-      } else {
-        Object.assign(output, { [key]: source[key] });
-      }
-    });
-  }
-
-  return output;
-};
-
-const isObject = (item: unknown): item is JsonObject => {
-  return item !== null && typeof item === 'object' && !Array.isArray(item);
-};
-
-export const loadConfig = (environment?: string): AppConfig => {
+export const loadConfig = async (environment?: string): Promise<AppConfig> => {
   const env = environment || process.env.NODE_ENV || 'development';
-  const configDir = join(process.cwd(), 'config');
 
-  // Minimal base configuration that will pass validation with defaults
-  const baseConfig: JsonObject = {
-    server: {},
-    security: {
-      cors: {},
-      rateLimiting: {},
-      requestLimits: {},
-      secureHeaders: {},
-    },
-  };
+  try {
+    // Load default configuration
+    const { config: defaultConfig } = await import('../../config/default.js');
 
-  // Load default configuration
-  const defaultConfig = loadJsonFile(
-    join(configDir, 'default.json'),
-  ) as JsonObject;
+    // Load environment-specific configuration using static imports
+    let envConfig: DeepPartial<AppConfig> = {};
 
-  // Load environment-specific configuration
-  const envConfig = loadJsonFile(join(configDir, `${env}.json`)) as JsonObject;
+    if (env === 'test') {
+      const { config } = await import('../../config/test.js');
+      envConfig = config;
+    } else if (env === 'production') {
+      const { config } = await import('../../config/production.js');
+      envConfig = config;
+    }
+    // For 'development' or any other environment, use empty config (defaults only)
 
-  // Merge configurations (later configs override earlier ones)
-  let mergedConfig = mergeDeep(baseConfig, defaultConfig);
-  mergedConfig = mergeDeep(mergedConfig, envConfig);
+    // Merge configurations using type-safe deep merge
+    // Environment-specific config takes precedence over defaults
+    const mergedConfig = deepmerge(defaultConfig, envConfig);
 
-  // Validate and return typed configuration
-  const result = configSchema.safeParse(mergedConfig);
+    // Validate and return typed configuration
+    const result = configSchema.safeParse(mergedConfig);
 
-  if (!result.success) {
-    console.error('Configuration validation failed:', result.error.format());
-    throw new Error(`Invalid configuration: ${result.error.message}`);
+    if (!result.success) {
+      console.error('Configuration validation failed:', result.error.format());
+      throw new Error(`Invalid configuration: ${result.error.message}`);
+    }
+
+    return result.data;
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.startsWith('Invalid configuration')
+    ) {
+      throw error;
+    }
+    throw new Error(
+      `Failed to load configuration: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    );
   }
-
-  return result.data;
 };
 
 type DeepPartial<T> = {
@@ -90,7 +60,7 @@ export const createTestConfig = (
   overrides: DeepPartial<AppConfig> = {},
 ): AppConfig => {
   // Create a test-specific base configuration with high rate limits
-  const testBaseConfig: JsonObject = {
+  const testBaseConfig: AppConfig = {
     environment: 'test',
     server: {
       port: 3000,
@@ -117,7 +87,8 @@ export const createTestConfig = (
     },
   };
 
-  const mergedConfig = mergeDeep(testBaseConfig, overrides as JsonObject);
+  // Merge configurations using type-safe deep merge
+  const mergedConfig = deepmerge(testBaseConfig, overrides);
 
   const result = configSchema.safeParse(mergedConfig);
 

@@ -1,10 +1,8 @@
 import { createApp } from './app.js';
 import { loadConfig } from './config/index.js';
 
-// Load configuration based on environment
-const config = loadConfig();
-
-// Create app instance with configuration
+// Load configuration and create app
+const config = await loadConfig();
 export const app = createApp(config);
 
 // Start server only if this module is run directly
