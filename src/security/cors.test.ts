@@ -5,7 +5,11 @@ import { configureCors } from './cors.js';
 
 describe('CORS Configuration', () => {
   const app = express();
-  configureCors(app);
+  const corsConfig = {
+    enabled: true,
+    origins: ['http://localhost:3001'],
+  };
+  configureCors(app, corsConfig);
   app.get('/test', (_req, res) => res.send('ok'));
 
   it('should block requests from unauthorized origins', async () => {

@@ -5,7 +5,10 @@ import { configureSecureHeaders } from './secure-headers.js';
 
 describe('Secure Headers', () => {
   const app = express();
-  configureSecureHeaders(app);
+  const secureHeadersConfig = {
+    enabled: true,
+  };
+  configureSecureHeaders(app, secureHeadersConfig);
   app.get('/test', (_req, res) => res.send('ok'));
 
   it('should set X-DNS-Prefetch-Control header', async () => {

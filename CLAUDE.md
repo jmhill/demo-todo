@@ -1,0 +1,1 @@
+- Always run `npm run quality` before and after changes to verify that system meets minimum prerequisites for integration.

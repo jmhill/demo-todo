@@ -1,13 +1,14 @@
 import type { Express } from 'express';
 import cors from 'cors';
+import type { CorsConfig } from '../config/schema.js';
 
-export const configureCors = (app: Express): void => {
+export const configureCors = (app: Express, config: CorsConfig): void => {
   const corsOptions = {
     origin: (
       origin: string | undefined,
       callback: (err: Error | null, allow?: boolean) => void,
     ) => {
-      const allowedOrigins = ['http://localhost:3001'];
+      const allowedOrigins = config.origins;
 
       // Allow requests with no origin (like mobile apps or Postman)
       if (!origin) {

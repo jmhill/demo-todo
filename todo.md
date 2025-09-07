@@ -1,0 +1,4 @@
+- [x] acceptance testing structure
+- [ ] configuration approach allows accessing secrets from different providers (start with .env file)
+- [ ] user service with basic authentication and in-memory store
+- [ ] todo service with in-memory store

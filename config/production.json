@@ -1,0 +1,18 @@
+{
+  "environment": "production",
+  "server": {
+    "port": 3000,
+    "host": "0.0.0.0"
+  },
+  "security": {
+    "cors": {
+      "enabled": true,
+      "origins": []
+    },
+    "rateLimiting": {
+      "enabled": true,
+      "windowMs": 900000,
+      "max": 100
+    }
+  }
+}

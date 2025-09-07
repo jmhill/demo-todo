@@ -7,9 +7,16 @@
     "build": "tsc",
     "dev": "tsx watch src/main.ts",
     "start": "node dist/main.js",
-    "test": "vitest run",
-    "test:watch": "vitest watch",
-    "test:coverage": "vitest run --coverage",
+    "test": "NODE_ENV=test vitest run",
+    "test:unit": "NODE_ENV=test vitest run --config vitest.unit.config.ts",
+    "test:acceptance": "NODE_ENV=test vitest run --config vitest.acceptance.config.ts",
+    "test:all": "npm run test:unit && npm run test:acceptance",
+    "test:watch": "NODE_ENV=test vitest watch",
+    "test:watch:unit": "NODE_ENV=test vitest watch --config vitest.unit.config.ts",
+    "test:watch:acceptance": "NODE_ENV=test vitest watch --config vitest.acceptance.config.ts",
+    "test:coverage": "NODE_ENV=test vitest run --coverage",
+    "test:coverage:unit": "NODE_ENV=test vitest run --coverage --config vitest.unit.config.ts",
+    "test:coverage:acceptance": "NODE_ENV=test vitest run --coverage --config vitest.acceptance.config.ts",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "lint": "eslint .",
@@ -43,6 +50,7 @@
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "express-rate-limit": "^8.1.0",
-    "helmet": "^8.1.0"
+    "helmet": "^8.1.0",
+    "zod": "^4.1.5"
   }
 }

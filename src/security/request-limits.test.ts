@@ -5,7 +5,12 @@ import { configureRequestLimits } from './request-limits.js';
 
 describe('Request Size Limits', () => {
   const app = express();
-  configureRequestLimits(app);
+  const requestLimitsConfig = {
+    enabled: true,
+    jsonLimit: '1mb',
+    urlencodedLimit: '1mb',
+  };
+  configureRequestLimits(app, requestLimitsConfig);
   app.post('/test', (_req, res) => res.send('ok'));
 
   it('should reject JSON payloads exceeding size limit', async () => {

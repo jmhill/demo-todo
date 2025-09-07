@@ -1,9 +1,15 @@
 import express, { type Express } from 'express';
+import type { RequestLimitsConfig } from '../config/schema.js';
 
-export const configureRequestLimits = (app: Express): void => {
-  // Limit JSON payloads to 10MB
-  app.use(express.json({ limit: '10mb' }));
+export const configureRequestLimits = (
+  app: Express,
+  config: RequestLimitsConfig,
+): void => {
+  // Limit JSON payloads
+  app.use(express.json({ limit: config.jsonLimit }));
 
-  // Limit URL-encoded payloads to 10MB
-  app.use(express.urlencoded({ limit: '10mb', extended: true }));
+  // Limit URL-encoded payloads
+  app.use(
+    express.urlencoded({ limit: config.urlencodedLimit, extended: true }),
+  );
 };
