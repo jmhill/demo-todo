@@ -1,23 +1,28 @@
 import { defineConfig } from 'vitest/config';
 
+// Base configuration used when running 'npm test' without specific config
+// Runs all tests across the entire codebase
 export default defineConfig({
   test: {
+    // Coverage configuration shared across all test runs
     coverage: {
+      // Multiple reporters for different consumption needs:
+      // - 'text': Quick terminal output during development
+      // - 'json': Machine-readable for CI/CD pipelines
+      // - 'html': Interactive browser view for detailed analysis
       reporter: ['text', 'json', 'html'],
+
+      // Exclude non-testable files from coverage metrics
       exclude: [
-        'tests/acceptance/helpers/**',
-        'vitest.config.ts',
-        '**/*.d.ts',
-        '**/dist/**',
+        'tests/acceptance/helpers/**', // Test utilities shouldn't count toward coverage
+        'vitest*.config.ts', // Config files are not business logic
+        '**/*.d.ts', // Type declaration files have no runtime code
+        '**/dist/**', // Built output is already tested via source
       ],
     },
-    // No globals - explicit imports required for clarity
-    globals: false,
-    // Different test configurations can be specified via environment variables
-    // or by using different config files (vitest.unit.config.ts, vitest.acceptance.config.ts)
+
+    // Include both unit tests (co-located with source) and acceptance tests
+    // This pattern runs when using 'npm test' for a complete test suite
     include: ['src/**/*.{test,spec}.{js,ts}', 'tests/**/*.{test,spec}.{js,ts}'],
-    // Optionally separate unit and acceptance test configurations
-    // Unit tests: fast, isolated, co-located with source
-    // Acceptance tests: slower, full application stack, in tests/ directory
   },
 });
