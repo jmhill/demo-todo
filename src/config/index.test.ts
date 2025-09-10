@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { loadConfig, createTestConfig } from './index.js';
+import { type Secret } from './secrets.js';
 
 describe('Configuration Loading', () => {
   beforeEach(() => {
@@ -8,8 +9,8 @@ describe('Configuration Loading', () => {
   });
 
   describe('loadConfig', () => {
-    it('should load default configuration', async () => {
-      const config = await loadConfig('development');
+    it('should load default configuration', () => {
+      const config = loadConfig('development');
 
       expect(config.environment).toBe('development');
       expect(config.server.port).toBe(3000);
@@ -21,8 +22,8 @@ describe('Configuration Loading', () => {
       expect(config.security.rateLimiting.windowMs).toBe(900000);
     });
 
-    it('should load test configuration with high rate limits', async () => {
-      const config = await loadConfig('test');
+    it('should load test configuration with high rate limits', () => {
+      const config = loadConfig('test');
 
       expect(config.environment).toBe('test');
       expect(config.security.rateLimiting.max).toBe(10000); // High limit from test config
@@ -32,13 +33,13 @@ describe('Configuration Loading', () => {
       expect(config.security.cors.enabled).toBe(true);
     });
 
-    it('should load production configuration with static values', async () => {
+    it('should load production configuration with static values', () => {
       // Production config now has static values, not env vars
       // Only secrets (like TEST_SECRET) come from env
       // Mock the TEST_SECRET for production
       vi.stubEnv('TEST_SECRET', 'test-secret-value');
 
-      const config = await loadConfig('production');
+      const config = loadConfig('production');
 
       expect(config.environment).toBe('production');
       expect(config.server.port).toBe(3000); // Static value from production config
@@ -47,28 +48,28 @@ describe('Configuration Loading', () => {
       expect(config.security.rateLimiting.max).toBe(50); // Static value
     });
 
-    it('should use NODE_ENV when no environment is specified', async () => {
+    it('should use NODE_ENV when no environment is specified', () => {
       vi.stubEnv('NODE_ENV', 'test');
 
-      const config = await loadConfig();
+      const config = loadConfig();
 
       expect(config.environment).toBe('test');
       expect(config.security.rateLimiting.max).toBe(10000); // Test config values
     });
 
-    it('should handle missing environment-specific config gracefully', async () => {
-      const config = await loadConfig('nonexistent');
+    it('should handle missing environment-specific config gracefully', () => {
+      const config = loadConfig('nonexistent');
 
       // Should fall back to default config only
       expect(config.environment).toBe('development');
       expect(config.server.port).toBe(3000);
     });
 
-    it('should load production config successfully when TEST_SECRET is present', async () => {
+    it('should load production config successfully when TEST_SECRET is present', () => {
       // Production requires TEST_SECRET from environment
       vi.stubEnv('TEST_SECRET', 'production-secret-value');
 
-      const config = await loadConfig('production');
+      const config = loadConfig('production');
 
       expect(config.environment).toBe('production');
       expect(config.testSecret).toBe('production-secret-value');
@@ -161,6 +162,50 @@ describe('Configuration Loading', () => {
       expect(config.security.rateLimiting.max).toBe(500);
       expect(config.security.rateLimiting.windowMs).toBe(60000); // Test default
       expect(config.security.rateLimiting.enabled).toBe(true); // Test default
+    });
+  });
+
+  describe('Dependency injection for secrets', () => {
+    it('should use injected secret function instead of environment variables', () => {
+      // Create a mock secret function that returns predictable values
+      const mockGetSecret = (key: string) => `mock-${key}` as Secret;
+
+      const config = loadConfig('development', mockGetSecret);
+
+      expect(config.environment).toBe('development');
+      expect(config.testSecret).toBe('mock-TEST_SECRET');
+    });
+
+    it('should allow different secret sources for different environments', () => {
+      const vaultSecretFn = (key: string) => `vault-${key}` as Secret;
+      const awsSecretFn = (key: string) => `aws-${key}` as Secret;
+
+      const prodConfigWithVault = loadConfig('production', vaultSecretFn);
+      const prodConfigWithAws = loadConfig('production', awsSecretFn);
+
+      expect(prodConfigWithVault.testSecret).toBe('vault-TEST_SECRET');
+      expect(prodConfigWithAws.testSecret).toBe('aws-TEST_SECRET');
+    });
+  });
+
+  describe('createTestConfig with dependency injection', () => {
+    it('should use injected secret function for test configurations', () => {
+      const mockGetSecret = (key: string) => `test-mock-${key}` as Secret;
+
+      const config = createTestConfig({}, mockGetSecret);
+
+      expect(config.environment).toBe('test');
+      expect(config.testSecret).toBe('test-mock-TEST_SECRET');
+    });
+
+    it('should allow testing different secret scenarios', () => {
+      const failingSecretFn = (key: string) => {
+        throw new Error(`Secret ${key} not found in test store`);
+      };
+
+      expect(() => createTestConfig({}, failingSecretFn)).toThrow(
+        'Secret TEST_SECRET not found in test store',
+      );
     });
   });
 });

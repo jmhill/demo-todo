@@ -11,7 +11,7 @@ import {
   createNormalPayload,
   runTestScenario,
   COMMON_TEST_SCENARIOS,
-  testApp,
+  getDefaultTestApp,
   createTestApp,
 } from '../helpers/test-helpers.js';
 
@@ -50,7 +50,7 @@ describe('Security Middleware Integration with Helpers (Acceptance)', () => {
   describe('Rate limiting in production-like context', () => {
     it('should enforce rate limits across the full application stack', async () => {
       // Create a dedicated app instance with realistic rate limits for testing
-      const rateLimitApp = createTestApp({
+      const rateLimitApp = await createTestApp({
         security: {
           rateLimiting: {
             windowMs: 60000, // 1 minute
@@ -79,6 +79,7 @@ describe('Security Middleware Integration with Helpers (Acceptance)', () => {
     it('should reject oversized payloads while maintaining security', async () => {
       const largePayload = createLargePayload(2); // 2MB
 
+      const testApp = await getDefaultTestApp();
       const response = await request(testApp)
         .post('/health')
         .set('Origin', TEST_ORIGINS.ALLOWED)
@@ -93,6 +94,7 @@ describe('Security Middleware Integration with Helpers (Acceptance)', () => {
 
     it('should accept normal payloads through full stack', async () => {
       const normalPayload = createNormalPayload();
+      const testApp = await getDefaultTestApp();
       const response = await requestWithAllowedOrigin(
         'post',
         '/health',
@@ -105,6 +107,7 @@ describe('Security Middleware Integration with Helpers (Acceptance)', () => {
 
   describe('Edge cases and complex interactions', () => {
     it('should handle preflight requests correctly', async () => {
+      const testApp = await getDefaultTestApp();
       const response = await request(testApp)
         .options('/health')
         .set('Origin', TEST_ORIGINS.ALLOWED)
@@ -122,6 +125,7 @@ describe('Security Middleware Integration with Helpers (Acceptance)', () => {
     });
 
     it('should maintain security with unusual request patterns', async () => {
+      const testApp = await getDefaultTestApp();
       const response = await request(testApp)
         .get('/health')
         .set('Origin', TEST_ORIGINS.BLOCKED)
@@ -133,6 +137,7 @@ describe('Security Middleware Integration with Helpers (Acceptance)', () => {
     });
 
     it('should handle multiple security concerns simultaneously', async () => {
+      const testApp = await getDefaultTestApp();
       // Test with blocked origin AND suspicious headers
       const response = await request(testApp)
         .post('/health')

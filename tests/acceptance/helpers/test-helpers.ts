@@ -10,8 +10,16 @@ export const createTestApp = (overrides = {}) => {
   return createApp(testConfig);
 };
 
-// Default test app for most tests (high rate limits)
-export const testApp = createTestApp();
+// Cached test app instance
+let cachedTestApp: Express | null = null;
+
+// Get the default test app (creates once, reuses)
+export const getDefaultTestApp = (): Express => {
+  if (!cachedTestApp) {
+    cachedTestApp = createTestApp();
+  }
+  return cachedTestApp;
+};
 
 // Common test origins for CORS testing
 export const TEST_ORIGINS = {
@@ -49,13 +57,16 @@ export const EXPECTED_SECURITY_HEADERS = {
 /**
  * Make a request with allowed origin and validate CORS + security headers
  */
-export const requestWithAllowedOrigin = (
+export const requestWithAllowedOrigin = async (
   method: 'get' | 'post',
   path: string,
   payload?: unknown,
-  app: Express = testApp,
+  app?: Express,
 ) => {
-  const req = request(app)[method](path).set('Origin', TEST_ORIGINS.ALLOWED);
+  const testApp = app || getDefaultTestApp();
+  const req = request(testApp)
+    [method](path)
+    .set('Origin', TEST_ORIGINS.ALLOWED);
 
   if (payload && method === 'post') {
     req.set('Content-Type', 'application/json').send(payload);
@@ -67,13 +78,16 @@ export const requestWithAllowedOrigin = (
 /**
  * Make a request with blocked origin and validate security response
  */
-export const requestWithBlockedOrigin = (
+export const requestWithBlockedOrigin = async (
   method: 'get' | 'post',
   path: string,
   payload?: unknown,
-  app: Express = testApp,
+  app?: Express,
 ) => {
-  const req = request(app)[method](path).set('Origin', TEST_ORIGINS.BLOCKED);
+  const testApp = app || getDefaultTestApp();
+  const req = request(testApp)
+    [method](path)
+    .set('Origin', TEST_ORIGINS.BLOCKED);
 
   if (payload && method === 'post') {
     req.set('Content-Type', 'application/json').send(payload);
@@ -121,10 +135,11 @@ export const validateBlockedCors = (headers: Record<string, string>): void => {
 export const testRateLimit = async (
   path: string,
   requestCount = 100,
-  app: Express = testApp,
+  app?: Express,
 ) => {
+  const testApp = app || getDefaultTestApp();
   const requests = Array.from({ length: requestCount }, () =>
-    request(app).get(path).set('Origin', TEST_ORIGINS.ALLOWED),
+    request(testApp).get(path).set('Origin', TEST_ORIGINS.ALLOWED),
   );
 
   const responses = await Promise.all(requests);
@@ -260,9 +275,10 @@ export const COMMON_TEST_SCENARIOS: TestScenario[] = [
  */
 export const runTestScenario = async (
   scenario: TestScenario,
-  app: Express = testApp,
+  app?: Express,
 ) => {
-  const req = request(app)[scenario.method](scenario.path);
+  const testApp = app || getDefaultTestApp();
+  const req = request(testApp)[scenario.method](scenario.path);
 
   // Add headers
   if (scenario.headers) {

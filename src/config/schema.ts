@@ -1,41 +1,40 @@
 import { z } from 'zod';
+import { secretSchema } from './secrets.js';
 
 // Schema for rate limiting configuration
 const rateLimitingSchema = z.object({
-  enabled: z.boolean().default(true),
-  windowMs: z.number().positive().default(900000), // 15 minutes (matches default.json)
-  max: z.number().positive().default(100), // requests per window
+  enabled: z.boolean(),
+  windowMs: z.number().positive(),
+  max: z.number().positive(),
 });
 
 // Schema for CORS configuration
 const corsSchema = z.object({
-  enabled: z.boolean().default(true),
-  origins: z.array(z.string()).default(['http://localhost:3001']),
+  enabled: z.boolean(),
+  origins: z.array(z.string()),
 });
 
 // Schema for request limits configuration
 const requestLimitsSchema = z.object({
-  enabled: z.boolean().default(true),
-  jsonLimit: z.string().default('1mb'),
-  urlencodedLimit: z.string().default('1mb'),
+  enabled: z.boolean(),
+  jsonLimit: z.string(),
+  urlencodedLimit: z.string(),
 });
 
 // Schema for secure headers configuration
 const secureHeadersSchema = z.object({
-  enabled: z.boolean().default(true),
+  enabled: z.boolean(),
 });
 
 // Schema for server configuration
 const serverSchema = z.object({
-  port: z.number().positive().default(3000),
-  host: z.string().default('localhost'),
+  port: z.number().positive(),
+  host: z.string(),
 });
 
 // Main application configuration schema
 export const configSchema = z.object({
-  environment: z
-    .enum(['development', 'test', 'production'])
-    .default('development'),
+  environment: z.enum(['development', 'test', 'production']),
   server: serverSchema,
   security: z.object({
     cors: corsSchema,
@@ -43,7 +42,12 @@ export const configSchema = z.object({
     requestLimits: requestLimitsSchema,
     secureHeaders: secureHeadersSchema,
   }),
-  testSecret: z.string().optional(),
+  /**
+   * Test secret for demonstration purposes.
+   * SECURITY: Must be loaded via getSecret() from environment variables.
+   * Never hardcode secrets in configuration files.
+   */
+  testSecret: secretSchema,
 });
 
 // Type inference from schema

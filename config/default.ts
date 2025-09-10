@@ -1,7 +1,7 @@
 import type { AppConfig } from '../src/config/schema.js';
-import { getSecret } from '../src/config/secrets.js';
+import type { GetSecretFn } from '../src/config/secrets.js';
 
-export const config: AppConfig = {
+export const getConfig = (getSecretFn: GetSecretFn): AppConfig => ({
   environment: 'development',
   server: {
     port: 3000,
@@ -26,5 +26,5 @@ export const config: AppConfig = {
       enabled: true,
     },
   },
-  testSecret: getSecret('TEST_SECRET'), // Will throw if not in .env
-};
+  testSecret: getSecretFn('TEST_SECRET'), // Will throw if not in .env
+});

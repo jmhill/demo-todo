@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { getSecret, getOptionalSecret } from './secrets.js';
+import { getSecret, secretSchema } from './secrets.js';
 
 describe('Secrets', () => {
   describe('getSecret', () => {
@@ -28,29 +28,54 @@ describe('Secrets', () => {
     });
   });
 
-  describe('getOptionalSecret', () => {
-    it('should return value when secret exists', () => {
-      vi.stubEnv('OPTIONAL_SECRET', 'optional-value');
+  describe('secretSchema', () => {
+    it('should validate Secret types from getSecret', () => {
+      vi.stubEnv('VALID_SECRET', 'valid-secret-value');
 
-      const value = getOptionalSecret('OPTIONAL_SECRET');
+      const secret = getSecret('VALID_SECRET');
+      const result = secretSchema.safeParse(secret);
 
-      expect(value).toBe('optional-value');
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toBe('valid-secret-value');
+      }
     });
 
-    it('should return undefined when secret does not exist', () => {
-      vi.stubEnv('MISSING_OPTIONAL', undefined);
+    it('should reject empty strings', () => {
+      const result = secretSchema.safeParse('');
 
-      const value = getOptionalSecret('MISSING_OPTIONAL');
-
-      expect(value).toBeUndefined();
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toBe(
+          'Secret must be a non-empty string obtained via getSecret() or getOptionalSecret()',
+        );
+      }
     });
 
-    it('should return empty string for empty values', () => {
-      vi.stubEnv('EMPTY_OPTIONAL', '');
+    it('should reject non-string types', () => {
+      const result = secretSchema.safeParse(123);
 
-      const value = getOptionalSecret('EMPTY_OPTIONAL');
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toBe(
+          'Secret must be a non-empty string obtained via getSecret() or getOptionalSecret()',
+        );
+      }
+    });
 
-      expect(value).toBe('');
+    it('should provide type safety for Secret branded type', () => {
+      vi.stubEnv('TYPE_TEST_SECRET', 'type-test-value');
+
+      // This demonstrates the compile-time type safety
+      const secret = getSecret('TYPE_TEST_SECRET');
+      const result = secretSchema.safeParse(secret);
+
+      expect(result.success).toBe(true);
+      // The returned type is Secret, not string
+      if (result.success) {
+        // TypeScript knows this is a Secret type, not just string
+        expect(typeof result.data).toBe('string');
+      }
     });
   });
 });

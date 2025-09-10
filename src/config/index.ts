@@ -1,27 +1,32 @@
 import { deepmergeCustom } from 'deepmerge-ts';
 import { configSchema, type AppConfig } from './schema.js';
+import { getSecret, type GetSecretFn } from './secrets.js';
+import { getConfig as getDefaultConfig } from '../../config/default.js';
+import { getConfig as getTestConfig } from '../../config/test.js';
+import { getConfig as getProductionConfig } from '../../config/production.js';
 
 // Create custom deepmerge that replaces arrays instead of concatenating
 const deepmerge = deepmergeCustom({
   mergeArrays: false, // Replace arrays instead of concatenating
 });
 
-export const loadConfig = async (environment?: string): Promise<AppConfig> => {
+export const loadConfig = (
+  environment?: string,
+  getSecretFn: GetSecretFn = getSecret,
+): AppConfig => {
   const env = environment || process.env.NODE_ENV || 'development';
 
   try {
-    // Load default configuration
-    const { config: defaultConfig } = await import('../../config/default.js');
+    // Load default configuration with dependency injection
+    const defaultConfig = getDefaultConfig(getSecretFn);
 
-    // Load environment-specific configuration using static imports
+    // Load environment-specific configuration using parameterized functions
     let envConfig: DeepPartial<AppConfig> = {};
 
     if (env === 'test') {
-      const { config } = await import('../../config/test.js');
-      envConfig = config;
+      envConfig = getTestConfig(getSecretFn);
     } else if (env === 'production') {
-      const { config } = await import('../../config/production.js');
-      envConfig = config;
+      envConfig = getProductionConfig(getSecretFn);
     }
     // For 'development' or any other environment, use empty config (defaults only)
 
@@ -58,38 +63,15 @@ type DeepPartial<T> = {
 // Export a function to create custom configurations for testing
 export const createTestConfig = (
   overrides: DeepPartial<AppConfig> = {},
+  getSecretFn: GetSecretFn = getSecret,
 ): AppConfig => {
-  // Create a test-specific base configuration with high rate limits
-  const testBaseConfig: AppConfig = {
-    environment: 'test',
-    server: {
-      port: 3000,
-      host: 'localhost',
-    },
-    security: {
-      cors: {
-        enabled: true,
-        origins: ['http://localhost:3001'],
-      },
-      rateLimiting: {
-        enabled: true,
-        windowMs: 60000, // 1 minute
-        max: 10000, // High limit for testing
-      },
-      requestLimits: {
-        enabled: true,
-        jsonLimit: '1mb',
-        urlencodedLimit: '1mb',
-      },
-      secureHeaders: {
-        enabled: true,
-      },
-    },
-  };
+  // Load the standard test configuration using the same pipeline as the main app
+  const testBaseConfig = loadConfig('test', getSecretFn);
 
-  // Merge configurations using type-safe deep merge
+  // Apply any custom overrides on top of the loaded test configuration
   const mergedConfig = deepmerge(testBaseConfig, overrides);
 
+  // Validate the final configuration
   const result = configSchema.safeParse(mergedConfig);
 
   if (!result.success) {

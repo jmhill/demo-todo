@@ -1,15 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { configSchema } from './schema.js';
+import { createTestConfig } from './index.js';
 
 describe('Configuration Schema', () => {
   describe('Valid configuration parsing', () => {
     it('should parse complete valid configuration', () => {
-      const validConfig = {
+      const validConfig = createTestConfig({
         environment: 'production',
-        server: {
-          port: 3000,
-          host: 'localhost',
-        },
         security: {
           cors: {
             enabled: true,
@@ -29,7 +26,7 @@ describe('Configuration Schema', () => {
             enabled: true,
           },
         },
-      };
+      });
 
       const result = configSchema.safeParse(validConfig);
 
@@ -45,16 +42,9 @@ describe('Configuration Schema', () => {
     });
 
     it('should parse configuration with optional testSecret', () => {
-      const configWithSecret = {
+      const configWithSecret = createTestConfig({
         testSecret: 'test-secret-value',
-        server: {},
-        security: {
-          cors: {},
-          rateLimiting: {},
-          requestLimits: {},
-          secureHeaders: {},
-        },
-      };
+      });
 
       const result = configSchema.safeParse(configWithSecret);
 
@@ -64,41 +54,27 @@ describe('Configuration Schema', () => {
       }
     });
 
-    it('should allow configuration without testSecret', () => {
-      const configWithoutSecret = {
-        server: {},
-        security: {
-          cors: {},
-          rateLimiting: {},
-          requestLimits: {},
-          secureHeaders: {},
-        },
-      };
+    it('should parse configuration with required testSecret', () => {
+      const configWithRequiredSecret = createTestConfig({
+        testSecret: 'another-test-secret-value',
+      });
 
-      const result = configSchema.safeParse(configWithoutSecret);
+      const result = configSchema.safeParse(configWithRequiredSecret);
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.testSecret).toBeUndefined();
+        expect(result.data.testSecret).toBe('another-test-secret-value');
       }
     });
 
-    it('should parse configuration with complete structure and use defaults', () => {
-      const configWithStructure = {
-        server: {},
-        security: {
-          cors: {},
-          rateLimiting: {},
-          requestLimits: {},
-          secureHeaders: {},
-        },
-      };
+    it('should parse configuration with complete structure', () => {
+      const configWithStructure = createTestConfig();
 
       const result = configSchema.safeParse(configWithStructure);
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.environment).toBe('development');
+        expect(result.data.environment).toBe('test');
         expect(result.data.server.port).toBe(3000);
         expect(result.data.server.host).toBe('localhost');
         expect(result.data.security.cors.enabled).toBe(true);
@@ -106,25 +82,34 @@ describe('Configuration Schema', () => {
           'http://localhost:3001',
         ]);
         expect(result.data.security.rateLimiting.enabled).toBe(true);
-        expect(result.data.security.rateLimiting.max).toBe(100);
-        expect(result.data.security.rateLimiting.windowMs).toBe(900000);
+        expect(result.data.security.rateLimiting.max).toBe(10000);
+        expect(result.data.security.rateLimiting.windowMs).toBe(60000);
       }
     });
 
     it('should parse test environment configuration', () => {
-      const testConfig = {
+      const testConfig = createTestConfig({
         environment: 'test',
-        server: {},
         security: {
-          cors: {},
+          cors: {
+            enabled: true,
+            origins: ['http://localhost:3001'],
+          },
           rateLimiting: {
+            enabled: true,
             max: 10000,
             windowMs: 60000,
           },
-          requestLimits: {},
-          secureHeaders: {},
+          requestLimits: {
+            enabled: true,
+            jsonLimit: '1mb',
+            urlencodedLimit: '1mb',
+          },
+          secureHeaders: {
+            enabled: true,
+          },
         },
-      };
+      });
 
       const result = configSchema.safeParse(testConfig);
 
@@ -312,45 +297,47 @@ describe('Configuration Schema', () => {
     });
   });
 
-  describe('Partial configuration validation', () => {
-    it('should allow partial security configuration', () => {
-      const partialConfig = {
-        server: {},
+  describe('Complete configuration validation', () => {
+    it('should validate complete configuration with custom security settings', () => {
+      const customConfig = createTestConfig({
         security: {
           cors: {
+            enabled: true,
             origins: ['https://myapp.com'],
           },
-          rateLimiting: {},
-          requestLimits: {},
-          secureHeaders: {},
+          rateLimiting: {
+            enabled: true,
+            windowMs: 900000,
+            max: 100,
+          },
+          requestLimits: {
+            enabled: true,
+            jsonLimit: '1mb',
+            urlencodedLimit: '1mb',
+          },
+          secureHeaders: {
+            enabled: true,
+          },
         },
-      };
+      });
 
-      const result = configSchema.safeParse(partialConfig);
+      const result = configSchema.safeParse(customConfig);
 
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.security.cors.origins).toEqual([
           'https://myapp.com',
         ]);
-        expect(result.data.security.cors.enabled).toBe(true); // Default
-        expect(result.data.security.rateLimiting.max).toBe(100); // Default
-        expect(result.data.security.rateLimiting.enabled).toBe(true); // Default
+        expect(result.data.security.cors.enabled).toBe(true);
+        expect(result.data.security.rateLimiting.max).toBe(100);
+        expect(result.data.security.rateLimiting.enabled).toBe(true);
       }
     });
 
-    it('should allow empty security configuration with all defaults', () => {
-      const configWithEmptySecurity = {
-        server: {},
-        security: {
-          cors: {},
-          rateLimiting: {},
-          requestLimits: {},
-          secureHeaders: {},
-        },
-      };
+    it('should validate complete configuration with all security features enabled', () => {
+      const configWithAllSecurity = createTestConfig();
 
-      const result = configSchema.safeParse(configWithEmptySecurity);
+      const result = configSchema.safeParse(configWithAllSecurity);
 
       expect(result.success).toBe(true);
       if (result.success) {
@@ -361,26 +348,59 @@ describe('Configuration Schema', () => {
       }
     });
 
-    it('should allow server configuration with partial values', () => {
-      const partialServerConfig = {
+    it('should validate complete configuration with custom server settings', () => {
+      const customServerConfig = createTestConfig({
         server: {
           port: 8080,
-          // host not specified - should use default
+          host: '0.0.0.0',
         },
-        security: {
-          cors: {},
-          rateLimiting: {},
-          requestLimits: {},
-          secureHeaders: {},
-        },
-      };
+      });
 
-      const result = configSchema.safeParse(partialServerConfig);
+      const result = configSchema.safeParse(customServerConfig);
 
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.server.port).toBe(8080);
-        expect(result.data.server.host).toBe('localhost'); // Default
+        expect(result.data.server.host).toBe('0.0.0.0');
+      }
+    });
+  });
+
+  describe('Secret type validation', () => {
+    it('should enforce Secret schema for testSecret field', () => {
+      // Create a valid config first, then modify it to have an invalid secret
+      const baseConfig = createTestConfig();
+      const configWithEmptySecret = {
+        ...baseConfig,
+        testSecret: '', // Empty string should fail
+      };
+
+      const result = configSchema.safeParse(configWithEmptySecret);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              path: ['testSecret'],
+              message:
+                'Secret must be a non-empty string obtained via getSecret() or getOptionalSecret()',
+            }),
+          ]),
+        );
+      }
+    });
+
+    it('should accept valid secret strings for testSecret field', () => {
+      const configWithValidSecret = createTestConfig({
+        testSecret: 'valid-secret-from-env',
+      });
+
+      const result = configSchema.safeParse(configWithValidSecret);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.testSecret).toBe('valid-secret-from-env');
       }
     });
   });

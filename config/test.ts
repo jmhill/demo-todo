@@ -1,10 +1,14 @@
 import type { AppConfig } from '../src/config/schema.js';
+import type { GetSecretFn } from '../src/config/secrets.js';
 
 type DeepPartial<T> = {
   [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
 };
 
-export const config: DeepPartial<AppConfig> = {
+export const getConfig = (
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _getSecretFn: GetSecretFn,
+): DeepPartial<AppConfig> => ({
   environment: 'test',
   security: {
     rateLimiting: {
@@ -13,4 +17,4 @@ export const config: DeepPartial<AppConfig> = {
       max: 10000, // High limit for testing
     },
   },
-};
+});

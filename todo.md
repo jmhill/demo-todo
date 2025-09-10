@@ -1,6 +1,15 @@
 - [x] acceptance testing structure
 - [x] streamline vitest config
-- [ ] configuration approach allows accessing secrets from different providers (start with .env file)
+- [x] configuration approach allows accessing secrets from different providers (start with .env file)
+- [x] fix partial configuration and defaults
+- [ ] add realistic settings for security config
 - [ ] command to print out effective configuration for environment (merged values)
 - [ ] user service with basic authentication and in-memory store
+  - [ ] TDD basic service operations (createUser, getById)
+  - [ ] dev data management (add users via API)
+- [ ] sqlite version of user store
+- [ ] basic authentication demo
+- [ ] basic authorization demo
 - [ ] todo service with in-memory store
+  - [ ] TDD basic service operations (createTodo, listTodos, completeTodo)
+  - [ ] dev data management (add todos via API)
