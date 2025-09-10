@@ -43,6 +43,7 @@ export const configSchema = z.object({
     requestLimits: requestLimitsSchema,
     secureHeaders: secureHeadersSchema,
   }),
+  testSecret: z.string().optional(),
 });
 
 // Type inference from schema

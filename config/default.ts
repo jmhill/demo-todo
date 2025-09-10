@@ -1,4 +1,5 @@
 import type { AppConfig } from '../src/config/schema.js';
+import { getSecret } from '../src/config/secrets.js';
 
 export const config: AppConfig = {
   environment: 'development',
@@ -25,4 +26,5 @@ export const config: AppConfig = {
       enabled: true,
     },
   },
+  testSecret: getSecret('TEST_SECRET'), // Will throw if not in .env
 };

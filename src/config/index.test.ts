@@ -1,8 +1,19 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { loadConfig, createTestConfig } from './index.js';
 
 describe('Configuration Loading', () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    // Reset environment for each test
+    process.env = { ...originalEnv };
+    // Clear module cache to force re-evaluation of config modules
+    vi.resetModules();
+  });
+
   afterEach(() => {
+    // Restore original environment
+    process.env = originalEnv;
     // Clean up any environment variable mocks
     vi.unstubAllEnvs();
   });
@@ -32,23 +43,19 @@ describe('Configuration Loading', () => {
       expect(config.security.cors.enabled).toBe(true);
     });
 
-    it('should load production configuration with environment variables', async () => {
-      // Mock environment variables
-      vi.stubEnv('PORT', '8080');
-      vi.stubEnv('HOST', '0.0.0.0');
-      vi.stubEnv('ALLOWED_ORIGINS', 'https://app.com,https://api.com');
-      vi.stubEnv('RATE_LIMIT_MAX', '25');
+    it('should load production configuration with static values', async () => {
+      // Production config now has static values, not env vars
+      // Only secrets (like TEST_SECRET) come from env
+      // Mock the TEST_SECRET for production
+      vi.stubEnv('TEST_SECRET', 'test-secret-value');
 
       const config = await loadConfig('production');
 
       expect(config.environment).toBe('production');
-      expect(config.server.port).toBe(8080); // From env var
-      expect(config.server.host).toBe('0.0.0.0'); // From env var
-      expect(config.security.cors.origins).toEqual([
-        'https://app.com',
-        'https://api.com',
-      ]); // From env var
-      expect(config.security.rateLimiting.max).toBe(25); // From env var
+      expect(config.server.port).toBe(3000); // Static value from production config
+      expect(config.server.host).toBe('0.0.0.0'); // Static value from production config
+      expect(config.security.cors.origins).toEqual(['https://myapp.com']); // Static value
+      expect(config.security.rateLimiting.max).toBe(50); // Static value
     });
 
     it('should use NODE_ENV when no environment is specified', async () => {
@@ -68,11 +75,14 @@ describe('Configuration Loading', () => {
       expect(config.server.port).toBe(3000);
     });
 
-    it('should throw error when required environment variables are missing in production', async () => {
-      // Test would need to be more specific based on which env vars are required
-      // For now, production config doesn't have required env vars, just optional ones with defaults
+    it('should load production config successfully when TEST_SECRET is present', async () => {
+      // Production requires TEST_SECRET from environment
+      vi.stubEnv('TEST_SECRET', 'production-secret-value');
+
       const config = await loadConfig('production');
+
       expect(config.environment).toBe('production');
+      expect(config.testSecret).toBe('production-secret-value');
     });
   });
 

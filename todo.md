@@ -1,5 +1,6 @@
 - [x] acceptance testing structure
 - [x] streamline vitest config
 - [ ] configuration approach allows accessing secrets from different providers (start with .env file)
+- [ ] command to print out effective configuration for environment (merged values)
 - [ ] user service with basic authentication and in-memory store
 - [ ] todo service with in-memory store

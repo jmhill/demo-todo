@@ -44,6 +44,45 @@ describe('Configuration Schema', () => {
       }
     });
 
+    it('should parse configuration with optional testSecret', () => {
+      const configWithSecret = {
+        testSecret: 'test-secret-value',
+        server: {},
+        security: {
+          cors: {},
+          rateLimiting: {},
+          requestLimits: {},
+          secureHeaders: {},
+        },
+      };
+
+      const result = configSchema.safeParse(configWithSecret);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.testSecret).toBe('test-secret-value');
+      }
+    });
+
+    it('should allow configuration without testSecret', () => {
+      const configWithoutSecret = {
+        server: {},
+        security: {
+          cors: {},
+          rateLimiting: {},
+          requestLimits: {},
+          secureHeaders: {},
+        },
+      };
+
+      const result = configSchema.safeParse(configWithoutSecret);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.testSecret).toBeUndefined();
+      }
+    });
+
     it('should parse configuration with complete structure and use defaults', () => {
       const configWithStructure = {
         server: {},
