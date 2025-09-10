@@ -4,6 +4,9 @@ import { defineConfig } from 'vitest/config';
 // Runs all tests across the entire codebase
 export default defineConfig({
   test: {
+    // Automatically restore environment variables after each test
+    unstubEnvs: true,
+
     // Coverage configuration shared across all test runs
     coverage: {
       // Multiple reporters for different consumption needs:

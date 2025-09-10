@@ -1,21 +1,10 @@
-import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { loadConfig, createTestConfig } from './index.js';
 
 describe('Configuration Loading', () => {
-  const originalEnv = process.env;
-
   beforeEach(() => {
-    // Reset environment for each test
-    process.env = { ...originalEnv };
     // Clear module cache to force re-evaluation of config modules
     vi.resetModules();
-  });
-
-  afterEach(() => {
-    // Restore original environment
-    process.env = originalEnv;
-    // Clean up any environment variable mocks
-    vi.unstubAllEnvs();
   });
 
   describe('loadConfig', () => {
