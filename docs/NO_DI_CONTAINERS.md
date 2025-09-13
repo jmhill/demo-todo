@@ -1,4 +1,3 @@
-
 # TypeScript Dependency Injection: Factory Functions vs Containers
 
 ## Executive Summary
@@ -12,6 +11,7 @@ TypeScript's type information doesn't exist at runtime. DI containers need runti
 ## Simple Factory Functions
 
 ### When to Use
+
 - **Always** - This is not just the default choice, it's the right choice
 - All Node.js/Express applications regardless of size
 - When type safety matters (it always should)
@@ -19,6 +19,7 @@ TypeScript's type information doesn't exist at runtime. DI containers need runti
 - When you want your architecture to be explicit and traceable
 
 ### Pros
+
 - **Type safety preserved** - All dependencies checked at compile time
 - **Explicit and traceable** - Follow function calls to understand object creation
 - **Simple debugging** - No magic, no proxies, no decorators
@@ -27,6 +28,7 @@ TypeScript's type information doesn't exist at runtime. DI containers need runti
 - **No learning curve** - Just functions and parameters
 
 ### Cons (Often Overstated)
+
 - **Manual wiring seems repetitive** - But it's explicit documentation of your architecture
 - **No automatic lifecycle management** - Easy to implement with patterns like `once()`
 - **Circular dependencies require refactoring** - This is good! Circular dependencies are design flaws
@@ -62,7 +64,7 @@ interface UserRepository {
 // Factory functions with explicit dependencies
 function createDatabase(connectionString: string): Database {
   const pool = new Pool({ connectionString });
-  
+
   return {
     async query<T>(sql: string, params: any[]): Promise<T[]> {
       const result = await pool.query(sql, params);
@@ -70,13 +72,13 @@ function createDatabase(connectionString: string): Database {
     },
     async transaction<T>(fn: (client: Database) => Promise<T>): Promise<T> {
       // Implementation...
-    }
+    },
   };
 }
 
 function createCacheService(redisUrl: string): CacheService {
   const redis = new Redis(redisUrl);
-  
+
   return {
     async get<T>(key: string): Promise<T | null> {
       const value = await redis.get(key);
@@ -88,21 +90,23 @@ function createCacheService(redisUrl: string): CacheService {
     async invalidate(pattern: string): Promise<void> {
       const keys = await redis.keys(pattern);
       if (keys.length > 0) await redis.del(...keys);
-    }
+    },
   };
 }
 
-function createUserRepository(db: Database, cache: CacheService): UserRepository {
+function createUserRepository(
+  db: Database,
+  cache: CacheService,
+): UserRepository {
   return {
     async findById(id: string): Promise<User | null> {
       const cached = await cache.get<User>(`user:${id}`);
       if (cached) return cached;
-      
-      const users = await db.query<User>(
-        'SELECT * FROM users WHERE id = $1',
-        [id]
-      );
-      
+
+      const users = await db.query<User>('SELECT * FROM users WHERE id = $1', [
+        id,
+      ]);
+
       const user = users[0] || null;
       if (user) {
         await cache.set(`user:${id}`, user, 300);
@@ -119,21 +123,23 @@ async function bootstrap() {
   const db = createDatabase(process.env.DATABASE_URL!);
   const cache = createCacheService(process.env.REDIS_URL!);
   const userRepo = createUserRepository(db, cache);
-  
+
   // These would all fail at COMPILE time:
   // ❌ const userRepo = createUserRepository(cache, db); // Wrong order
   // ❌ const userRepo = createUserRepository(db); // Missing parameter
   // ❌ const userRepo = createUserRepository(db, db); // Wrong type
-  
+
   const app = express();
   // ... setup routes with access to typed services
 }
 
 // Testing is trivial
 const mockCache: CacheService = {
-  async get() { return null; },
-  async set() { },
-  async invalidate() { }
+  async get() {
+    return null;
+  },
+  async set() {},
+  async invalidate() {},
 };
 const testRepo = createUserRepository(realDb, mockCache);
 ```
@@ -141,9 +147,11 @@ const testRepo = createUserRepository(realDb, mockCache);
 ## DI Containers (e.g., Awilix)
 
 ### When to Use
+
 **Never.** This isn't hyperbole - there is no TypeScript application where a DI container provides genuine value over factory functions. The perceived benefits don't materialize in practice, while the costs are real and significant.
 
 ### Why People Think They Need Them
+
 - Coming from C#/Java where they make sense
 - Mistaking "explicit" for "boilerplate"
 - Not realizing factory functions can handle lifecycle management
@@ -151,12 +159,14 @@ const testRepo = createUserRepository(realDb, mockCache);
 - Following outdated advice from before TypeScript matured
 
 ### Pros
+
 - Less boilerplate for complex dependency graphs
 - Automatic lifecycle management (singleton/transient/scoped)
 - Can handle circular dependencies
 - Convention-based wiring reduces configuration
 
 ### Cons (Why You Shouldn't Use Them)
+
 - **Runtime failures** - Wiring errors only caught when resolving
 - **Lost type safety** - String-based resolution, no compile-time checks
 - **Poor IDE support** - Can't navigate to definitions, no refactoring support
@@ -208,7 +218,7 @@ async function bootstrap() {
   const container = createContainer({
     injectionMode: InjectionMode.PROXY  // Magic proxy-based wiring
   });
-  
+
   container.register({
     database: asClass(PostgresDatabase).singleton(),
     cacheService: asClass(RedisCache).singleton(),
@@ -216,9 +226,9 @@ async function bootstrap() {
     userRepository: asClass(UserRepository).singleton(),
     userService: asClass(UserService).singleton(),
   });
-  
+
   const app = express();
-  
+
   app.post('/api/users', async (req, res) => {
     try {
       // COMPILES but RUNTIME ERROR: Cannot resolve 'emailService'
@@ -229,7 +239,7 @@ async function bootstrap() {
       // Cryptic error: "Cannot read property 'sendWelcome' of undefined"
     }
   });
-  
+
   // PROBLEM: Type safety lost during resolution
   const something = container.resolve('userService'); // Type: any/unknown
   const wrong = container.resolve<AuthService>('userService'); // TypeScript allows this!
@@ -239,6 +249,7 @@ async function bootstrap() {
 ## Specific Problems with Containers in TypeScript
 
 ### 1. Runtime Wiring Failures
+
 ```typescript
 // Compiles fine, fails at runtime
 container.register({
@@ -248,12 +259,14 @@ container.register({
 ```
 
 ### 2. String-Based Resolution
+
 ```typescript
 // No compile-time checking of these strings
 const service = container.resolve('userSrevice'); // Typo = runtime error
 ```
 
 ### 3. Parameter Name Coupling
+
 ```typescript
 class Service {
   // Change 'cache' to 'cacheService' = runtime error
@@ -262,21 +275,24 @@ class Service {
 ```
 
 ### 4. Lost IDE Support
+
 - Can't Cmd+Click on `'userService'` to go to definition
 - Refactoring tools don't understand string-based wiring
 - No autocomplete for container.resolve()
 
 ### 5. Decorator Metadata Issues
+
 ```typescript
 @injectable()
 class UserService {
   // Only works with classes, not interfaces
   // Requires experimental TypeScript features
-  constructor(@inject("IUserRepo") repo: IUserRepository) {}
+  constructor(@inject('IUserRepo') repo: IUserRepository) {}
 }
 ```
 
 ### 6. Complex Error Messages
+
 ```
 AwilixResolutionError: Could not resolve 'emailService'.
 
@@ -284,7 +300,9 @@ Resolution path: userService -> emailService
 
 Visit the documentation for more information: ...
 ```
+
 vs. TypeScript's clear:
+
 ```
 Argument of type 'Database' is not assignable to parameter of type 'CacheService'
 ```
@@ -292,9 +310,11 @@ Argument of type 'Database' is not assignable to parameter of type 'CacheService
 ## Decision Framework
 
 ### Use Factory Functions When:
+
 - Building any TypeScript application (which is always)
 
 ### Why Complex Applications Need Factories Even More:
+
 The argument that complex applications benefit from DI containers is backwards. As complexity increases, you need:
 
 1. **More clarity, not less** - Explicit wiring becomes more valuable when debugging 50+ services
@@ -303,6 +323,7 @@ The argument that complex applications benefit from DI containers is backwards. 
 4. **Traceable initialization** - Understanding startup order is critical in complex systems
 
 Consider: In a system with 50+ services, would you rather debug:
+
 - An explicit function call you can step through, or
 - "AwilixResolutionError: Could not resolve 'emailService'" with a stack trace through proxy internals?
 
@@ -332,7 +353,7 @@ function createRequestScope(baseServices: BaseServices) {
     ...baseServices,
     requestId: generateId(),
     user: extractUser(req),
-    logger: baseServices.logger.child({ requestId })
+    logger: baseServices.logger.child({ requestId }),
   });
 }
 
@@ -342,9 +363,9 @@ const createCache = once(() => new RedisCache(config.redisUrl));
 
 // Application bootstrap
 function bootstrap() {
-  const db = createDb();  // Created once
-  const cache = createCache();  // Created once
-  
+  const db = createDb(); // Created once
+  const cache = createCache(); // Created once
+
   // Request handler
   app.use((req, res, next) => {
     req.scope = createRequestScope({ db, cache })(req);
@@ -369,14 +390,14 @@ function createServices(config: Config): ServiceRegistry {
   // Level 0: Infrastructure
   const db = createDatabase(config.db);
   const cache = createCache(config.redis);
-  
-  // Level 1: Repositories  
+
+  // Level 1: Repositories
   const userRepo = createUserRepository(db, cache);
-  
+
   // Level 2: Services
   const authService = createAuthService(config.jwtSecret);
   const userService = createUserService(userRepo, authService);
-  
+
   return { db, cache, userRepo, authService, userService };
 }
 
@@ -404,12 +425,12 @@ interface CoreDependencies {
 // Plugin loader with factory functions
 function loadPlugins(plugins: Plugin[], core: CoreDependencies) {
   const pluginServices = new Map<string, PluginServices>();
-  
+
   for (const plugin of plugins) {
     const services = plugin.initialize(core);
     pluginServices.set(plugin.name, services);
   }
-  
+
   return pluginServices;
 }
 
@@ -421,9 +442,9 @@ const analyticsPlugin: Plugin = {
       trackEvent: async (event: Event) => {
         await db.query('INSERT INTO events...', [event]);
         logger.info('Event tracked', event);
-      }
+      },
     };
-  }
+  },
 };
 ```
 
@@ -443,19 +464,20 @@ function getEnvironmentFactories(env: string): EnvironmentFactories {
       return {
         createDatabase: () => createInMemoryDatabase(),
         createCache: () => createMockCache(),
-        createEmailService: () => createMockEmailService()
+        createEmailService: () => createMockEmailService(),
       };
     case 'development':
       return {
         createDatabase: () => createDatabase('postgresql://localhost/dev'),
         createCache: () => createRedisCache('localhost:6379'),
-        createEmailService: () => createConsoleEmailService()
+        createEmailService: () => createConsoleEmailService(),
       };
     case 'production':
       return {
         createDatabase: () => createDatabase(process.env.DATABASE_URL!),
         createCache: () => createRedisCache(process.env.REDIS_URL!),
-        createEmailService: () => createSendGridService(process.env.SENDGRID_KEY!)
+        createEmailService: () =>
+          createSendGridService(process.env.SENDGRID_KEY!),
       };
     default:
       throw new Error(`Unknown environment: ${env}`);
@@ -468,7 +490,7 @@ function bootstrap(env: string) {
   const db = factories.createDatabase();
   const cache = factories.createCache();
   const email = factories.createEmailService();
-  
+
   return createAllServices(db, cache, email);
 }
 ```
@@ -481,25 +503,25 @@ async function bootstrapAsync() {
   // Parallel initialization where possible
   const [db, cache] = await Promise.all([
     createDatabaseAsync(config.db),
-    createCacheAsync(config.redis)
+    createCacheAsync(config.redis),
   ]);
-  
+
   // Wait for DB before creating repos
   await db.runMigrations();
-  
+
   const repos = {
     users: createUserRepo(db, cache),
     orders: createOrderRepo(db, cache),
-    products: createProductRepo(db, cache)
+    products: createProductRepo(db, cache),
   };
-  
+
   // Services can be created in parallel
   const [userService, orderService, notificationService] = await Promise.all([
     createUserServiceAsync(repos.users, cache),
     createOrderServiceAsync(repos.orders, repos.products),
-    createNotificationServiceAsync(config.notifications)
+    createNotificationServiceAsync(config.notifications),
   ]);
-  
+
   return { db, cache, repos, userService, orderService, notificationService };
 }
 ```
@@ -513,9 +535,9 @@ function createServiceFactories(db: Database, cache: CacheService) {
     userRepo: () => createUserRepository(db, cache),
     orderRepo: () => createOrderRepository(db, cache),
     productRepo: () => createProductRepository(db, cache),
-    
+
     // Higher-level services can reference lower-level factories
-    userService: (authService: AuthService) => 
+    userService: (authService: AuthService) =>
       createUserService(createUserRepository(db, cache), authService),
   };
 }
@@ -537,7 +559,7 @@ function createServiceA(getServiceB: () => ServiceB): ServiceA {
       // ServiceB is only accessed when needed
       const serviceB = getServiceB();
       return serviceB.getValue() + 1;
-    }
+    },
   };
 }
 
@@ -549,7 +571,7 @@ function createServiceB(getServiceA: () => ServiceA): ServiceB {
     process() {
       const serviceA = getServiceA();
       return serviceA.doSomething();
-    }
+    },
   };
 }
 
@@ -570,9 +592,9 @@ function validateServices(services: ServiceRegistry): void {
   const required = [
     { name: 'database', check: () => services.db.query('SELECT 1', []) },
     { name: 'cache', check: () => services.cache.get('health-check') },
-    { name: 'auth', check: () => services.authService.generateToken('test') }
+    { name: 'auth', check: () => services.authService.generateToken('test') },
   ];
-  
+
   for (const { name, check } of required) {
     try {
       check();
@@ -592,6 +614,7 @@ async function bootstrap() {
 ```
 
 All of these patterns provide the same capabilities as DI containers but with:
+
 - Full type safety at compile time
 - Clear, debuggable code paths
 - No magic or hidden behavior
@@ -601,6 +624,7 @@ All of these patterns provide the same capabilities as DI containers but with:
 ## Best Practices
 
 ### For Factory Functions:
+
 1. **Organize factories near their interfaces** - Keep related code together
 2. **Create a single bootstrap function** - Wire everything in one place
 3. **Use factory composition** - Smaller factories that compose into larger ones
@@ -615,12 +639,13 @@ function bootstrap() {
   const cache = createCache(config.redis);
   const repos = createRepositories(db, cache);
   const services = createServices(repos);
-  
+
   return { db, cache, ...repos, ...services }; // Everything in one place
 }
 ```
 
 ### If Someone Insists on a Container:
+
 1. **Challenge the requirement** - Ask specifically what problem it solves that factories don't
 2. **Show them this document** - Especially the runtime failure examples
 3. **Demonstrate the alternative** - Write the same functionality with factories
@@ -630,11 +655,12 @@ function bootstrap() {
 ## Testing Strategies
 
 ### Factory Functions - Simple Mocking
+
 ```typescript
 // Just pass mock implementations
 const mockEmail: EmailService = {
-  async sendWelcome() { },
-  async sendPasswordReset() { }
+  async sendWelcome() {},
+  async sendPasswordReset() {},
 };
 
 const service = createUserService(mockRepo, mockAuth, mockEmail);
@@ -642,6 +668,7 @@ const service = createUserService(mockRepo, mockAuth, mockEmail);
 ```
 
 ### Containers - Complex Setup
+
 ```typescript
 // Must configure entire container
 const testContainer = createContainer();
@@ -674,20 +701,20 @@ One common argument for DI containers is handling cross-cutting concerns like ca
 
 ```csharp
 // In C#, you typically use decorator classes
-public class CachedUserService : IUserService 
+public class CachedUserService : IUserService
 {
     private readonly IUserService _inner;
     private readonly IMemoryCache _cache;
-    
-    public CachedUserService(IUserService inner, IMemoryCache cache) 
+
+    public CachedUserService(IUserService inner, IMemoryCache cache)
     {
         _inner = inner;
         _cache = cache;
     }
-    
-    public async Task<User> GetUserAsync(string id) 
+
+    public async Task<User> GetUserAsync(string id)
     {
-        return await _cache.GetOrCreateAsync($"user_{id}", 
+        return await _cache.GetOrCreateAsync($"user_{id}",
             async entry => {
                 entry.SlidingExpiration = TimeSpan.FromMinutes(5);
                 return await _inner.GetUserAsync(id);
@@ -698,7 +725,7 @@ public class CachedUserService : IUserService
 // Registration with decoration
 services.AddScoped<UserService>();
 services.Decorate<IUserService, CachedUserService>();
-services.Decorate<IUserService, LoggedUserService>();  
+services.Decorate<IUserService, LoggedUserService>();
 services.Decorate<IUserService, AuthorizedUserService>();
 ```
 
@@ -723,58 +750,58 @@ function createUserService(repo: UserRepository): UserService {
     },
     async searchUsers(query: string) {
       return repo.search(query);
-    }
+    },
   };
 }
 
 // Caching wrapper - a higher-order function
 function withCaching<T extends UserService>(
   createService: () => T,
-  cache: CacheService
+  cache: CacheService,
 ): T {
   const inner = createService();
-  
+
   return {
-    ...inner,  // Preserve any extra methods
-    
+    ...inner, // Preserve any extra methods
+
     async getUser(id: string) {
       const cacheKey = `user_${id}`;
       const cached = await cache.get<User>(cacheKey);
       if (cached) return cached;
-      
+
       const user = await inner.getUser(id);
       await cache.set(cacheKey, user, 300); // 5 min TTL
       return user;
     },
-    
+
     async createUser(dto: CreateUserDto) {
       const user = await inner.createUser(dto);
       await cache.invalidate('users_search_*');
       return user;
     },
-    
+
     async searchUsers(query: string) {
       const cacheKey = `users_search_${query}`;
       const cached = await cache.get<User[]>(cacheKey);
       if (cached) return cached;
-      
+
       const users = await inner.searchUsers(query);
       await cache.set(cacheKey, users, 60); // 1 min TTL
       return users;
-    }
+    },
   };
 }
 
 // Logging wrapper
 function withLogging<T extends UserService>(
   createService: () => T,
-  logger: Logger
+  logger: Logger,
 ): T {
   const inner = createService();
-  
+
   return {
     ...inner,
-    
+
     async getUser(id: string) {
       logger.info('Getting user', { userId: id });
       try {
@@ -786,7 +813,7 @@ function withLogging<T extends UserService>(
         throw error;
       }
     },
-    
+
     async createUser(dto: CreateUserDto) {
       logger.info('Creating user', { email: dto.email });
       try {
@@ -798,26 +825,26 @@ function withLogging<T extends UserService>(
         throw error;
       }
     },
-    
+
     async searchUsers(query: string) {
       logger.info('Searching users', { query });
       const users = await inner.searchUsers(query);
       logger.info('Found users', { count: users.length });
       return users;
-    }
+    },
   };
 }
 
 // Authorization wrapper
 function withAuthorization<T extends UserService>(
   createService: () => T,
-  auth: AuthService
+  auth: AuthService,
 ): T {
   const inner = createService();
-  
+
   return {
     ...inner,
-    
+
     async getUser(id: string) {
       const user = auth.getCurrentUser();
       if (!auth.canReadUser(user, id)) {
@@ -825,7 +852,7 @@ function withAuthorization<T extends UserService>(
       }
       return inner.getUser(id);
     },
-    
+
     async createUser(dto: CreateUserDto) {
       const user = auth.getCurrentUser();
       if (!auth.canCreateUser(user)) {
@@ -833,14 +860,14 @@ function withAuthorization<T extends UserService>(
       }
       return inner.createUser(dto);
     },
-    
+
     async searchUsers(query: string) {
       const user = auth.getCurrentUser();
       if (!auth.canSearchUsers(user)) {
         throw new UnauthorizedError('Cannot search users');
       }
       return inner.searchUsers(query);
-    }
+    },
   };
 }
 
@@ -848,15 +875,15 @@ function withAuthorization<T extends UserService>(
 function withRetry<T>(
   createService: () => T,
   maxAttempts = 3,
-  backoffMs = 100
+  backoffMs = 100,
 ): T {
   const inner = createService();
-  
+
   return new Proxy(inner, {
     get(target, prop) {
       const original = target[prop as keyof T];
       if (typeof original !== 'function') return original;
-      
+
       return async (...args: any[]) => {
         let lastError;
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -865,13 +892,13 @@ function withRetry<T>(
           } catch (error) {
             lastError = error;
             if (attempt < maxAttempts) {
-              await new Promise(r => setTimeout(r, backoffMs * attempt));
+              await new Promise((r) => setTimeout(r, backoffMs * attempt));
             }
           }
         }
         throw lastError;
       };
-    }
+    },
   });
 }
 
@@ -880,28 +907,23 @@ function createFullUserService(
   repo: UserRepository,
   cache: CacheService,
   logger: Logger,
-  auth: AuthService
+  auth: AuthService,
 ): UserService {
   // Explicit composition - you can see the order!
   return withAuthorization(
-    () => withLogging(
-      () => withCaching(
-        () => createUserService(repo),
-        cache
+    () =>
+      withLogging(
+        () => withCaching(() => createUserService(repo), cache),
+        logger,
       ),
-      logger
-    ),
-    auth
+    auth,
   );
 }
 
 // Or use a compose utility for cleaner syntax
 function compose<T>(...wrappers: Array<(next: () => T) => T>) {
   return (base: () => T): T => {
-    return wrappers.reduceRight(
-      (next, wrapper) => () => wrapper(next),
-      base
-    )();
+    return wrappers.reduceRight((next, wrapper) => () => wrapper(next), base)();
   };
 }
 
@@ -909,15 +931,15 @@ function createFullUserServiceClean(
   repo: UserRepository,
   cache: CacheService,
   logger: Logger,
-  auth: AuthService
+  auth: AuthService,
 ): UserService {
   const enhance = compose(
-    next => withAuthorization(next, auth),
-    next => withLogging(next, logger),
-    next => withCaching(next, cache),
-    next => withRetry(next)
+    (next) => withAuthorization(next, auth),
+    (next) => withLogging(next, logger),
+    (next) => withCaching(next, cache),
+    (next) => withRetry(next),
   );
-  
+
   return enhance(() => createUserService(repo));
 }
 
@@ -926,44 +948,35 @@ describe('UserService', () => {
   it('caches user lookups', async () => {
     const mockRepo = createMockRepo();
     const cache = createMemoryCache();
-    
+
     // Test JUST the caching layer
-    const service = withCaching(
-      () => createUserService(mockRepo),
-      cache
-    );
-    
+    const service = withCaching(() => createUserService(mockRepo), cache);
+
     await service.getUser('123');
     await service.getUser('123'); // Should hit cache
-    
+
     expect(mockRepo.findById).toHaveBeenCalledTimes(1);
   });
-  
+
   it('logs operations', async () => {
     const mockRepo = createMockRepo();
     const logger = createMockLogger();
-    
+
     // Test JUST the logging layer
-    const service = withLogging(
-      () => createUserService(mockRepo),
-      logger
-    );
-    
+    const service = withLogging(() => createUserService(mockRepo), logger);
+
     await service.getUser('123');
-    
+
     expect(logger.info).toHaveBeenCalledWith('Getting user', { userId: '123' });
   });
-  
+
   it('enforces authorization', async () => {
     const mockRepo = createMockRepo();
     const auth = createMockAuth({ canReadUser: () => false });
-    
+
     // Test JUST the auth layer
-    const service = withAuthorization(
-      () => createUserService(mockRepo),
-      auth
-    );
-    
+    const service = withAuthorization(() => createUserService(mockRepo), auth);
+
     await expect(service.getUser('123')).rejects.toThrow('Cannot read user');
   });
 });

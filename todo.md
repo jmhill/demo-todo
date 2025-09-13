@@ -2,8 +2,10 @@
 - [x] streamline vitest config
 - [x] configuration approach allows accessing secrets from different providers (start with .env file)
 - [x] fix partial configuration and defaults
-- [ ] add realistic settings for security config
-- [ ] command to print out effective configuration for environment (merged values)
+- [x] add realistic settings for security config
+- [x] command to print out effective configuration for environment (merged values)
+- [ ] workspace setup
+- [ ] docker build
 - [ ] user service with basic authentication and in-memory store
   - [ ] TDD basic service operations (createUser, getById)
   - [ ] dev data management (add users via API)

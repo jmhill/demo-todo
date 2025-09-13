@@ -1,5 +1,6 @@
 import { createApp } from './app.js';
 import { loadConfig } from './config/index.js';
+import { filterSecrets } from './config/display.js';
 
 // Load configuration and create app
 const config = loadConfig();
@@ -15,5 +16,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       `Health check available at http://${config.server.host}:${config.server.port}/health`,
     );
     console.log(`Environment: ${config.environment}`);
+
+    // Print effective configuration if requested
+    if (process.env.PRINT_CONFIG === 'true') {
+      console.log('\nEffective Configuration:');
+      console.log(JSON.stringify(filterSecrets(config), null, 2));
+    }
   });
 }
