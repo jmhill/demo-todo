@@ -12,10 +12,11 @@ export const getConfig = (getSecretFn: GetSecretFn): AppConfig => ({
       enabled: true,
       origins: ['http://localhost:3001'],
     },
+    // Rate limiting disabled in development for unrestricted debugging/testing
     rateLimiting: {
-      enabled: true,
+      enabled: false,
       windowMs: 900000, // 15 minutes
-      max: 100,
+      max: 100, // Not used when disabled
     },
     requestLimits: {
       enabled: true,

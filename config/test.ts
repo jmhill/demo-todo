@@ -11,10 +11,11 @@ export const getConfig = (
 ): DeepPartial<AppConfig> => ({
   environment: 'test',
   security: {
+    // High rate limits for automated test suites that rapidly hit the API
     rateLimiting: {
       enabled: true,
       windowMs: 60000, // 1 minute
-      max: 10000, // High limit for testing
+      max: 10000, // High limit for testing - allows rapid automated requests
     },
   },
 });

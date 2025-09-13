@@ -19,9 +19,11 @@ export const getConfig = (
       enabled: true,
       origins: ['https://myapp.com'],
     },
+    // Production rate limiting: allows ~200 requests/minute for normal user activity
+    // while protecting against abuse
     rateLimiting: {
       enabled: true,
-      max: 50,
+      max: 3000, // 3000 requests per 15 minutes = ~200/minute
       windowMs: 900000, // 15 minutes
     },
   },
