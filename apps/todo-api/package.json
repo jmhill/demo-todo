@@ -1,5 +1,5 @@
 {
-  "name": "demo-todo",
+  "name": "todo-api",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -15,47 +15,10 @@
     "test:coverage": "NODE_ENV=test vitest run --coverage",
     "test:coverage:unit": "NODE_ENV=test vitest run --coverage --config vitest.unit.config.ts",
     "test:coverage:acceptance": "NODE_ENV=test vitest run --coverage --config vitest.acceptance.config.ts",
-    "format": "prettier --check .",
-    "format:fix": "prettier --write .",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "typecheck": "tsc --noEmit",
-    "quality": "npm run format && npm run lint && npm run typecheck && npm run test",
-    "quality:fix": "npm run format:fix && npm run lint:fix && npm run quality",
     "config:print": "tsx src/scripts/print-config.ts",
     "config:print:dev": "NODE_ENV=development tsx src/scripts/print-config.ts",
     "config:print:test": "NODE_ENV=test tsx src/scripts/print-config.ts",
     "config:print:prod": "NODE_ENV=production tsx src/scripts/print-config.ts"
   },
-  "workspaces": [
-    "apps/*",
-    "libs/*"
-  ],
-  "type": "module",
-  "devDependencies": {
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.3",
-    "@types/helmet": "^0.0.48",
-    "@types/node": "^24.3.1",
-    "@types/supertest": "^6.0.3",
-    "@typescript-eslint/eslint-plugin": "^8.42.0",
-    "@typescript-eslint/parser": "^8.42.0",
-    "@vitest/coverage-v8": "^3.2.4",
-    "eslint": "^9.35.0",
-    "eslint-config-prettier": "^10.1.8",
-    "prettier": "^3.6.2",
-    "supertest": "^7.1.4",
-    "tsx": "^4.20.5",
-    "typescript": "^5.9.2",
-    "vitest": "^3.2.4"
-  },
-  "dependencies": {
-    "cors": "^2.8.5",
-    "deepmerge-ts": "^7.1.5",
-    "dotenv": "^17.2.2",
-    "express": "^5.1.0",
-    "express-rate-limit": "^8.1.0",
-    "helmet": "^8.1.0",
-    "zod": "^4.1.5"
-  }
+  "type": "module"
 }
