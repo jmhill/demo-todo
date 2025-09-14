@@ -6,7 +6,9 @@
 - [x] command to print out effective configuration for environment (merged values)
 - [x] workspace setup
 - [x] typescript extends setup for monorepo builds
-- [ ] docker build
+- [x] docker build
+- [ ] github action to check quality
+- [ ] deploy
 - [ ] user service with basic authentication and in-memory store
   - [ ] TDD basic service operations (createUser, getById)
   - [ ] dev data management (add users via API)

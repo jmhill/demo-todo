@@ -1,5 +1,5 @@
-import type { AppConfig } from '../src/config/schema.js';
-import type { GetSecretFn } from '../src/config/secrets.js';
+import type { AppConfig } from '../schema.js';
+import type { GetSecretFn } from '../secrets.js';
 
 export const getConfig = (getSecretFn: GetSecretFn): AppConfig => ({
   environment: 'development',

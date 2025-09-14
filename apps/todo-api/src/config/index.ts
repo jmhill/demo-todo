@@ -1,9 +1,9 @@
 import { deepmergeCustom } from 'deepmerge-ts';
 import { configSchema, type AppConfig } from './schema.js';
 import { getSecret, type GetSecretFn } from './secrets.js';
-import { getConfig as getDefaultConfig } from '../../config/default.js';
-import { getConfig as getTestConfig } from '../../config/test.js';
-import { getConfig as getProductionConfig } from '../../config/production.js';
+import { getConfig as getDefaultConfig } from './environments/default.js';
+import { getConfig as getTestConfig } from './environments/test.js';
+import { getConfig as getProductionConfig } from './environments/production.js';
 
 // Create custom deepmerge that replaces arrays instead of concatenating
 const deepmerge = deepmergeCustom({

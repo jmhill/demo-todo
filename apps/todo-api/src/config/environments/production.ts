@@ -1,5 +1,5 @@
-import type { AppConfig } from '../src/config/schema.js';
-import type { GetSecretFn } from '../src/config/secrets.js';
+import type { AppConfig } from '../schema.js';
+import type { GetSecretFn } from '../secrets.js';
 
 type DeepPartial<T> = {
   [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
