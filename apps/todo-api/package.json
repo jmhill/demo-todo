@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "tsc",
+    "build": "tsc --project tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "dev": "tsx watch src/main.ts",
-    "start": "node dist/main.js",
+    "start": "node dist/src/main.js",
     "test": "NODE_ENV=test npm run test:unit && NODE_ENV=test npm run test:acceptance",
     "test:unit": "NODE_ENV=test vitest run --config vitest.unit.config.ts",
     "test:acceptance": "NODE_ENV=test vitest run --config vitest.acceptance.config.ts",

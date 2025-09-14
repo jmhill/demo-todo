@@ -40,7 +40,9 @@ describe('Health Check Endpoint', () => {
 
     const body: HealthCheckResponse = response.body;
     expect(body.service).toBe('todo-api');
-    expect(body.version).toBe('1.0.0');
+    // Version is now dynamic (GIT_SHA or 'development')
+    expect(typeof body.version).toBe('string');
+    expect(body.version.length).toBeGreaterThan(0);
   });
 
   it('should return valid memory information', async () => {

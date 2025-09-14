@@ -4,7 +4,8 @@
 - [x] fix partial configuration and defaults
 - [x] add realistic settings for security config
 - [x] command to print out effective configuration for environment (merged values)
-- [ ] workspace setup
+- [x] workspace setup
+- [x] typescript extends setup for monorepo builds
 - [ ] docker build
 - [ ] user service with basic authentication and in-memory store
   - [ ] TDD basic service operations (createUser, getById)

@@ -1,12 +1,7 @@
 import type { Request, Response } from 'express';
-import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const packageJson = JSON.parse(
-  readFileSync(join(__dirname, '../package.json'), 'utf-8'),
-);
+const SERVICE_NAME = process.env.SERVICE_NAME || 'todo-api';
+const VERSION = process.env.GIT_SHA || 'development';
 
 const startTime = Date.now();
 
@@ -31,8 +26,8 @@ export const healthCheckHandler = (req: Request, res: Response): void => {
 
   const healthCheck: HealthCheckResponse = {
     status: 'healthy',
-    service: packageJson.name,
-    version: packageJson.version,
+    service: SERVICE_NAME,
+    version: VERSION,
     uptime: Math.floor((Date.now() - startTime) / 1000),
     timestamp: new Date().toISOString(),
     node: process.version,
