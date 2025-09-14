@@ -39,7 +39,7 @@ describe('Health Check Endpoint', () => {
     const response = await request(app).get('/health').expect(200);
 
     const body: HealthCheckResponse = response.body;
-    expect(body.service).toBe('demo-todo');
+    expect(body.service).toBe('todo-api');
     expect(body.version).toBe('1.0.0');
   });
 

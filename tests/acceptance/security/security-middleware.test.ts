@@ -222,11 +222,11 @@ describe('Security Middleware Integration (Acceptance)', () => {
       expect(response.headers['x-frame-options']).toBe('SAMEORIGIN');
       expect(response.headers['x-content-type-options']).toBe('nosniff');
       expect(response.body).toHaveProperty('status', 'healthy');
-      expect(response.body).toHaveProperty('service', 'demo-todo');
+      expect(response.body).toHaveProperty('service', 'todo-api');
     });
 
     it('should maintain security even when requests are problematic', async () => {
-      const testApp = await getDefaultTestApp();
+      const testApp = getDefaultTestApp();
       // Test with unauthorized origin and edge-case headers
       const response = await request(testApp)
         .get('/health')

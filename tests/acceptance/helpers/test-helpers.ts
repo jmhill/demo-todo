@@ -193,7 +193,7 @@ export const validateSuccessfulSecureResponse = (
   // Should have valid response body for health endpoint
   if (response.body && typeof response.body === 'object') {
     expect(response.body).toHaveProperty('status', 'healthy');
-    expect(response.body).toHaveProperty('service', 'demo-todo');
+    expect(response.body).toHaveProperty('service', 'todo-api');
   }
 };
 
