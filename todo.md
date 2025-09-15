@@ -7,12 +7,12 @@
 - [x] workspace setup
 - [x] typescript extends setup for monorepo builds
 - [x] docker build
-- [ ] github action to check quality
-- [ ] deploy
+- [x] github action to check quality
+- [x] deploy (simple git repo connection to managed service for now)
 - [ ] user service with basic authentication and in-memory store
-  - [ ] TDD basic service operations (createUser, getById)
-  - [ ] dev data management (add users via API)
-- [ ] sqlite version of user store
+  - [x] TDD basic service operations (createUser, getById)
+  - [ ] acceptance tests with dev data management (add users via API)
+- [ ] sqlite version of user store (test containers to test implementation?)
 - [ ] basic authentication demo
 - [ ] basic authorization demo
 - [ ] todo service with in-memory store

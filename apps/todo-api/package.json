@@ -21,5 +21,12 @@
     "config:print:test": "NODE_ENV=test tsx src/scripts/print-config.ts",
     "config:print:prod": "NODE_ENV=production tsx src/scripts/print-config.ts"
   },
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/uuid": "^10.0.0",
+    "bcrypt": "^6.0.0",
+    "neverthrow": "^8.2.0",
+    "uuid": "^13.0.0"
+  }
 }
