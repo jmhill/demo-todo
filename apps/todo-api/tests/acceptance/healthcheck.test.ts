@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
-import { app } from '../src/main.js';
-import type { HealthCheckResponse } from '../src/healthcheck.js';
+import { app } from '../../src/main.js';
+import type { HealthCheckResponse } from '../../src/healthcheck.js';
 
 describe('Health Check Endpoint', () => {
   it('should return 200 status code', async () => {

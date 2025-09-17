@@ -1,10 +1,20 @@
 import { createApp } from './app.js';
 import { loadConfig } from './config/index.js';
 import { filterSecrets } from './config/display.js';
+import { createInMemoryUserStore } from './users/user-store.js';
+import { createUserService } from './users/user-service.js';
 
-// Load configuration and create app
+// Load configuration
 const config = loadConfig();
-export const app = createApp(config);
+
+// Bootstrap dependencies
+const userStore = createInMemoryUserStore();
+
+// Bootstrap services
+const userService = createUserService(userStore);
+
+// Create app with explicit dependencies
+export const app = createApp(config, { userStore }, { userService });
 
 // Start server only if this module is run directly
 if (import.meta.url === `file://${process.argv[1]}`) {

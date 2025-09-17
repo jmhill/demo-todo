@@ -5,12 +5,24 @@ import { configureCors } from './security/cors.js';
 import { configureRateLimiting } from './security/rate-limiting.js';
 import { configureRequestLimits } from './security/request-limits.js';
 import type { AppConfig } from './config/schema.js';
+import type { UserService } from './users/user-service.js';
+import type { UserStore } from './users/user-store.js';
+import { createUserRouter } from './users/user-router.js';
 
-export const createApp = (config: AppConfig): Express => {
+export interface AppDependencies {
+  userStore: UserStore;
+}
+
+export interface AppServices {
+  userService: UserService;
+}
+
+export const createApp = (
+  config: AppConfig,
+  dependencies: AppDependencies,
+  services: AppServices,
+): Express => {
   const app = express();
-
-  // Configure services
-  // TODO: Add service configuration based on config
 
   // Configure global middleware based on config
   if (config.security.secureHeaders.enabled) {
@@ -32,6 +44,9 @@ export const createApp = (config: AppConfig): Express => {
   // Configure route handlers
   app.get('/health', healthCheckHandler);
   app.post('/health', healthCheckHandler);
+
+  // Wire up user routes
+  app.use('/users', createUserRouter(services.userService));
 
   // Configure default error handlers
   // TODO: Add error handlers

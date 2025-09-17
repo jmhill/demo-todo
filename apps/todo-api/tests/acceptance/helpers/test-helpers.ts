@@ -3,11 +3,17 @@ import request from 'supertest';
 import type { Express } from 'express';
 import { createApp } from '../../../src/app.js';
 import { createTestConfig } from '../../../src/config/index.js';
+import { createInMemoryUserStore } from '../../../src/users/user-store.js';
+import { createUserService } from '../../../src/users/user-service.js';
 
 // Create a default test app instance with high rate limits
 export const createTestApp = (overrides = {}) => {
   const testConfig = createTestConfig(overrides);
-  return createApp(testConfig);
+  // Create minimal dependencies for security tests
+  const userStore = createInMemoryUserStore();
+  const userService = createUserService(userStore);
+
+  return createApp(testConfig, { userStore }, { userService });
 };
 
 // Cached test app instance
