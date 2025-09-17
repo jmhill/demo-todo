@@ -4,6 +4,11 @@ import { defineConfig } from 'vitest/config';
 // Run with: npm run test:acceptance
 export default defineConfig({
   test: {
+    // Set up environment variables for acceptance tests
+    env: {
+      DB_PASSWORD: 'test-db-password',
+      TEST_SECRET: 'test-secret',
+    },
     // Named 'acceptance' to distinguish in test output when running multiple configs
     name: 'acceptance',
     coverage: {

@@ -1,16 +1,60 @@
 import { expect } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
+import {
+  MySqlContainer,
+  type StartedMySqlContainer,
+} from '@testcontainers/mysql';
 import { createApp } from '../../../src/app.js';
 import { createTestConfig } from '../../../src/config/index.js';
-import { createInMemoryUserStore } from '../../../src/users/user-store.js';
+import { mockGetSecret } from '../../../src/config/test-helpers.js';
+import { createMySQLUserStore } from '../../../src/users/user-store-mysql.js';
 import { createUserService } from '../../../src/users/user-service.js';
 
-// Create a default test app instance with high rate limits
-export const createTestApp = (overrides = {}) => {
-  const testConfig = createTestConfig(overrides);
-  // Create minimal dependencies for security tests
-  const userStore = createInMemoryUserStore();
+// Global container instance for test suite
+let mysqlContainer: StartedMySqlContainer | null = null;
+
+// Start MySQL container once for all tests
+export async function setupTestDatabase(): Promise<StartedMySqlContainer> {
+  if (!mysqlContainer) {
+    mysqlContainer = await new MySqlContainer('mysql:8.0')
+      .withDatabase('todo_test')
+      .withUsername('test')
+      .withUserPassword('test')
+      .start();
+  }
+  return mysqlContainer;
+}
+
+// Stop container after all tests
+export async function teardownTestDatabase(): Promise<void> {
+  if (mysqlContainer) {
+    await mysqlContainer.stop();
+    mysqlContainer = null;
+  }
+}
+
+// Create a test app with real MySQL database
+export const createTestApp = async (overrides = {}) => {
+  const container = await setupTestDatabase();
+
+  // Override database config with TestContainer connection details
+  const testConfig = createTestConfig(
+    {
+      ...overrides,
+      database: {
+        host: container.getHost(),
+        port: container.getPort(),
+        user: container.getUsername(),
+        password: container.getUserPassword(),
+        database: container.getDatabase(),
+      },
+    },
+    mockGetSecret,
+  );
+
+  // Create real MySQL store
+  const userStore = await createMySQLUserStore(testConfig.database);
   const userService = createUserService(userStore);
 
   return createApp(testConfig, { userStore }, { userService });
@@ -20,9 +64,9 @@ export const createTestApp = (overrides = {}) => {
 let cachedTestApp: Express | null = null;
 
 // Get the default test app (creates once, reuses)
-export const getDefaultTestApp = (): Express => {
+export const getDefaultTestApp = async (): Promise<Express> => {
   if (!cachedTestApp) {
-    cachedTestApp = createTestApp();
+    cachedTestApp = await createTestApp();
   }
   return cachedTestApp;
 };
@@ -69,7 +113,7 @@ export const requestWithAllowedOrigin = async (
   payload?: unknown,
   app?: Express,
 ) => {
-  const testApp = app || getDefaultTestApp();
+  const testApp = app || (await getDefaultTestApp());
   const req = request(testApp)
     [method](path)
     .set('Origin', TEST_ORIGINS.ALLOWED);
@@ -90,7 +134,7 @@ export const requestWithBlockedOrigin = async (
   payload?: unknown,
   app?: Express,
 ) => {
-  const testApp = app || getDefaultTestApp();
+  const testApp = app || (await getDefaultTestApp());
   const req = request(testApp)
     [method](path)
     .set('Origin', TEST_ORIGINS.BLOCKED);
@@ -143,7 +187,7 @@ export const testRateLimit = async (
   requestCount = 100,
   app?: Express,
 ) => {
-  const testApp = app || getDefaultTestApp();
+  const testApp = app || (await getDefaultTestApp());
   const requests = Array.from({ length: requestCount }, () =>
     request(testApp).get(path).set('Origin', TEST_ORIGINS.ALLOWED),
   );
@@ -283,7 +327,7 @@ export const runTestScenario = async (
   scenario: TestScenario,
   app?: Express,
 ) => {
-  const testApp = app || getDefaultTestApp();
+  const testApp = app || (await getDefaultTestApp());
   const req = request(testApp)[scenario.method](scenario.path);
 
   // Add headers

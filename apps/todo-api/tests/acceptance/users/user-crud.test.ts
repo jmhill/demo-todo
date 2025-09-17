@@ -1,25 +1,23 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
-import { createApp } from '../../../src/app.js';
-import { createTestConfig } from '../../../src/config/index.js';
-import { createInMemoryUserStore } from '../../../src/users/user-store.js';
-import { createUserService } from '../../../src/users/user-service.js';
-import type { UserStore } from '../../../src/users/user-store.js';
-import type { UserService } from '../../../src/users/user-service.js';
+import {
+  createTestApp,
+  teardownTestDatabase,
+} from '../helpers/test-helpers.js';
 
 describe('User CRUD Operations (Acceptance)', () => {
   let app: Express;
-  let userStore: UserStore;
-  let userService: UserService;
 
-  beforeEach(() => {
-    // Create fresh instances for each test
-    const config = createTestConfig();
-    userStore = createInMemoryUserStore();
-    userService = createUserService(userStore);
+  beforeEach(async () => {
+    // Create fresh app with real MySQL database
+    app = await createTestApp();
+    // The database is cleared automatically by createMySQLUserStore
+    // which recreates the table on each connection
+  }, 30000); // Increased timeout for container setup
 
-    app = createApp(config, { userStore }, { userService });
+  afterAll(async () => {
+    await teardownTestDatabase();
   });
 
   describe('POST /users - Create User', () => {

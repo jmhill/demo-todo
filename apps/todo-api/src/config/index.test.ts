@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { loadConfig, createTestConfig } from './index.js';
 import { type Secret } from './secrets.js';
+import { mockGetSecret } from './test-helpers.js';
 
 describe('Configuration Loading', () => {
   beforeEach(() => {
@@ -10,7 +11,7 @@ describe('Configuration Loading', () => {
 
   describe('loadConfig', () => {
     it('should load default configuration', () => {
-      const config = loadConfig('development');
+      const config = loadConfig('development', mockGetSecret);
 
       expect(config.environment).toBe('development');
       expect(config.server.port).toBe(3000);
@@ -23,7 +24,7 @@ describe('Configuration Loading', () => {
     });
 
     it('should load test configuration with high rate limits', () => {
-      const config = loadConfig('test');
+      const config = loadConfig('test', mockGetSecret);
 
       expect(config.environment).toBe('test');
       expect(config.security.rateLimiting.max).toBe(10000); // High limit from test config
@@ -37,9 +38,8 @@ describe('Configuration Loading', () => {
       // Production config now has static values, not env vars
       // Only secrets (like TEST_SECRET) come from env
       // Mock the TEST_SECRET for production
-      vi.stubEnv('TEST_SECRET', 'test-secret-value');
-
-      const config = loadConfig('production');
+      // Only secrets (like TEST_SECRET and DB_PASSWORD) are loaded via mockGetSecret
+      const config = loadConfig('production', mockGetSecret);
 
       expect(config.environment).toBe('production');
       expect(config.server.port).toBe(3000); // Static value from production config
@@ -51,14 +51,14 @@ describe('Configuration Loading', () => {
     it('should use NODE_ENV when no environment is specified', () => {
       vi.stubEnv('NODE_ENV', 'test');
 
-      const config = loadConfig();
+      const config = loadConfig(undefined, mockGetSecret);
 
       expect(config.environment).toBe('test');
       expect(config.security.rateLimiting.max).toBe(10000); // Test config values
     });
 
     it('should handle missing environment-specific config gracefully', () => {
-      const config = loadConfig('nonexistent');
+      const config = loadConfig('nonexistent', mockGetSecret);
 
       // Should fall back to default config only
       expect(config.environment).toBe('development');
@@ -66,19 +66,17 @@ describe('Configuration Loading', () => {
     });
 
     it('should load production config successfully when TEST_SECRET is present', () => {
-      // Production requires TEST_SECRET from environment
-      vi.stubEnv('TEST_SECRET', 'production-secret-value');
-
-      const config = loadConfig('production');
+      // Production requires TEST_SECRET and DB_PASSWORD which mockGetSecret provides
+      const config = loadConfig('production', mockGetSecret);
 
       expect(config.environment).toBe('production');
-      expect(config.testSecret).toBe('production-secret-value');
+      expect(config.testSecret).toBe('mock-TEST_SECRET');
     });
   });
 
   describe('createTestConfig', () => {
     it('should create test config with base test settings', () => {
-      const config = createTestConfig();
+      const config = createTestConfig({}, mockGetSecret);
 
       expect(config.environment).toBe('test');
       expect(config.security.rateLimiting.max).toBe(10000);
@@ -89,13 +87,16 @@ describe('Configuration Loading', () => {
     });
 
     it('should merge custom overrides with test config', () => {
-      const customConfig = createTestConfig({
-        server: { port: 8080 },
-        security: {
-          cors: { origins: ['http://test.local'] },
-          rateLimiting: { max: 5 },
+      const customConfig = createTestConfig(
+        {
+          server: { port: 8080 },
+          security: {
+            cors: { origins: ['http://test.local'] },
+            rateLimiting: { max: 5 },
+          },
         },
-      });
+        mockGetSecret,
+      );
 
       expect(customConfig.environment).toBe('test');
       expect(customConfig.server.port).toBe(8080); // Override
@@ -106,12 +107,15 @@ describe('Configuration Loading', () => {
     });
 
     it('should handle deep overrides correctly', () => {
-      const config = createTestConfig({
-        security: {
-          rateLimiting: { enabled: false },
-          // cors not specified - should keep test defaults
+      const config = createTestConfig(
+        {
+          security: {
+            rateLimiting: { enabled: false },
+            // cors not specified - should keep test defaults
+          },
         },
-      });
+        mockGetSecret,
+      );
 
       expect(config.security.rateLimiting.enabled).toBe(false); // Override
       expect(config.security.rateLimiting.max).toBe(10000); // From test base
@@ -121,21 +125,27 @@ describe('Configuration Loading', () => {
 
     it('should validate custom test configurations', () => {
       expect(() =>
-        createTestConfig({
-          server: { port: -1 }, // Invalid
-        }),
+        createTestConfig(
+          {
+            server: { port: -1 }, // Invalid
+          },
+          mockGetSecret,
+        ),
       ).toThrow('Invalid test configuration');
     });
 
     it('should allow disabling security features for testing', () => {
-      const config = createTestConfig({
-        security: {
-          cors: { enabled: false },
-          rateLimiting: { enabled: false },
-          requestLimits: { enabled: false },
-          secureHeaders: { enabled: false },
+      const config = createTestConfig(
+        {
+          security: {
+            cors: { enabled: false },
+            rateLimiting: { enabled: false },
+            requestLimits: { enabled: false },
+            secureHeaders: { enabled: false },
+          },
         },
-      });
+        mockGetSecret,
+      );
 
       expect(config.security.cors.enabled).toBe(false);
       expect(config.security.rateLimiting.enabled).toBe(false);
@@ -144,18 +154,21 @@ describe('Configuration Loading', () => {
     });
 
     it('should handle nested object overrides properly', () => {
-      const config = createTestConfig({
-        security: {
-          cors: {
-            origins: ['http://custom.test'],
-            enabled: false,
-          },
-          rateLimiting: {
-            max: 500,
-            // windowMs not specified - should keep test default
+      const config = createTestConfig(
+        {
+          security: {
+            cors: {
+              origins: ['http://custom.test'],
+              enabled: false,
+            },
+            rateLimiting: {
+              max: 500,
+              // windowMs not specified - should keep test default
+            },
           },
         },
-      });
+        mockGetSecret,
+      );
 
       expect(config.security.cors.origins).toEqual(['http://custom.test']);
       expect(config.security.cors.enabled).toBe(false);
@@ -204,7 +217,7 @@ describe('Configuration Loading', () => {
       };
 
       expect(() => createTestConfig({}, failingSecretFn)).toThrow(
-        'Secret TEST_SECRET not found in test store',
+        'Secret DB_PASSWORD not found in test store',
       );
     });
   });

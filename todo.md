@@ -12,7 +12,8 @@
 - [ ] user service with basic authentication and in-memory store
   - [x] TDD basic service operations (createUser, getById)
   - [ ] acceptance tests with dev data management (add users via API)
-- [ ] sqlite version of user store (test containers to test implementation?)
+- [ ] sql version of user store (test containers to test implementation?)
+- [ ] database migrations/use ORM in user store
 - [ ] basic authentication demo
 - [ ] basic authorization demo
 - [ ] todo service with in-memory store

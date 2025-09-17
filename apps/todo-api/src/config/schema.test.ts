@@ -1,32 +1,36 @@
 import { describe, it, expect } from 'vitest';
 import { configSchema } from './schema.js';
 import { createTestConfig } from './index.js';
+import { mockGetSecret } from './test-helpers.js';
 
 describe('Configuration Schema', () => {
   describe('Valid configuration parsing', () => {
     it('should parse complete valid configuration', () => {
-      const validConfig = createTestConfig({
-        environment: 'production',
-        security: {
-          cors: {
-            enabled: true,
-            origins: ['http://localhost:3001', 'https://example.com'],
-          },
-          rateLimiting: {
-            enabled: true,
-            windowMs: 900000,
-            max: 100,
-          },
-          requestLimits: {
-            enabled: true,
-            jsonLimit: '1mb',
-            urlencodedLimit: '1mb',
-          },
-          secureHeaders: {
-            enabled: true,
+      const validConfig = createTestConfig(
+        {
+          environment: 'production',
+          security: {
+            cors: {
+              enabled: true,
+              origins: ['http://localhost:3001', 'https://example.com'],
+            },
+            rateLimiting: {
+              enabled: true,
+              windowMs: 900000,
+              max: 100,
+            },
+            requestLimits: {
+              enabled: true,
+              jsonLimit: '1mb',
+              urlencodedLimit: '1mb',
+            },
+            secureHeaders: {
+              enabled: true,
+            },
           },
         },
-      });
+        mockGetSecret,
+      );
 
       const result = configSchema.safeParse(validConfig);
 
@@ -42,9 +46,12 @@ describe('Configuration Schema', () => {
     });
 
     it('should parse configuration with optional testSecret', () => {
-      const configWithSecret = createTestConfig({
-        testSecret: 'test-secret-value',
-      });
+      const configWithSecret = createTestConfig(
+        {
+          testSecret: 'test-secret-value',
+        },
+        mockGetSecret,
+      );
 
       const result = configSchema.safeParse(configWithSecret);
 
@@ -55,9 +62,12 @@ describe('Configuration Schema', () => {
     });
 
     it('should parse configuration with required testSecret', () => {
-      const configWithRequiredSecret = createTestConfig({
-        testSecret: 'another-test-secret-value',
-      });
+      const configWithRequiredSecret = createTestConfig(
+        {
+          testSecret: 'another-test-secret-value',
+        },
+        mockGetSecret,
+      );
 
       const result = configSchema.safeParse(configWithRequiredSecret);
 
@@ -68,7 +78,7 @@ describe('Configuration Schema', () => {
     });
 
     it('should parse configuration with complete structure', () => {
-      const configWithStructure = createTestConfig();
+      const configWithStructure = createTestConfig({}, mockGetSecret);
 
       const result = configSchema.safeParse(configWithStructure);
 
@@ -88,28 +98,31 @@ describe('Configuration Schema', () => {
     });
 
     it('should parse test environment configuration', () => {
-      const testConfig = createTestConfig({
-        environment: 'test',
-        security: {
-          cors: {
-            enabled: true,
-            origins: ['http://localhost:3001'],
-          },
-          rateLimiting: {
-            enabled: true,
-            max: 10000,
-            windowMs: 60000,
-          },
-          requestLimits: {
-            enabled: true,
-            jsonLimit: '1mb',
-            urlencodedLimit: '1mb',
-          },
-          secureHeaders: {
-            enabled: true,
+      const testConfig = createTestConfig(
+        {
+          environment: 'test',
+          security: {
+            cors: {
+              enabled: true,
+              origins: ['http://localhost:3001'],
+            },
+            rateLimiting: {
+              enabled: true,
+              max: 10000,
+              windowMs: 60000,
+            },
+            requestLimits: {
+              enabled: true,
+              jsonLimit: '1mb',
+              urlencodedLimit: '1mb',
+            },
+            secureHeaders: {
+              enabled: true,
+            },
           },
         },
-      });
+        mockGetSecret,
+      );
 
       const result = configSchema.safeParse(testConfig);
 
@@ -299,27 +312,30 @@ describe('Configuration Schema', () => {
 
   describe('Complete configuration validation', () => {
     it('should validate complete configuration with custom security settings', () => {
-      const customConfig = createTestConfig({
-        security: {
-          cors: {
-            enabled: true,
-            origins: ['https://myapp.com'],
-          },
-          rateLimiting: {
-            enabled: true,
-            windowMs: 900000,
-            max: 100,
-          },
-          requestLimits: {
-            enabled: true,
-            jsonLimit: '1mb',
-            urlencodedLimit: '1mb',
-          },
-          secureHeaders: {
-            enabled: true,
+      const customConfig = createTestConfig(
+        {
+          security: {
+            cors: {
+              enabled: true,
+              origins: ['https://myapp.com'],
+            },
+            rateLimiting: {
+              enabled: true,
+              windowMs: 900000,
+              max: 100,
+            },
+            requestLimits: {
+              enabled: true,
+              jsonLimit: '1mb',
+              urlencodedLimit: '1mb',
+            },
+            secureHeaders: {
+              enabled: true,
+            },
           },
         },
-      });
+        mockGetSecret,
+      );
 
       const result = configSchema.safeParse(customConfig);
 
@@ -335,7 +351,7 @@ describe('Configuration Schema', () => {
     });
 
     it('should validate complete configuration with all security features enabled', () => {
-      const configWithAllSecurity = createTestConfig();
+      const configWithAllSecurity = createTestConfig({}, mockGetSecret);
 
       const result = configSchema.safeParse(configWithAllSecurity);
 
@@ -349,12 +365,15 @@ describe('Configuration Schema', () => {
     });
 
     it('should validate complete configuration with custom server settings', () => {
-      const customServerConfig = createTestConfig({
-        server: {
-          port: 8080,
-          host: '0.0.0.0',
+      const customServerConfig = createTestConfig(
+        {
+          server: {
+            port: 8080,
+            host: '0.0.0.0',
+          },
         },
-      });
+        mockGetSecret,
+      );
 
       const result = configSchema.safeParse(customServerConfig);
 
@@ -369,7 +388,7 @@ describe('Configuration Schema', () => {
   describe('Secret type validation', () => {
     it('should enforce Secret schema for testSecret field', () => {
       // Create a valid config first, then modify it to have an invalid secret
-      const baseConfig = createTestConfig();
+      const baseConfig = createTestConfig({}, mockGetSecret);
       const configWithEmptySecret = {
         ...baseConfig,
         testSecret: '', // Empty string should fail
@@ -392,9 +411,12 @@ describe('Configuration Schema', () => {
     });
 
     it('should accept valid secret strings for testSecret field', () => {
-      const configWithValidSecret = createTestConfig({
-        testSecret: 'valid-secret-from-env',
-      });
+      const configWithValidSecret = createTestConfig(
+        {
+          testSecret: 'valid-secret-from-env',
+        },
+        mockGetSecret,
+      );
 
       const result = configSchema.safeParse(configWithValidSecret);
 

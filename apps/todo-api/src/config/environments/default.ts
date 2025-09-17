@@ -7,6 +7,13 @@ export const getConfig = (getSecretFn: GetSecretFn): AppConfig => ({
     port: 3000,
     host: 'localhost',
   },
+  database: {
+    host: 'localhost',
+    port: 3306,
+    user: 'root',
+    password: getSecretFn('DB_PASSWORD'),
+    database: 'todo_dev',
+  },
   security: {
     cors: {
       enabled: true,

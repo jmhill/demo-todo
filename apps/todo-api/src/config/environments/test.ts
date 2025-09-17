@@ -6,10 +6,18 @@ type DeepPartial<T> = {
 };
 
 export const getConfig = (
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _getSecretFn: GetSecretFn,
+  getSecretFn: GetSecretFn,
 ): DeepPartial<AppConfig> => ({
   environment: 'test',
+  database: {
+    // TestContainers will provide these dynamically
+    // These are defaults that can be overridden
+    host: 'localhost',
+    port: 3306,
+    user: 'root',
+    password: getSecretFn('DB_PASSWORD'),
+    database: 'todo_test',
+  },
   security: {
     // High rate limits for automated test suites that rapidly hit the API
     rateLimiting: {

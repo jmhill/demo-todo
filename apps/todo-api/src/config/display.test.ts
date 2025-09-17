@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { filterSecrets, printEffectiveConfig } from './display.js';
 import type { Secret } from './secrets.js';
+import { mockGetSecret } from './test-helpers.js';
 
 describe('Configuration Display', () => {
   describe('filterSecrets', () => {
@@ -93,13 +94,6 @@ describe('Configuration Display', () => {
 
   describe('printEffectiveConfig', () => {
     it('should load and print configuration for specified environment', () => {
-      const mockGetSecret = (key: string) => {
-        if (key === 'TEST_SECRET') {
-          return 'test-secret-value' as Secret;
-        }
-        throw new Error(`Secret ${key} not found`);
-      };
-
       const output = printEffectiveConfig('test', mockGetSecret);
 
       expect(output).toContain('"environment": "test"');
@@ -111,13 +105,6 @@ describe('Configuration Display', () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'test';
 
-      const mockGetSecret = (key: string) => {
-        if (key === 'TEST_SECRET') {
-          return 'test-secret-value' as Secret;
-        }
-        throw new Error(`Secret ${key} not found`);
-      };
-
       const output = printEffectiveConfig(undefined, mockGetSecret);
 
       expect(output).toContain('"environment": "test"');
@@ -126,13 +113,6 @@ describe('Configuration Display', () => {
     });
 
     it('should format output as readable JSON', () => {
-      const mockGetSecret = (key: string) => {
-        if (key === 'TEST_SECRET') {
-          return 'test-secret-value' as Secret;
-        }
-        throw new Error(`Secret ${key} not found`);
-      };
-
       const output = printEffectiveConfig('development', mockGetSecret);
 
       expect(() => JSON.parse(output)).not.toThrow();

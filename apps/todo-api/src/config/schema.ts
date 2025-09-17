@@ -32,10 +32,20 @@ const serverSchema = z.object({
   host: z.string(),
 });
 
+// Schema for database configuration
+const databaseSchema = z.object({
+  host: z.string(),
+  port: z.number().positive(),
+  user: z.string(),
+  password: secretSchema,
+  database: z.string(),
+});
+
 // Main application configuration schema
 export const configSchema = z.object({
   environment: z.enum(['development', 'test', 'production']),
   server: serverSchema,
+  database: databaseSchema,
   security: z.object({
     cors: corsSchema,
     rateLimiting: rateLimitingSchema,

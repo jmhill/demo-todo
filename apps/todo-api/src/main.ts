@@ -1,14 +1,14 @@
 import { createApp } from './app.js';
 import { loadConfig } from './config/index.js';
 import { filterSecrets } from './config/display.js';
-import { createInMemoryUserStore } from './users/user-store.js';
+import { createMySQLUserStore } from './users/user-store-mysql.js';
 import { createUserService } from './users/user-service.js';
 
 // Load configuration
 const config = loadConfig();
 
 // Bootstrap dependencies
-const userStore = createInMemoryUserStore();
+const userStore = await createMySQLUserStore(config.database);
 
 // Bootstrap services
 const userService = createUserService(userStore);

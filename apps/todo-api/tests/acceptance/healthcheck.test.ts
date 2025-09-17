@@ -1,9 +1,20 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import request from 'supertest';
-import { app } from '../../src/main.js';
+import type { Express } from 'express';
 import type { HealthCheckResponse } from '../../src/healthcheck.js';
+import { createTestApp, teardownTestDatabase } from './helpers/test-helpers.js';
 
 describe('Health Check Endpoint', () => {
+  let app: Express;
+
+  beforeEach(async () => {
+    app = await createTestApp();
+  }, 30000); // Increased timeout for container setup
+
+  afterAll(async () => {
+    await teardownTestDatabase();
+  });
+
   it('should return 200 status code', async () => {
     await request(app).get('/health').expect(200);
   });
