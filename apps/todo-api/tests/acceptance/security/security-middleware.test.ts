@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
-import { getDefaultTestApp, createTestApp } from '../helpers/test-helpers.js';
+import { createTestApp } from '../helpers/test-helpers.js';
 
 describe('Security Middleware Integration (Acceptance)', () => {
   describe('CORS with complete application stack', () => {
     it('should block unauthorized origins while preserving other middleware functionality', async () => {
-      const testApp = await getDefaultTestApp();
+      const testApp = await createTestApp();
       const response = await request(testApp)
         .get('/health')
         .set('Origin', 'http://evil.com')
@@ -23,7 +23,7 @@ describe('Security Middleware Integration (Acceptance)', () => {
     });
 
     it('should allow authorized origins while maintaining full security posture', async () => {
-      const testApp = await getDefaultTestApp();
+      const testApp = await createTestApp();
       const response = await request(testApp)
         .get('/health')
         .set('Origin', 'http://localhost:3001')
@@ -43,7 +43,7 @@ describe('Security Middleware Integration (Acceptance)', () => {
     });
 
     it('should handle preflight requests with full middleware stack', async () => {
-      const testApp = await getDefaultTestApp();
+      const testApp = await createTestApp();
       const response = await request(testApp)
         .options('/health')
         .set('Origin', 'http://localhost:3001')
@@ -120,7 +120,7 @@ describe('Security Middleware Integration (Acceptance)', () => {
 
   describe('Request limits with complete application stack', () => {
     it('should enforce JSON payload limits while maintaining security posture', async () => {
-      const testApp = await getDefaultTestApp();
+      const testApp = await createTestApp();
       // Create a payload that exceeds the limit
       const largePayload = {
         data: 'x'.repeat(2 * 1024 * 1024), // 2MB payload
@@ -146,7 +146,7 @@ describe('Security Middleware Integration (Acceptance)', () => {
     });
 
     it('should accept normal payloads with full security stack', async () => {
-      const testApp = await getDefaultTestApp();
+      const testApp = await createTestApp();
       const normalPayload = {
         test: 'data',
       };
@@ -170,7 +170,7 @@ describe('Security Middleware Integration (Acceptance)', () => {
 
   describe('Security headers with complete application stack', () => {
     it('should apply all security headers consistently across different request types', async () => {
-      const testApp = await getDefaultTestApp();
+      const testApp = await createTestApp();
       const testCases = [
         { method: 'get' as const, path: '/health' },
         { method: 'post' as const, path: '/health' },
@@ -205,7 +205,7 @@ describe('Security Middleware Integration (Acceptance)', () => {
 
   describe('Middleware ordering and interaction', () => {
     it('should handle complex scenarios with all middleware working together', async () => {
-      const testApp = await getDefaultTestApp();
+      const testApp = await createTestApp();
       // Test a realistic scenario: authorized origin, normal payload, within rate limits
       const response = await request(testApp)
         .post('/health')
@@ -226,7 +226,7 @@ describe('Security Middleware Integration (Acceptance)', () => {
     });
 
     it('should maintain security even when requests are problematic', async () => {
-      const testApp = await getDefaultTestApp();
+      const testApp = await createTestApp();
       // Test with unauthorized origin and edge-case headers
       const response = await request(testApp)
         .get('/health')

@@ -5,24 +5,26 @@ import { configureCors } from './security/cors.js';
 import { configureRateLimiting } from './security/rate-limiting.js';
 import { configureRequestLimits } from './security/request-limits.js';
 import type { AppConfig } from './config/schema.js';
-import type { UserService } from './users/user-service.js';
-import type { UserStore } from './users/user-store.js';
 import { createUserRouter } from './users/user-router.js';
+import { createMySQLUserStore } from './users/user-store-mysql.js';
+import { createUserService } from './users/user-service.js';
 
-export interface AppDependencies {
-  userStore: UserStore;
-}
+export async function createApp(config: AppConfig): Promise<Express> {
+  // Wire all dependencies based on config
+  const userStore = await createMySQLUserStore(config.database);
+  const userService = createUserService(userStore);
 
-export interface AppServices {
-  userService: UserService;
-}
+  // Future dependencies will be added here:
+  // const orderStore = await createMySQLOrderStore(config.database);
+  // const orderService = createOrderService(orderStore);
 
-export const createApp = (
-  config: AppConfig,
-  dependencies: AppDependencies,
-  services: AppServices,
-): Express => {
   const app = express();
+
+  // Trust proxy configuration for deployments behind load balancers/proxies
+  // In production, this should match your actual proxy setup (e.g., number of hops)
+  // Using 1 hop as a reasonable default for single proxy/load balancer
+  // This allows Express to correctly handle X-Forwarded-* headers without being overly permissive
+  app.set('trust proxy', 1);
 
   // Configure global middleware based on config
   if (config.security.secureHeaders.enabled) {
@@ -46,10 +48,10 @@ export const createApp = (
   app.post('/health', healthCheckHandler);
 
   // Wire up user routes
-  app.use('/users', createUserRouter(services.userService));
+  app.use('/users', createUserRouter(userService));
 
   // Configure default error handlers
   // TODO: Add error handlers
 
   return app;
-};
+}

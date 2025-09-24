@@ -1,18 +1,16 @@
-import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
 import type { HealthCheckResponse } from '../../src/healthcheck.js';
-import { createTestApp, teardownTestDatabase } from './helpers/test-helpers.js';
+import { createTestApp, cleanDatabase } from './helpers/test-helpers.js';
 
 describe('Health Check Endpoint', () => {
   let app: Express;
 
   beforeEach(async () => {
+    // Clean database and create fresh app for each test
+    await cleanDatabase();
     app = await createTestApp();
-  }, 30000); // Increased timeout for container setup
-
-  afterAll(async () => {
-    await teardownTestDatabase();
   });
 
   it('should return 200 status code', async () => {

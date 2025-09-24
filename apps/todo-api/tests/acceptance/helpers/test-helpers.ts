@@ -1,75 +1,90 @@
-import { expect } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
-import {
-  MySqlContainer,
-  type StartedMySqlContainer,
-} from '@testcontainers/mysql';
+import mysql from 'mysql2/promise';
 import { createApp } from '../../../src/app.js';
 import { createTestConfig } from '../../../src/config/index.js';
 import { mockGetSecret } from '../../../src/config/test-helpers.js';
-import { createMySQLUserStore } from '../../../src/users/user-store-mysql.js';
-import { createUserService } from '../../../src/users/user-service.js';
 
-// Global container instance for test suite
-let mysqlContainer: StartedMySqlContainer | null = null;
+// Connection pool for database operations
+let connectionPool: mysql.Pool | null = null;
 
-// Start MySQL container once for all tests
-export async function setupTestDatabase(): Promise<StartedMySqlContainer> {
-  if (!mysqlContainer) {
-    mysqlContainer = await new MySqlContainer('mysql:8.0')
-      .withDatabase('todo_test')
-      .withUsername('test')
-      .withUserPassword('test')
-      .start();
+// Get database config from environment (set by global setup)
+function getTestDatabaseConfig() {
+  const host = process.env.TEST_DB_HOST;
+  const port = process.env.TEST_DB_PORT;
+  const user = process.env.TEST_DB_USER;
+  const password = process.env.TEST_DB_PASSWORD;
+  const database = process.env.TEST_DB_DATABASE;
+
+  if (!host || !port || !user || !password || !database) {
+    throw new Error(
+      'Database config not found in environment. ' +
+        'Make sure tests are running with globalSetup configured.',
+    );
   }
-  return mysqlContainer;
+
+  return {
+    host,
+    port: parseInt(port, 10),
+    user,
+    password,
+    database,
+  };
 }
 
-// Stop container after all tests
-export async function teardownTestDatabase(): Promise<void> {
-  if (mysqlContainer) {
-    await mysqlContainer.stop();
-    mysqlContainer = null;
+// Get or create connection pool for database operations
+export async function getConnectionPool(): Promise<mysql.Pool> {
+  if (!connectionPool) {
+    const config = getTestDatabaseConfig();
+    connectionPool = mysql.createPool({
+      host: config.host,
+      port: config.port,
+      user: config.user,
+      password: config.password,
+      database: config.database,
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0,
+    });
+  }
+  return connectionPool;
+}
+
+// Clean database between tests
+export async function cleanDatabase(): Promise<void> {
+  const pool = await getConnectionPool();
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.execute('SET FOREIGN_KEY_CHECKS = 0');
+    await connection.execute('TRUNCATE TABLE users');
+    await connection.execute('SET FOREIGN_KEY_CHECKS = 1');
+  } catch (error) {
+    console.error('Failed to clean database:', error);
+    throw error;
+  } finally {
+    connection.release();
   }
 }
 
-// Create a test app with real MySQL database
-export const createTestApp = async (overrides = {}) => {
-  const container = await setupTestDatabase();
+// Create a fresh test app instance with optional config overrides
+export async function createTestApp(
+  overrides: Record<string, unknown> = {},
+): Promise<Express> {
+  const dbConfig = getTestDatabaseConfig();
 
-  // Override database config with TestContainer connection details
+  // Create test configuration with database config and any overrides
   const testConfig = createTestConfig(
     {
       ...overrides,
-      database: {
-        host: container.getHost(),
-        port: container.getPort(),
-        user: container.getUsername(),
-        password: container.getUserPassword(),
-        database: container.getDatabase(),
-      },
+      database: dbConfig, // Database config always comes from shared container
     },
     mockGetSecret,
   );
 
-  // Create real MySQL store
-  const userStore = await createMySQLUserStore(testConfig.database);
-  const userService = createUserService(userStore);
-
-  return createApp(testConfig, { userStore }, { userService });
-};
-
-// Cached test app instance
-let cachedTestApp: Express | null = null;
-
-// Get the default test app (creates once, reuses)
-export const getDefaultTestApp = async (): Promise<Express> => {
-  if (!cachedTestApp) {
-    cachedTestApp = await createTestApp();
-  }
-  return cachedTestApp;
-};
+  // Create app - all wiring happens inside createApp based on config
+  return createApp(testConfig);
+}
 
 // Common test origins for CORS testing
 export const TEST_ORIGINS = {
@@ -95,25 +110,14 @@ export const REQUEST_CONFIGS = {
   },
 } as const;
 
-// Expected security headers for validation
-export const EXPECTED_SECURITY_HEADERS = {
-  'x-dns-prefetch-control': 'off',
-  'x-frame-options': 'SAMEORIGIN',
-  'x-download-options': 'noopen',
-  'x-content-type-options': 'nosniff',
-  'x-xss-protection': '0',
-} as const;
-
-/**
- * Make a request with allowed origin and validate CORS + security headers
- */
+// Helper functions for making requests
 export const requestWithAllowedOrigin = async (
   method: 'get' | 'post',
   path: string,
   payload?: unknown,
   app?: Express,
 ) => {
-  const testApp = app || (await getDefaultTestApp());
+  const testApp = app || (await createTestApp());
   const req = request(testApp)
     [method](path)
     .set('Origin', TEST_ORIGINS.ALLOWED);
@@ -125,16 +129,13 @@ export const requestWithAllowedOrigin = async (
   return req;
 };
 
-/**
- * Make a request with blocked origin and validate security response
- */
 export const requestWithBlockedOrigin = async (
   method: 'get' | 'post',
   path: string,
   payload?: unknown,
   app?: Express,
 ) => {
-  const testApp = app || (await getDefaultTestApp());
+  const testApp = app || (await createTestApp());
   const req = request(testApp)
     [method](path)
     .set('Origin', TEST_ORIGINS.BLOCKED);
@@ -146,48 +147,12 @@ export const requestWithBlockedOrigin = async (
   return req;
 };
 
-/**
- * Validate that all expected security headers are present
- */
-export const validateSecurityHeaders = (
-  headers: Record<string, string>,
-): void => {
-  for (const [headerName, expectedValue] of Object.entries(
-    EXPECTED_SECURITY_HEADERS,
-  )) {
-    expect(headers[headerName]).toBe(expectedValue);
-  }
-
-  // Validate HSTS header exists and has max-age
-  expect(headers['strict-transport-security']).toContain('max-age=');
-};
-
-/**
- * Validate CORS behavior for allowed origins
- */
-export const validateAllowedCors = (
-  headers: Record<string, string>,
-  expectedOrigin = TEST_ORIGINS.ALLOWED,
-): void => {
-  expect(headers['access-control-allow-origin']).toBe(expectedOrigin);
-};
-
-/**
- * Validate CORS behavior for blocked origins
- */
-export const validateBlockedCors = (headers: Record<string, string>): void => {
-  expect(headers['access-control-allow-origin']).toBeUndefined();
-};
-
-/**
- * Test rate limiting by making multiple requests
- */
 export const testRateLimit = async (
   path: string,
   requestCount = 100,
   app?: Express,
 ) => {
-  const testApp = app || (await getDefaultTestApp());
+  const testApp = app || (await createTestApp());
   const requests = Array.from({ length: requestCount }, () =>
     request(testApp).get(path).set('Origin', TEST_ORIGINS.ALLOWED),
   );
@@ -204,18 +169,13 @@ export const testRateLimit = async (
   };
 };
 
-/**
- * Create large payload for testing request limits
- */
+// Payload creation helpers
 export const createLargePayload = (sizeInMB: number) => {
   return {
     data: 'x'.repeat(sizeInMB * 1024 * 1024),
   };
 };
 
-/**
- * Create normal test payload
- */
 export const createNormalPayload = (customData?: Record<string, unknown>) => {
   return {
     test: 'data',
@@ -224,48 +184,7 @@ export const createNormalPayload = (customData?: Record<string, unknown>) => {
   };
 };
 
-/**
- * Comprehensive validation for a successful response with full security
- */
-export const validateSuccessfulSecureResponse = (
-  response: request.Response,
-  expectedOrigin = TEST_ORIGINS.ALLOWED,
-): void => {
-  // Should be successful
-  expect(response.status).toBe(200);
-
-  // Should have proper CORS headers
-  validateAllowedCors(response.headers, expectedOrigin);
-
-  // Should have all security headers
-  validateSecurityHeaders(response.headers);
-
-  // Should have valid response body for health endpoint
-  if (response.body && typeof response.body === 'object') {
-    expect(response.body).toHaveProperty('status', 'healthy');
-    expect(response.body).toHaveProperty('service', 'todo-api');
-  }
-};
-
-/**
- * Comprehensive validation for a blocked/secure response
- */
-export const validateBlockedSecureResponse = (
-  response: request.Response,
-): void => {
-  // CORS should block the origin
-  validateBlockedCors(response.headers);
-
-  // But security headers should still be present
-  validateSecurityHeaders(response.headers);
-
-  // Response should still work (application functionality preserved)
-  if (response.body && typeof response.body === 'object') {
-    expect(response.body).toHaveProperty('status', 'healthy');
-  }
-};
-
-// Type definitions for test scenarios
+// Test scenario types
 export type TestScenario = {
   description: string;
   method: 'get' | 'post';
@@ -276,7 +195,6 @@ export type TestScenario = {
   shouldHaveCors?: boolean;
 };
 
-// Common test scenarios for reuse
 export const COMMON_TEST_SCENARIOS: TestScenario[] = [
   {
     description: 'GET request with allowed origin',
@@ -319,45 +237,3 @@ export const COMMON_TEST_SCENARIOS: TestScenario[] = [
     shouldHaveCors: false,
   },
 ];
-
-/**
- * Run a test scenario and validate the response
- */
-export const runTestScenario = async (
-  scenario: TestScenario,
-  app?: Express,
-) => {
-  const testApp = app || (await getDefaultTestApp());
-  const req = request(testApp)[scenario.method](scenario.path);
-
-  // Add headers
-  if (scenario.headers) {
-    Object.entries(scenario.headers).forEach(([key, value]) => {
-      req.set(key, value);
-    });
-  }
-
-  // Add payload for POST requests
-  if (scenario.payload && scenario.method === 'post') {
-    req.send(scenario.payload);
-  }
-
-  const response = await req;
-
-  // Validate expected status
-  if (scenario.expectedStatus) {
-    expect(response.status).toBe(scenario.expectedStatus);
-  }
-
-  // Validate security headers are always present
-  validateSecurityHeaders(response.headers);
-
-  // Validate CORS behavior
-  if (scenario.shouldHaveCors) {
-    validateAllowedCors(response.headers);
-  } else {
-    validateBlockedCors(response.headers);
-  }
-
-  return response;
-};

@@ -1,7 +1,6 @@
 import type { Express } from 'express';
 import rateLimit from 'express-rate-limit';
 import type { RateLimitingConfig } from '../config/schema.js';
-
 export const configureRateLimiting = (
   app: Express,
   config: RateLimitingConfig,

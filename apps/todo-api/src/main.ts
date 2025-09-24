@@ -1,20 +1,12 @@
 import { createApp } from './app.js';
 import { loadConfig } from './config/index.js';
 import { filterSecrets } from './config/display.js';
-import { createMySQLUserStore } from './users/user-store-mysql.js';
-import { createUserService } from './users/user-service.js';
 
 // Load configuration
 const config = loadConfig();
 
-// Bootstrap dependencies
-const userStore = await createMySQLUserStore(config.database);
-
-// Bootstrap services
-const userService = createUserService(userStore);
-
-// Create app with explicit dependencies
-export const app = createApp(config, { userStore }, { userService });
+// Create app - all wiring happens inside createApp
+export const app = await createApp(config);
 
 // Start server only if this module is run directly
 if (import.meta.url === `file://${process.argv[1]}`) {

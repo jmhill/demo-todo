@@ -11,6 +11,10 @@ export default defineConfig({
     },
     // Named 'acceptance' to distinguish in test output when running multiple configs
     name: 'acceptance',
+
+    // Global setup for container management
+    globalSetup: './tests/acceptance/helpers/global-setup.ts',
+
     coverage: {
       // Same reporters as base for consistency across all test runs
       reporter: ['text', 'json', 'html'],
@@ -28,25 +32,20 @@ export default defineConfig({
     // Keeps acceptance tests separate from unit tests for clear boundaries
     include: ['tests/**/*.{test,spec}.{js,ts}'],
 
-    // Acceptance tests may take longer - 30 seconds allows for:
-    // - Server startup/shutdown
-    // - Database operations
-    // - External API calls
-    // - Full user workflows
-    testTimeout: 30000,
+    // Reduced timeout since container starts once
+    // 10 seconds is sufficient for individual test operations
+    testTimeout: 10000,
 
     // Use forked processes instead of threads for better isolation
-    // Critical for acceptance tests that may:
-    // - Bind to specific ports
-    // - Modify global state
-    // - Use resources that don't work well with threading
     pool: 'forks',
 
+    // Disable file-level parallelism to ensure single container instance
+    fileParallelism: false,
+
     // Run tests sequentially in a single fork to prevent:
+    // - Database conflicts when cleaning between tests
     // - Port binding conflicts between parallel tests
-    // - Database transaction conflicts
-    // - Rate limiting issues with external services
-    // - Resource contention in CI/CD environments
+    // - Race conditions with shared container
     poolOptions: {
       forks: {
         singleFork: true,
