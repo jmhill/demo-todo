@@ -5,8 +5,6 @@ export interface UserStore {
   findById(id: string): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
   findByUsername(username: string): Promise<User | null>;
-  existsByEmail(email: string): Promise<boolean>;
-  existsByUsername(username: string): Promise<boolean>;
 }
 
 export function createInMemoryUserStore(): UserStore {
@@ -35,14 +33,6 @@ export function createInMemoryUserStore(): UserStore {
       const userId = usernameIndex.get(username.toLowerCase());
       if (!userId) return null;
       return users.get(userId) ?? null;
-    },
-
-    async existsByEmail(email: string): Promise<boolean> {
-      return emailIndex.has(email.toLowerCase());
-    },
-
-    async existsByUsername(username: string): Promise<boolean> {
-      return usernameIndex.has(username.toLowerCase());
     },
   };
 }

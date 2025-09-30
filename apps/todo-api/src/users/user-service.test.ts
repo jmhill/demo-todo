@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createUserService } from './user-service.js';
 import { createInMemoryUserStore } from './user-store.js';
-import type { CreateUserDto } from './user-schemas.js';
+import type { CreateUserCommand } from './user-schemas.js';
 
 describe('UserService', () => {
   let userService: ReturnType<typeof createUserService>;
@@ -14,53 +14,53 @@ describe('UserService', () => {
 
   describe('createUser', () => {
     it('should create a new user with valid data', async () => {
-      const createUserDto: CreateUserDto = {
+      const command: CreateUserCommand = {
         email: 'test@example.com',
         username: 'testuser',
         password: 'SecurePass123!',
       };
 
-      const result = await userService.createUser(createUserDto);
+      const result = await userService.createUser(command);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
-        expect(result.value.email).toBe(createUserDto.email);
-        expect(result.value.username).toBe(createUserDto.username);
+        expect(result.value.email).toBe(command.email);
+        expect(result.value.username).toBe(command.username);
         expect(result.value.id).toBeDefined();
         expect(result.value.passwordHash).toBeDefined();
-        expect(result.value.passwordHash).not.toBe(createUserDto.password);
+        expect(result.value.passwordHash).not.toBe(command.password);
         expect(result.value.createdAt).toBeInstanceOf(Date);
         expect(result.value.updatedAt).toBeInstanceOf(Date);
       }
     });
 
     it('should reject user creation with duplicate email', async () => {
-      const createUserDto: CreateUserDto = {
+      const command: CreateUserCommand = {
         email: 'duplicate@example.com',
         username: 'user1',
         password: 'SecurePass123!',
       };
 
-      await userService.createUser(createUserDto);
+      await userService.createUser(command);
       const result = await userService.createUser({
-        ...createUserDto,
+        ...command,
         username: 'user2',
       });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain('email already exists');
+        expect(result.error.code).toBe('EMAIL_ALREADY_EXISTS');
       }
     });
 
     it('should reject user creation with duplicate username', async () => {
-      const createUserDto: CreateUserDto = {
+      const command: CreateUserCommand = {
         email: 'user1@example.com',
         username: 'duplicateuser',
         password: 'SecurePass123!',
       };
 
-      await userService.createUser(createUserDto);
+      await userService.createUser(command);
       const result = await userService.createUser({
         email: 'user2@example.com',
         username: 'duplicateuser',
@@ -69,68 +69,20 @@ describe('UserService', () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain('username already exists');
-      }
-    });
-
-    it('should reject user creation with invalid email', async () => {
-      const createUserDto = {
-        email: 'invalid-email',
-        username: 'testuser',
-        password: 'SecurePass123!',
-      };
-
-      const result = await userService.createUser(createUserDto);
-
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error.message).toContain('Validation failed');
-        expect(result.error.message).toContain('email');
-      }
-    });
-
-    it('should reject user creation with short password', async () => {
-      const createUserDto: CreateUserDto = {
-        email: 'test@example.com',
-        username: 'testuser',
-        password: 'short',
-      };
-
-      const result = await userService.createUser(createUserDto);
-
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error.message).toContain('Validation failed');
-        expect(result.error.message).toContain('password');
-      }
-    });
-
-    it('should reject user creation with short username', async () => {
-      const createUserDto = {
-        email: 'test@example.com',
-        username: 'ab',
-        password: 'SecurePass123!',
-      };
-
-      const result = await userService.createUser(createUserDto);
-
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error.message).toContain('Validation failed');
-        expect(result.error.message).toContain('username');
+        expect(result.error.code).toBe('USERNAME_ALREADY_EXISTS');
       }
     });
   });
 
   describe('getById', () => {
     it('should return user when found', async () => {
-      const createUserDto: CreateUserDto = {
+      const command: CreateUserCommand = {
         email: 'find@example.com',
         username: 'finduser',
         password: 'SecurePass123!',
       };
 
-      const createResult = await userService.createUser(createUserDto);
+      const createResult = await userService.createUser(command);
       expect(createResult.isOk()).toBe(true);
       if (!createResult.isOk()) return;
 
@@ -139,8 +91,8 @@ describe('UserService', () => {
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
         expect(result.value.id).toBe(createResult.value.id);
-        expect(result.value.email).toBe(createUserDto.email);
-        expect(result.value.username).toBe(createUserDto.username);
+        expect(result.value.email).toBe(command.email);
+        expect(result.value.username).toBe(command.username);
       }
     });
 
@@ -151,7 +103,7 @@ describe('UserService', () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain('User not found');
+        expect(result.error.code).toBe('USER_NOT_FOUND');
       }
     });
 
@@ -160,29 +112,29 @@ describe('UserService', () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain('Invalid user ID format');
+        expect(result.error.code).toBe('INVALID_USER_ID');
       }
     });
   });
 
   describe('getByEmail', () => {
     it('should return user when found by email', async () => {
-      const createUserDto: CreateUserDto = {
+      const command: CreateUserCommand = {
         email: 'findbyemail@example.com',
         username: 'emailuser',
         password: 'SecurePass123!',
       };
 
-      const createResult = await userService.createUser(createUserDto);
+      const createResult = await userService.createUser(command);
       expect(createResult.isOk()).toBe(true);
       if (!createResult.isOk()) return;
 
-      const result = await userService.getByEmail(createUserDto.email);
+      const result = await userService.getByEmail(command.email);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
-        expect(result.value.email).toBe(createUserDto.email);
-        expect(result.value.username).toBe(createUserDto.username);
+        expect(result.value.email).toBe(command.email);
+        expect(result.value.username).toBe(command.username);
       }
     });
 
@@ -191,7 +143,7 @@ describe('UserService', () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain('User not found');
+        expect(result.error.code).toBe('USER_NOT_FOUND');
       }
     });
 
@@ -200,29 +152,29 @@ describe('UserService', () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain('Invalid email format');
+        expect(result.error.code).toBe('INVALID_EMAIL_FORMAT');
       }
     });
   });
 
   describe('getByUsername', () => {
     it('should return user when found by username', async () => {
-      const createUserDto: CreateUserDto = {
+      const command: CreateUserCommand = {
         email: 'findbyusername@example.com',
         username: 'uniqueusername',
         password: 'SecurePass123!',
       };
 
-      const createResult = await userService.createUser(createUserDto);
+      const createResult = await userService.createUser(command);
       expect(createResult.isOk()).toBe(true);
       if (!createResult.isOk()) return;
 
-      const result = await userService.getByUsername(createUserDto.username);
+      const result = await userService.getByUsername(command.username);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
-        expect(result.value.email).toBe(createUserDto.email);
-        expect(result.value.username).toBe(createUserDto.username);
+        expect(result.value.email).toBe(command.email);
+        expect(result.value.username).toBe(command.username);
       }
     });
 
@@ -231,7 +183,7 @@ describe('UserService', () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain('User not found');
+        expect(result.error.code).toBe('USER_NOT_FOUND');
       }
     });
   });

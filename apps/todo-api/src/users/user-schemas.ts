@@ -19,7 +19,21 @@ export const CreateUserDtoSchema = z.object({
 
 export type CreateUserDto = z.infer<typeof CreateUserDtoSchema>;
 
+export const CreateUserCommandSchema = CreateUserDtoSchema.transform((dto) => ({
+  email: dto.email,
+  username: dto.username,
+  password: dto.password,
+}));
+
+export type CreateUserCommand = z.infer<typeof CreateUserCommandSchema>;
+
 export const UserWithoutPasswordSchema = UserSchema.omit({
   passwordHash: true,
 });
 export type UserWithoutPassword = z.infer<typeof UserWithoutPasswordSchema>;
+
+export const formatZodError = (error: z.ZodError): string => {
+  return error.issues
+    .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
+    .join(', ');
+};

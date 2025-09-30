@@ -110,21 +110,5 @@ export async function createMySQLUserStore(
         updatedAt: row.updated_at,
       };
     },
-
-    async existsByEmail(email: string): Promise<boolean> {
-      const [rows] = await connection.execute<mysql.RowDataPacket[]>(
-        'SELECT 1 FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1',
-        [email],
-      );
-      return rows.length > 0;
-    },
-
-    async existsByUsername(username: string): Promise<boolean> {
-      const [rows] = await connection.execute<mysql.RowDataPacket[]>(
-        'SELECT 1 FROM users WHERE LOWER(username) = LOWER(?) LIMIT 1',
-        [username],
-      );
-      return rows.length > 0;
-    },
   };
 }

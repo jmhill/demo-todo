@@ -3,54 +3,51 @@ import bcrypt from 'bcrypt';
 import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
 import { z } from 'zod';
 import type { UserStore } from './user-store.js';
+import { type User, type CreateUserCommand } from './user-schemas.js';
 import {
-  CreateUserDtoSchema,
-  type User,
-  type CreateUserDto,
-} from './user-schemas.js';
+  type UserError,
+  emailAlreadyExists,
+  usernameAlreadyExists,
+  userNotFound,
+  invalidUserId,
+  invalidEmailFormat,
+} from './user-errors.js';
 
 const SALT_ROUNDS = 10;
 
 export interface UserService {
-  createUser(dto: CreateUserDto): ResultAsync<User, Error>;
-  getById(id: string): ResultAsync<User, Error>;
-  getByEmail(email: string): ResultAsync<User, Error>;
-  getByUsername(username: string): ResultAsync<User, Error>;
+  createUser(command: CreateUserCommand): ResultAsync<User, UserError>;
+  getById(id: string): ResultAsync<User, UserError>;
+  getByEmail(email: string): ResultAsync<User, UserError>;
+  getByUsername(username: string): ResultAsync<User, UserError>;
 }
 
 export function createUserService(userStore: UserStore): UserService {
   return {
-    createUser(dto: CreateUserDto): ResultAsync<User, Error> {
+    createUser(command: CreateUserCommand): ResultAsync<User, UserError> {
       return ResultAsync.fromPromise(
         (async () => {
-          const validation = CreateUserDtoSchema.safeParse(dto);
-          if (!validation.success) {
-            const errorMessages = validation.error.issues
-              .map((err) => `${err.path.join('.')}: ${err.message}`)
-              .join(', ');
-            throw new Error(`Validation failed: ${errorMessages}`);
+          const [existingUserByEmail, existingUserByUsername] =
+            await Promise.all([
+              userStore.findByEmail(command.email),
+              userStore.findByUsername(command.username),
+            ]);
+
+          if (existingUserByEmail) {
+            throw emailAlreadyExists(command.email);
           }
 
-          const [emailExists, usernameExists] = await Promise.all([
-            userStore.existsByEmail(dto.email),
-            userStore.existsByUsername(dto.username),
-          ]);
-
-          if (emailExists) {
-            throw new Error('User with this email already exists');
+          if (existingUserByUsername) {
+            throw usernameAlreadyExists(command.username);
           }
 
-          if (usernameExists) {
-            throw new Error('User with this username already exists');
-          }
-
-          const passwordHash = await bcrypt.hash(dto.password, SALT_ROUNDS);
+          const passwordHash = await bcrypt.hash(command.password, SALT_ROUNDS);
           const now = new Date();
 
           const user: User = {
             id: uuidv4(),
-            email: dto.email,
-            username: dto.username,
+            email: command.email,
+            username: command.username,
             passwordHash,
             createdAt: now,
             updatedAt: now,
@@ -59,55 +56,55 @@ export function createUserService(userStore: UserStore): UserService {
           await userStore.save(user);
           return user;
         })(),
-        (error) => error as Error,
+        (error) => error as UserError,
       );
     },
 
-    getById(id: string): ResultAsync<User, Error> {
+    getById(id: string): ResultAsync<User, UserError> {
       return ResultAsync.fromPromise(
         (async () => {
           if (!uuidValidate(id)) {
-            throw new Error('Invalid user ID format');
+            throw invalidUserId(id);
           }
 
           const user = await userStore.findById(id);
           if (!user) {
-            throw new Error('User not found');
+            throw userNotFound(id);
           }
           return user;
         })(),
-        (error) => error as Error,
+        (error) => error as UserError,
       );
     },
 
-    getByEmail(email: string): ResultAsync<User, Error> {
+    getByEmail(email: string): ResultAsync<User, UserError> {
       return ResultAsync.fromPromise(
         (async () => {
           const emailValidation = z.string().email().safeParse(email);
           if (!emailValidation.success) {
-            throw new Error('Invalid email format');
+            throw invalidEmailFormat(email);
           }
 
           const user = await userStore.findByEmail(email);
           if (!user) {
-            throw new Error('User not found');
+            throw userNotFound(email);
           }
           return user;
         })(),
-        (error) => error as Error,
+        (error) => error as UserError,
       );
     },
 
-    getByUsername(username: string): ResultAsync<User, Error> {
+    getByUsername(username: string): ResultAsync<User, UserError> {
       return ResultAsync.fromPromise(
         (async () => {
           const user = await userStore.findByUsername(username);
           if (!user) {
-            throw new Error('User not found');
+            throw userNotFound(username);
           }
           return user;
         })(),
-        (error) => error as Error,
+        (error) => error as UserError,
       );
     },
   };

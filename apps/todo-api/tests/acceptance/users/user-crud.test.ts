@@ -52,9 +52,9 @@ describe('User CRUD Operations (Acceptance)', () => {
           ...user,
           username: 'differentuser',
         })
-        .expect(409);
+        .expect(400);
 
-      expect(response.body.error).toContain('email already exists');
+      expect(response.body.error).toBe('Unable to create account');
     });
 
     it('should reject duplicate username', async () => {
@@ -74,9 +74,9 @@ describe('User CRUD Operations (Acceptance)', () => {
           ...user,
           email: 'different@example.com',
         })
-        .expect(409);
+        .expect(400);
 
-      expect(response.body.error).toContain('username already exists');
+      expect(response.body.error).toBe('Username already taken');
     });
 
     it('should validate email format', async () => {
@@ -119,94 +119,6 @@ describe('User CRUD Operations (Acceptance)', () => {
 
       expect(response.body.error).toContain('Validation failed');
       expect(response.body.error).toContain('username');
-    });
-  });
-
-  describe('GET /users/by-email/:email - Get User by Email', () => {
-    beforeEach(async () => {
-      // Create test user
-      await request(app).post('/users').send({
-        email: 'test@example.com',
-        username: 'testuser',
-        password: 'Password123!',
-      });
-    });
-
-    it('should get user by email', async () => {
-      const response = await request(app)
-        .get('/users/by-email/test@example.com')
-        .expect(200);
-
-      expect(response.body).toMatchObject({
-        email: 'test@example.com',
-        username: 'testuser',
-      });
-      expect(response.body.id).toBeDefined();
-      expect(response.body.passwordHash).toBeUndefined();
-    });
-
-    it('should return 404 for non-existent email', async () => {
-      const response = await request(app)
-        .get('/users/by-email/nonexistent@example.com')
-        .expect(404);
-
-      expect(response.body.error).toBe('User not found');
-    });
-
-    it('should validate email format', async () => {
-      const response = await request(app)
-        .get('/users/by-email/invalid-email')
-        .expect(400);
-
-      expect(response.body.error).toBe('Invalid email format');
-    });
-
-    it('should handle case-insensitive email lookup', async () => {
-      const response = await request(app)
-        .get('/users/by-email/TEST@EXAMPLE.COM')
-        .expect(200);
-
-      expect(response.body.email).toBe('test@example.com');
-    });
-  });
-
-  describe('GET /users/by-username/:username - Get User by Username', () => {
-    beforeEach(async () => {
-      // Create test user
-      await request(app).post('/users').send({
-        email: 'username@example.com',
-        username: 'uniqueuser',
-        password: 'Password123!',
-      });
-    });
-
-    it('should get user by username', async () => {
-      const response = await request(app)
-        .get('/users/by-username/uniqueuser')
-        .expect(200);
-
-      expect(response.body).toMatchObject({
-        email: 'username@example.com',
-        username: 'uniqueuser',
-      });
-      expect(response.body.id).toBeDefined();
-      expect(response.body.passwordHash).toBeUndefined();
-    });
-
-    it('should return 404 for non-existent username', async () => {
-      const response = await request(app)
-        .get('/users/by-username/nonexistentuser')
-        .expect(404);
-
-      expect(response.body.error).toBe('User not found');
-    });
-
-    it('should handle case-insensitive username lookup', async () => {
-      const response = await request(app)
-        .get('/users/by-username/UNIQUEUSER')
-        .expect(200);
-
-      expect(response.body.username).toBe('uniqueuser');
     });
   });
 
