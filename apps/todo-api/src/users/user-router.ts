@@ -3,7 +3,6 @@ import { ok, err, type Result } from 'neverthrow';
 import type { UserService } from './user-service.js';
 import {
   CreateUserCommandSchema,
-  formatZodError,
   type CreateUserCommand,
   type User,
   type UserWithoutPassword,

@@ -4,7 +4,8 @@ export type UserError =
   | { code: 'USERNAME_ALREADY_EXISTS'; username: string }
   | { code: 'USER_NOT_FOUND'; identifier: string }
   | { code: 'INVALID_USER_ID'; id: string }
-  | { code: 'INVALID_EMAIL_FORMAT'; email: string };
+  | { code: 'INVALID_EMAIL_FORMAT'; email: string }
+  | { code: 'UNEXPECTED_ERROR'; message: string; cause?: unknown };
 
 export type ErrorResponse = {
   statusCode: number;
@@ -25,18 +26,23 @@ export const toErrorResponse = (error: UserError): ErrorResponse => {
       return { statusCode: 400, body: { error: 'Invalid user ID format' } };
     case 'INVALID_EMAIL_FORMAT':
       return { statusCode: 400, body: { error: 'Invalid email format' } };
+    case 'UNEXPECTED_ERROR':
+      return { statusCode: 500, body: { error: 'Internal server error' } };
   }
 };
 
 // Error constructor helpers
-export const validationError = (
-  message: string,
-  details?: unknown,
-): UserError => ({
-  code: 'VALIDATION_ERROR',
-  message,
-  details,
-});
+export const validationError = (zodError: z.ZodError): UserError => {
+  const flattened = zodError.flatten();
+  const fieldErrors = Object.entries(flattened.fieldErrors)
+    .map(([field, errors]) => `${field}: ${(errors as string[])?.join(', ')}`)
+    .join(', ');
+  return {
+    code: 'VALIDATION_ERROR',
+    message: `Validation failed: ${fieldErrors}`,
+    details: flattened.fieldErrors,
+  };
+};
 
 export const emailAlreadyExists = (email: string): UserError => ({
   code: 'EMAIL_ALREADY_EXISTS',
@@ -61,4 +67,13 @@ export const invalidUserId = (id: string): UserError => ({
 export const invalidEmailFormat = (email: string): UserError => ({
   code: 'INVALID_EMAIL_FORMAT',
   email,
+});
+
+export const unexpectedError = (
+  message: string,
+  cause?: unknown,
+): UserError => ({
+  code: 'UNEXPECTED_ERROR',
+  message,
+  cause,
 });
