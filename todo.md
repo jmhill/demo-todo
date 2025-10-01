@@ -9,10 +9,12 @@
 - [x] docker build
 - [x] github action to check quality
 - [x] deploy (simple git repo connection to managed service for now)
-- [ ] user service with basic authentication and in-memory store
+- [x] demo error handling with neverthrow and zod
+- [x] user service with in-memory store
   - [x] TDD basic service operations (createUser, getById)
-  - [ ] acceptance tests with dev data management (add users via API)
+  - [x] acceptance tests with realistic data store
 - [x] sql version of user store (test containers to test implementation?)
+- [x] demo using types to prevent passing back too much data (e.g., don't pass hashed user password back)
 - [ ] database migrations/use ORM in user store
 - [ ] basic authentication demo
 - [ ] basic authorization demo
