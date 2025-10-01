@@ -1,3 +1,22 @@
+/**
+ * Raw SQL User Store Implementation
+ *
+ * This is a simple example of implementing the UserStore interface using
+ * raw SQL queries with the mysql2 driver. It demonstrates the fundamentals
+ * without an ORM layer.
+ *
+ * Key characteristics:
+ * - Uses connection pooling for better performance and resource management
+ * - Synchronous creation (no schema management during initialization)
+ * - Schema must be created separately via migrate-mysql-raw.ts
+ * - Strips passwordHash before returning User objects (type safety)
+ *
+ * For production applications, consider using:
+ * - An ORM like Sequelize (see user-store-sequelize.ts)
+ * - Proper migration tools like Umzug, Flyway, or Liquibase
+ * - Connection pool configuration tuning
+ * - Query optimization and prepared statements
+ */
 import mysql from 'mysql2/promise';
 import type { User, UserWithHashedPassword } from './user-schemas.js';
 import type { UserStore } from './user-store.js';
@@ -10,32 +29,23 @@ export interface MySQLConfig {
   database: string;
 }
 
-export async function createMySQLUserStore(
-  config: MySQLConfig,
-): Promise<UserStore> {
-  const connection = await mysql.createConnection({
+export function createMySQLUserStore(config: MySQLConfig): UserStore {
+  // Create connection pool (synchronous)
+  // Pool manages multiple connections for concurrent requests
+  const pool = mysql.createPool({
     host: config.host,
     port: config.port,
     user: config.user,
     password: config.password,
     database: config.database,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0,
   });
-
-  // Initialize schema if needed
-  await connection.execute(`
-    CREATE TABLE IF NOT EXISTS users (
-      id VARCHAR(36) PRIMARY KEY,
-      email VARCHAR(255) UNIQUE NOT NULL,
-      username VARCHAR(255) UNIQUE NOT NULL,
-      password_hash VARCHAR(255) NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    )
-  `);
 
   return {
     async save(user: UserWithHashedPassword): Promise<void> {
-      await connection.execute(
+      await pool.execute(
         `INSERT INTO users (id, email, username, password_hash, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE
@@ -55,7 +65,7 @@ export async function createMySQLUserStore(
     },
 
     async findById(id: string): Promise<User | null> {
-      const [rows] = await connection.execute<mysql.RowDataPacket[]>(
+      const [rows] = await pool.execute<mysql.RowDataPacket[]>(
         'SELECT * FROM users WHERE id = ?',
         [id],
       );
@@ -73,7 +83,7 @@ export async function createMySQLUserStore(
     },
 
     async findByEmail(email: string): Promise<User | null> {
-      const [rows] = await connection.execute<mysql.RowDataPacket[]>(
+      const [rows] = await pool.execute<mysql.RowDataPacket[]>(
         'SELECT * FROM users WHERE LOWER(email) = LOWER(?)',
         [email],
       );
@@ -91,7 +101,7 @@ export async function createMySQLUserStore(
     },
 
     async findByUsername(username: string): Promise<User | null> {
-      const [rows] = await connection.execute<mysql.RowDataPacket[]>(
+      const [rows] = await pool.execute<mysql.RowDataPacket[]>(
         'SELECT * FROM users WHERE LOWER(username) = LOWER(?)',
         [username],
       );

@@ -6,16 +6,21 @@ import { configureRateLimiting } from './security/rate-limiting.js';
 import { configureRequestLimits } from './security/request-limits.js';
 import type { AppConfig } from './config/schema.js';
 import { createUserRouter } from './users/user-router.js';
-import { createMySQLUserStore } from './users/user-store-mysql.js';
+import { createSequelizeUserStore } from './users/user-store-sequelize.js';
+import { createSequelize } from './database/sequelize-config.js';
 import { createUserService } from './users/user-service.js';
 
 export async function createApp(config: AppConfig): Promise<Express> {
   // Wire all dependencies based on config
-  const userStore = await createMySQLUserStore(config.database);
+  // Create Sequelize instance (connection pool)
+  const sequelize = createSequelize(config.database);
+
+  // Create stores and services
+  const userStore = createSequelizeUserStore(sequelize);
   const userService = createUserService(userStore);
 
   // Future dependencies will be added here:
-  // const orderStore = await createMySQLOrderStore(config.database);
+  // const orderStore = createSequelizeOrderStore(sequelize);
   // const orderService = createOrderService(orderStore);
 
   const app = express();

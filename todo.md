@@ -15,9 +15,12 @@
   - [x] acceptance tests with realistic data store
 - [x] sql version of user store (test containers to test implementation?)
 - [x] demo using types to prevent passing back too much data (e.g., don't pass hashed user password back)
-- [ ] database migrations/use ORM in user store
+- [x] database migrations/use ORM in user store
 - [ ] basic authentication demo
 - [ ] basic authorization demo
+- [ ] tiny react app for demo purposes (hello user)
 - [ ] todo service with in-memory store
   - [ ] TDD basic service operations (createTodo, listTodos, completeTodo)
-  - [ ] dev data management (add todos via API)
+- [ ] todo service with sequelize store
+- [ ] dev data management (add todos via API)
+- [ ] demo todos in react app

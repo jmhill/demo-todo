@@ -20,14 +20,25 @@
     "config:print": "tsx src/scripts/print-config.ts",
     "config:print:dev": "NODE_ENV=development tsx src/scripts/print-config.ts",
     "config:print:test": "NODE_ENV=test tsx src/scripts/print-config.ts",
-    "config:print:prod": "NODE_ENV=production tsx src/scripts/print-config.ts"
+    "config:print:prod": "NODE_ENV=production tsx src/scripts/print-config.ts",
+    "db:migrate": "tsx src/database/migrate.ts up",
+    "db:migrate:down": "tsx src/database/migrate.ts down",
+    "db:migrate:status": "tsx src/database/migrate.ts pending",
+    "db:migrate:executed": "tsx src/database/migrate.ts executed",
+    "db:migrate:raw": "tsx src/database/migrate-mysql-raw.ts"
   },
   "type": "module",
   "dependencies": {
     "@types/bcrypt": "^6.0.0",
+    "@types/umzug": "^2.3.9",
     "@types/uuid": "^10.0.0",
     "bcrypt": "^6.0.0",
     "neverthrow": "^8.2.0",
+    "sequelize": "^6.37.7",
+    "umzug": "^3.8.2",
     "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "sqlite3": "^5.1.7"
   }
 }
