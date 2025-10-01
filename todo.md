@@ -16,7 +16,9 @@
 - [x] sql version of user store (test containers to test implementation?)
 - [x] demo using types to prevent passing back too much data (e.g., don't pass hashed user password back)
 - [x] database migrations/use ORM in user store
+- [ ] dev mode setup (mysql)
 - [ ] basic authentication demo
+- [ ] dev data management (add test users via API)
 - [ ] basic authorization demo
 - [ ] tiny react app for demo purposes (hello user)
 - [ ] todo service with in-memory store
