@@ -1,9 +1,13 @@
-import { ResultAsync } from 'neverthrow';
+import { ResultAsync, errAsync, okAsync } from 'neverthrow';
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
 import { z } from 'zod';
 import type { UserStore } from './user-store.js';
-import { type User, type CreateUserCommand } from './user-schemas.js';
+import {
+  type User,
+  type UserWithHashedPassword,
+  type CreateUserCommand,
+} from './user-schemas.js';
 import {
   type UserError,
   emailAlreadyExists,
@@ -11,6 +15,7 @@ import {
   userNotFound,
   invalidUserId,
   invalidEmailFormat,
+  unexpectedError,
 } from './user-errors.js';
 
 const SALT_ROUNDS = 10;
@@ -25,26 +30,38 @@ export interface UserService {
 export function createUserService(userStore: UserStore): UserService {
   return {
     createUser(command: CreateUserCommand): ResultAsync<User, UserError> {
-      return ResultAsync.fromPromise(
-        (async () => {
-          const [existingUserByEmail, existingUserByUsername] =
-            await Promise.all([
-              userStore.findByEmail(command.email),
-              userStore.findByUsername(command.username),
-            ]);
+      // Check if email exists
+      const emailCheck = ResultAsync.fromPromise(
+        userStore.findByEmail(command.email),
+        (error) => unexpectedError('Database error checking email', error),
+      );
 
+      // Check if username exists
+      const usernameCheck = ResultAsync.fromPromise(
+        userStore.findByUsername(command.username),
+        (error) => unexpectedError('Database error checking username', error),
+      );
+
+      // Chain all operations without throws
+      return ResultAsync.combine([emailCheck, usernameCheck])
+        .andThen(([existingUserByEmail, existingUserByUsername]) => {
           if (existingUserByEmail) {
-            throw emailAlreadyExists(command.email);
+            return errAsync(emailAlreadyExists(command.email));
           }
-
           if (existingUserByUsername) {
-            throw usernameAlreadyExists(command.username);
+            return errAsync(usernameAlreadyExists(command.username));
           }
-
-          const passwordHash = await bcrypt.hash(command.password, SALT_ROUNDS);
+          return okAsync(undefined);
+        })
+        .andThen(() =>
+          ResultAsync.fromPromise(
+            bcrypt.hash(command.password, SALT_ROUNDS),
+            (error) => unexpectedError('Password hashing failed', error),
+          ),
+        )
+        .andThen((passwordHash) => {
           const now = new Date();
-
-          const user: User = {
+          const userWithPassword: UserWithHashedPassword = {
             id: uuidv4(),
             email: command.email,
             username: command.username,
@@ -53,58 +70,53 @@ export function createUserService(userStore: UserStore): UserService {
             updatedAt: now,
           };
 
-          await userStore.save(user);
-          return user;
-        })(),
-        (error) => error as UserError,
-      );
+          return ResultAsync.fromPromise(
+            userStore.save(userWithPassword),
+            (error) => unexpectedError('Database error saving user', error),
+          ).map(() => ({
+            id: userWithPassword.id,
+            email: userWithPassword.email,
+            username: userWithPassword.username,
+            createdAt: userWithPassword.createdAt,
+            updatedAt: userWithPassword.updatedAt,
+          }));
+        });
     },
 
     getById(id: string): ResultAsync<User, UserError> {
-      return ResultAsync.fromPromise(
-        (async () => {
-          if (!uuidValidate(id)) {
-            throw invalidUserId(id);
-          }
+      // Validate UUID format first
+      if (!uuidValidate(id)) {
+        return errAsync(invalidUserId(id));
+      }
 
-          const user = await userStore.findById(id);
-          if (!user) {
-            throw userNotFound(id);
-          }
-          return user;
-        })(),
-        (error) => error as UserError,
-      );
+      // Find user in store
+      return ResultAsync.fromPromise(userStore.findById(id), (error) =>
+        unexpectedError('Database error fetching user by ID', error),
+      ).andThen((user) => (user ? okAsync(user) : errAsync(userNotFound(id))));
     },
 
     getByEmail(email: string): ResultAsync<User, UserError> {
-      return ResultAsync.fromPromise(
-        (async () => {
-          const emailValidation = z.string().email().safeParse(email);
-          if (!emailValidation.success) {
-            throw invalidEmailFormat(email);
-          }
+      // Validate email format first
+      const emailValidation = z.string().email().safeParse(email);
+      if (!emailValidation.success) {
+        return errAsync(invalidEmailFormat(email));
+      }
 
-          const user = await userStore.findByEmail(email);
-          if (!user) {
-            throw userNotFound(email);
-          }
-          return user;
-        })(),
-        (error) => error as UserError,
+      // Find user in store
+      return ResultAsync.fromPromise(userStore.findByEmail(email), (error) =>
+        unexpectedError('Database error fetching user by email', error),
+      ).andThen((user) =>
+        user ? okAsync(user) : errAsync(userNotFound(email)),
       );
     },
 
     getByUsername(username: string): ResultAsync<User, UserError> {
       return ResultAsync.fromPromise(
-        (async () => {
-          const user = await userStore.findByUsername(username);
-          if (!user) {
-            throw userNotFound(username);
-          }
-          return user;
-        })(),
-        (error) => error as UserError,
+        userStore.findByUsername(username),
+        (error) =>
+          unexpectedError('Database error fetching user by username', error),
+      ).andThen((user) =>
+        user ? okAsync(user) : errAsync(userNotFound(username)),
       );
     },
   };

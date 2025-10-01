@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 export type UserError =
   | { code: 'VALIDATION_ERROR'; message: string; details?: unknown }
   | { code: 'EMAIL_ALREADY_EXISTS'; email: string }

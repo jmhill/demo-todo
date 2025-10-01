@@ -27,8 +27,6 @@ describe('UserService', () => {
         expect(result.value.email).toBe(command.email);
         expect(result.value.username).toBe(command.username);
         expect(result.value.id).toBeDefined();
-        expect(result.value.passwordHash).toBeDefined();
-        expect(result.value.passwordHash).not.toBe(command.password);
         expect(result.value.createdAt).toBeInstanceOf(Date);
         expect(result.value.updatedAt).toBeInstanceOf(Date);
       }

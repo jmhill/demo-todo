@@ -1,5 +1,5 @@
 import mysql from 'mysql2/promise';
-import type { User } from './user-schemas.js';
+import type { User, UserWithHashedPassword } from './user-schemas.js';
 import type { UserStore } from './user-store.js';
 
 export interface MySQLConfig {
@@ -34,9 +34,9 @@ export async function createMySQLUserStore(
   `);
 
   return {
-    async save(user: User): Promise<void> {
+    async save(user: UserWithHashedPassword): Promise<void> {
       await connection.execute(
-        `INSERT INTO users (id, email, username, password_hash, created_at, updated_at) 
+        `INSERT INTO users (id, email, username, password_hash, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE
          email = VALUES(email),
@@ -67,7 +67,6 @@ export async function createMySQLUserStore(
         id: row.id,
         email: row.email,
         username: row.username,
-        passwordHash: row.password_hash,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
       };
@@ -86,7 +85,6 @@ export async function createMySQLUserStore(
         id: row.id,
         email: row.email,
         username: row.username,
-        passwordHash: row.password_hash,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
       };
@@ -105,7 +103,6 @@ export async function createMySQLUserStore(
         id: row.id,
         email: row.email,
         username: row.username,
-        passwordHash: row.password_hash,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
       };

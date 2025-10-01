@@ -4,8 +4,6 @@ import type { UserService } from './user-service.js';
 import {
   CreateUserCommandSchema,
   type CreateUserCommand,
-  type User,
-  type UserWithoutPassword,
 } from './user-schemas.js';
 import {
   type UserError,
@@ -14,23 +12,12 @@ import {
 } from './user-errors.js';
 
 // Helper: Parse and validate request body into CreateUserCommand
-const parseCommand = (body: unknown): Result<CreateUserCommand, UserError> => {
+const parseCreateCommand = (
+  body: unknown,
+): Result<CreateUserCommand, UserError> => {
   const result = CreateUserCommandSchema.safeParse(body);
-  return result.success
-    ? ok(result.data)
-    : err(
-        validationError(`Validation failed: ${formatZodError(result.error)}`),
-      );
+  return result.success ? ok(result.data) : err(validationError(result.error));
 };
-
-// Helper: Map User to UserWithoutPassword response
-const toUserResponse = (user: User): UserWithoutPassword => ({
-  id: user.id,
-  email: user.email,
-  username: user.username,
-  createdAt: user.createdAt,
-  updatedAt: user.updatedAt,
-});
 
 export function createUserRouter(userService: UserService): Router {
   const router = Router();
@@ -40,10 +27,10 @@ export function createUserRouter(userService: UserService): Router {
 
   // POST /users - Create a new user
   router.post('/', async (req: Request, res: Response) => {
-    await parseCommand(req.body)
+    await parseCreateCommand(req.body)
       .asyncAndThen((command) => userService.createUser(command))
       .match(
-        (user) => res.status(201).json(toUserResponse(user)),
+        (user) => res.status(201).json(user),
         (error) => {
           const errorResponse = toErrorResponse(error);
           res.status(errorResponse.statusCode).json(errorResponse.body);
@@ -61,7 +48,7 @@ export function createUserRouter(userService: UserService): Router {
     }
 
     await userService.getById(id).match(
-      (user) => res.json(toUserResponse(user)),
+      (user) => res.json(user),
       (error) => {
         const errorResponse = toErrorResponse(error);
         res.status(errorResponse.statusCode).json(errorResponse.body);
