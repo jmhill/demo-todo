@@ -72,21 +72,19 @@ export async function createApp(config: AppConfig): Promise<Express> {
   // Create auth middleware for protected routes
   const requireAuth = createAuthMiddleware(authService, userService);
 
+  // Parse JSON bodies for all routes
+  app.use(express.json());
+
   // Configure route handlers
   app.get('/health', healthCheckHandler);
   app.post('/health', healthCheckHandler);
 
   // Auth routes
-  app.post('/auth/login', express.json(), loginHandler(authService));
+  app.post('/auth/login', loginHandler(authService));
   app.post('/auth/logout', requireAuth, logoutHandler(authService));
 
   // User routes (all protected)
-  app.post(
-    '/users',
-    express.json(),
-    requireAuth,
-    createUserHandler(userService),
-  );
+  app.post('/users', requireAuth, createUserHandler(userService));
   app.get('/users/:id', requireAuth, getUserByIdHandler(userService));
 
   // Global error handler - must be last middleware
