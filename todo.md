@@ -17,17 +17,18 @@
 - [x] demo using types to prevent passing back too much data (e.g., don't pass hashed user password back)
 - [x] database migrations/use ORM in user store
 - [x] basic authentication demo
-- [ ] basic authorization demo
-- [ ] demo 'modular monolith' restrictions on cross-domain imports
-- [ ] dev mode setup (mysql)
-- [ ] dev data management (add test users via API)
-- [ ] tiny react app for demo purposes (hello user)
+- [x] global/catch-all error handler
 - [ ] todo service
   - [ ] TDD basic service operations (createTodo, listTodos, completeTodo)
   - [ ] acceptance tests with realistic app setup
   - [ ] todo service with sequelize store
+- [ ] basic authorization demo
+- [ ] dev mode setup (mysql)
+- [ ] dev data management (add test users via API)
+- [ ] tiny react app for demo purposes (hello user)
 - [ ] dev data management (add todos via API)
 - [ ] demo todos in react app
+- [ ] demo 'modular monolith' restrictions on cross-domain imports
 
 ## polish and next steps
 

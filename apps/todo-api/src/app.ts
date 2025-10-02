@@ -1,4 +1,9 @@
-import express, { type Express } from 'express';
+import express, {
+  type Express,
+  type Request,
+  type Response,
+  type NextFunction,
+} from 'express';
 import { healthCheckHandler } from './healthcheck.js';
 import { configureSecureHeaders } from './security/secure-headers.js';
 import { configureCors } from './security/cors.js';
@@ -84,8 +89,28 @@ export async function createApp(config: AppConfig): Promise<Express> {
   );
   app.get('/users/:id', requireAuth, getUserByIdHandler(userService));
 
-  // Configure default error handlers
-  // TODO: Add error handlers
+  // Global error handler - must be last middleware
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+    // Log error for debugging
+    console.error(err.stack);
+
+    // Determine status code - check for common HTTP error properties
+    const errorWithStatus = err as Error & {
+      status?: number;
+      statusCode?: number;
+    };
+    const statusCode =
+      errorWithStatus.status || errorWithStatus.statusCode || 500;
+
+    // Send error response
+    res.status(statusCode).json({
+      error:
+        config.environment === 'production'
+          ? 'Internal server error'
+          : err.message,
+    });
+  });
 
   return app;
 }
