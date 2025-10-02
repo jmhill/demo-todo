@@ -14,6 +14,10 @@ export const getConfig = (getSecretFn: GetSecretFn): AppConfig => ({
     password: getSecretFn('DB_PASSWORD'),
     database: 'todo_dev',
   },
+  auth: {
+    jwtSecret: getSecretFn('JWT_SECRET'),
+    jwtExpiresIn: '24h',
+  },
   security: {
     cors: {
       enabled: true,

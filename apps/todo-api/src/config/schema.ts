@@ -41,11 +41,18 @@ const databaseSchema = z.object({
   database: z.string(),
 });
 
+// Schema for auth configuration
+const authSchema = z.object({
+  jwtSecret: secretSchema,
+  jwtExpiresIn: z.string(),
+});
+
 // Main application configuration schema
 export const configSchema = z.object({
   environment: z.enum(['development', 'test', 'production']),
   server: serverSchema,
   database: databaseSchema,
+  auth: authSchema,
   security: z.object({
     cors: corsSchema,
     rateLimiting: rateLimitingSchema,
@@ -67,3 +74,4 @@ export type CorsConfig = z.infer<typeof corsSchema>;
 export type RequestLimitsConfig = z.infer<typeof requestLimitsSchema>;
 export type SecureHeadersConfig = z.infer<typeof secureHeadersSchema>;
 export type ServerConfig = z.infer<typeof serverSchema>;
+export type AuthConfig = z.infer<typeof authSchema>;

@@ -5,6 +5,12 @@ export interface UserStore {
   findById(id: string): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
   findByUsername(username: string): Promise<User | null>;
+  findByEmailWithPassword(
+    email: string,
+  ): Promise<UserWithHashedPassword | null>;
+  findByUsernameWithPassword(
+    username: string,
+  ): Promise<UserWithHashedPassword | null>;
 }
 
 export function createInMemoryUserStore(): UserStore {
@@ -44,6 +50,22 @@ export function createInMemoryUserStore(): UserStore {
       if (!userId) return null;
       const userWithPassword = users.get(userId);
       return userWithPassword ? toUser(userWithPassword) : null;
+    },
+
+    async findByEmailWithPassword(
+      email: string,
+    ): Promise<UserWithHashedPassword | null> {
+      const userId = emailIndex.get(email.toLowerCase());
+      if (!userId) return null;
+      return users.get(userId) ?? null;
+    },
+
+    async findByUsernameWithPassword(
+      username: string,
+    ): Promise<UserWithHashedPassword | null> {
+      const userId = usernameIndex.get(username.toLowerCase());
+      if (!userId) return null;
+      return users.get(userId) ?? null;
     },
   };
 }

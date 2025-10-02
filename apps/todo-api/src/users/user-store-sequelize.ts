@@ -17,6 +17,18 @@ export function createSequelizeUserStore(sequelize: Sequelize): UserStore {
     };
   };
 
+  const toUserWithPassword = (model: Model): UserWithHashedPassword => {
+    const data = model.get({ plain: true }) as UserWithHashedPassword;
+    return {
+      id: data.id,
+      email: data.email,
+      username: data.username,
+      passwordHash: data.passwordHash,
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt,
+    };
+  };
+
   return {
     async save(user: UserWithHashedPassword): Promise<void> {
       await UserModel.upsert({
@@ -50,6 +62,28 @@ export function createSequelizeUserStore(sequelize: Sequelize): UserStore {
         },
       });
       return model ? toUser(model) : null;
+    },
+
+    async findByEmailWithPassword(
+      email: string,
+    ): Promise<UserWithHashedPassword | null> {
+      const model = await UserModel.findOne({
+        where: {
+          email: email.toLowerCase(),
+        },
+      });
+      return model ? toUserWithPassword(model) : null;
+    },
+
+    async findByUsernameWithPassword(
+      username: string,
+    ): Promise<UserWithHashedPassword | null> {
+      const model = await UserModel.findOne({
+        where: {
+          username: username.toLowerCase(),
+        },
+      });
+      return model ? toUserWithPassword(model) : null;
     },
   };
 }

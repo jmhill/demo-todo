@@ -7,6 +7,7 @@ export type UserError =
   | { code: 'USER_NOT_FOUND'; identifier: string }
   | { code: 'INVALID_USER_ID'; id: string }
   | { code: 'INVALID_EMAIL_FORMAT'; email: string }
+  | { code: 'INVALID_CREDENTIALS'; message: string }
   | { code: 'UNEXPECTED_ERROR'; message: string; cause?: unknown };
 
 export type ErrorResponse = {
@@ -28,6 +29,8 @@ export const toErrorResponse = (error: UserError): ErrorResponse => {
       return { statusCode: 400, body: { error: 'Invalid user ID format' } };
     case 'INVALID_EMAIL_FORMAT':
       return { statusCode: 400, body: { error: 'Invalid email format' } };
+    case 'INVALID_CREDENTIALS':
+      return { statusCode: 401, body: { error: 'Invalid credentials' } };
     case 'UNEXPECTED_ERROR':
       return { statusCode: 500, body: { error: 'Internal server error' } };
   }
@@ -69,6 +72,13 @@ export const invalidUserId = (id: string): UserError => ({
 export const invalidEmailFormat = (email: string): UserError => ({
   code: 'INVALID_EMAIL_FORMAT',
   email,
+});
+
+export const invalidCredentials = (
+  message = 'Invalid credentials',
+): UserError => ({
+  code: 'INVALID_CREDENTIALS',
+  message,
 });
 
 export const unexpectedError = (

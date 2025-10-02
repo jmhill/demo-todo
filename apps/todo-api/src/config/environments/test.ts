@@ -18,6 +18,10 @@ export const getConfig = (
     password: getSecretFn('DB_PASSWORD'),
     database: 'todo_test',
   },
+  auth: {
+    jwtSecret: getSecretFn('JWT_SECRET'),
+    jwtExpiresIn: '1h',
+  },
   security: {
     // High rate limits for automated test suites that rapidly hit the API
     rateLimiting: {

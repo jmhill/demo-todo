@@ -6,13 +6,16 @@ type DeepPartial<T> = {
 };
 
 export const getConfig = (
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _getSecretFn: GetSecretFn,
+  getSecretFn: GetSecretFn,
 ): DeepPartial<AppConfig> => ({
   environment: 'production',
   server: {
     port: 3000,
     host: '0.0.0.0',
+  },
+  auth: {
+    jwtSecret: getSecretFn('JWT_SECRET'),
+    jwtExpiresIn: '24h',
   },
   security: {
     cors: {

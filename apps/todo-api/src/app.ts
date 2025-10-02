@@ -9,6 +9,9 @@ import { createUserRouter } from './users/user-router.js';
 import { createSequelizeUserStore } from './users/user-store-sequelize.js';
 import { createSequelize } from './database/sequelize-config.js';
 import { createUserService } from './users/user-service.js';
+import { createAuthRouter } from './auth/auth-router.js';
+import { createAuthService } from './auth/auth-service.js';
+import { createInMemoryTokenStore } from './auth/token-store.js';
 
 export async function createApp(config: AppConfig): Promise<Express> {
   // Wire all dependencies based on config
@@ -18,6 +21,15 @@ export async function createApp(config: AppConfig): Promise<Express> {
   // Create stores and services
   const userStore = createSequelizeUserStore(sequelize);
   const userService = createUserService(userStore);
+
+  // Create auth dependencies
+  const tokenStore = createInMemoryTokenStore();
+  const authService = createAuthService({
+    userService,
+    tokenStore,
+    jwtSecret: config.auth.jwtSecret,
+    jwtExpiresIn: config.auth.jwtExpiresIn,
+  });
 
   // Future dependencies will be added here:
   // const orderStore = createSequelizeOrderStore(sequelize);
@@ -52,8 +64,9 @@ export async function createApp(config: AppConfig): Promise<Express> {
   app.get('/health', healthCheckHandler);
   app.post('/health', healthCheckHandler);
 
-  // Wire up user routes
+  // Wire up routes
   app.use('/users', createUserRouter(userService));
+  app.use('/auth', createAuthRouter(authService));
 
   // Configure default error handlers
   // TODO: Add error handlers

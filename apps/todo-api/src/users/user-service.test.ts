@@ -185,4 +185,85 @@ describe('UserService', () => {
       }
     });
   });
+
+  describe('authenticateUser', () => {
+    it('should authenticate user with valid username and password', async () => {
+      const command: CreateUserCommand = {
+        email: 'auth@example.com',
+        username: 'authuser',
+        password: 'SecurePass123!',
+      };
+
+      const createResult = await userService.createUser(command);
+      expect(createResult.isOk()).toBe(true);
+      if (!createResult.isOk()) return;
+
+      const result = await userService.authenticateUser(
+        'authuser',
+        'SecurePass123!',
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.id).toBe(createResult.value.id);
+        expect(result.value.username).toBe(command.username);
+        expect(result.value.email).toBe(command.email);
+      }
+    });
+
+    it('should authenticate user with valid email and password', async () => {
+      const command: CreateUserCommand = {
+        email: 'emailauth@example.com',
+        username: 'emailauthuser',
+        password: 'SecurePass123!',
+      };
+
+      const createResult = await userService.createUser(command);
+      expect(createResult.isOk()).toBe(true);
+      if (!createResult.isOk()) return;
+
+      const result = await userService.authenticateUser(
+        'emailauth@example.com',
+        'SecurePass123!',
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.id).toBe(createResult.value.id);
+        expect(result.value.email).toBe(command.email);
+      }
+    });
+
+    it('should reject authentication with invalid password', async () => {
+      const command: CreateUserCommand = {
+        email: 'wrongpass@example.com',
+        username: 'wrongpassuser',
+        password: 'CorrectPassword123!',
+      };
+
+      await userService.createUser(command);
+
+      const result = await userService.authenticateUser(
+        'wrongpassuser',
+        'WrongPassword123!',
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.code).toBe('INVALID_CREDENTIALS');
+      }
+    });
+
+    it('should reject authentication for non-existent user', async () => {
+      const result = await userService.authenticateUser(
+        'nonexistent',
+        'SomePassword123!',
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.code).toBe('INVALID_CREDENTIALS');
+      }
+    });
+  });
 });

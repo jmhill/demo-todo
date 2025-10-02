@@ -16,13 +16,19 @@
 - [x] sql version of user store (test containers to test implementation?)
 - [x] demo using types to prevent passing back too much data (e.g., don't pass hashed user password back)
 - [x] database migrations/use ORM in user store
-- [ ] dev mode setup (mysql)
-- [ ] basic authentication demo
-- [ ] dev data management (add test users via API)
+- [x] basic authentication demo
 - [ ] basic authorization demo
+- [ ] demo 'modular monolith' restrictions on cross-domain imports
+- [ ] dev mode setup (mysql)
+- [ ] dev data management (add test users via API)
 - [ ] tiny react app for demo purposes (hello user)
-- [ ] todo service with in-memory store
+- [ ] todo service
   - [ ] TDD basic service operations (createTodo, listTodos, completeTodo)
-- [ ] todo service with sequelize store
+  - [ ] acceptance tests with realistic app setup
+  - [ ] todo service with sequelize store
 - [ ] dev data management (add todos via API)
 - [ ] demo todos in react app
+
+## polish and next steps
+
+- [ ] existing JWT polish (e.g., invalidate all users on logout) or just integrate something like OpenAuth to show full OAuth implementation

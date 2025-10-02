@@ -117,5 +117,47 @@ export function createMySQLUserStore(config: MySQLConfig): UserStore {
         updatedAt: row.updated_at,
       };
     },
+
+    async findByEmailWithPassword(
+      email: string,
+    ): Promise<UserWithHashedPassword | null> {
+      const [rows] = await pool.execute<mysql.RowDataPacket[]>(
+        'SELECT * FROM users WHERE LOWER(email) = LOWER(?)',
+        [email],
+      );
+
+      if (rows.length === 0) return null;
+
+      const row = rows[0]!;
+      return {
+        id: row.id,
+        email: row.email,
+        username: row.username,
+        passwordHash: row.password_hash,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      };
+    },
+
+    async findByUsernameWithPassword(
+      username: string,
+    ): Promise<UserWithHashedPassword | null> {
+      const [rows] = await pool.execute<mysql.RowDataPacket[]>(
+        'SELECT * FROM users WHERE LOWER(username) = LOWER(?)',
+        [username],
+      );
+
+      if (rows.length === 0) return null;
+
+      const row = rows[0]!;
+      return {
+        id: row.id,
+        email: row.email,
+        username: row.username,
+        passwordHash: row.password_hash,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      };
+    },
   };
 }
