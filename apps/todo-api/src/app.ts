@@ -65,15 +65,16 @@ export async function createApp(config: AppConfig): Promise<Express> {
     configureRateLimiting(app, config.security.rateLimiting);
   }
 
+  // JSON and URL-encoded parsing - with or without size limits
   if (config.security.requestLimits.enabled) {
     configureRequestLimits(app, config.security.requestLimits);
+  } else {
+    app.use(express.json());
+    app.use(express.urlencoded({ extended: true }));
   }
 
   // Create auth middleware for protected routes
   const requireAuth = createAuthMiddleware(authService, userService);
-
-  // Parse JSON bodies for all routes
-  app.use(express.json());
 
   // Configure route handlers
   app.get('/health', healthCheckHandler);
@@ -90,9 +91,6 @@ export async function createApp(config: AppConfig): Promise<Express> {
   // Global error handler - must be last middleware
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-    // Log error for debugging
-    console.error(err.stack);
-
     // Determine status code - check for common HTTP error properties
     const errorWithStatus = err as Error & {
       status?: number;
@@ -100,6 +98,11 @@ export async function createApp(config: AppConfig): Promise<Express> {
     };
     const statusCode =
       errorWithStatus.status || errorWithStatus.statusCode || 500;
+
+    // Only log server errors (5xx), not client errors (4xx)
+    if (statusCode >= 500) {
+      console.error(err.stack);
+    }
 
     // Send error response
     res.status(statusCode).json({
