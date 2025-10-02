@@ -45,38 +45,6 @@ describe('Configuration Schema', () => {
       }
     });
 
-    it('should parse configuration with optional testSecret', () => {
-      const configWithSecret = createTestConfig(
-        {
-          testSecret: 'test-secret-value',
-        },
-        mockGetSecret,
-      );
-
-      const result = configSchema.safeParse(configWithSecret);
-
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.testSecret).toBe('test-secret-value');
-      }
-    });
-
-    it('should parse configuration with required testSecret', () => {
-      const configWithRequiredSecret = createTestConfig(
-        {
-          testSecret: 'another-test-secret-value',
-        },
-        mockGetSecret,
-      );
-
-      const result = configSchema.safeParse(configWithRequiredSecret);
-
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.testSecret).toBe('another-test-secret-value');
-      }
-    });
-
     it('should parse configuration with complete structure', () => {
       const configWithStructure = createTestConfig({}, mockGetSecret);
 
@@ -381,48 +349,6 @@ describe('Configuration Schema', () => {
       if (result.success) {
         expect(result.data.server.port).toBe(8080);
         expect(result.data.server.host).toBe('0.0.0.0');
-      }
-    });
-  });
-
-  describe('Secret type validation', () => {
-    it('should enforce Secret schema for testSecret field', () => {
-      // Create a valid config first, then modify it to have an invalid secret
-      const baseConfig = createTestConfig({}, mockGetSecret);
-      const configWithEmptySecret = {
-        ...baseConfig,
-        testSecret: '', // Empty string should fail
-      };
-
-      const result = configSchema.safeParse(configWithEmptySecret);
-
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.issues).toEqual(
-          expect.arrayContaining([
-            expect.objectContaining({
-              path: ['testSecret'],
-              message:
-                'Secret must be a non-empty string obtained via getSecret() or getOptionalSecret()',
-            }),
-          ]),
-        );
-      }
-    });
-
-    it('should accept valid secret strings for testSecret field', () => {
-      const configWithValidSecret = createTestConfig(
-        {
-          testSecret: 'valid-secret-from-env',
-        },
-        mockGetSecret,
-      );
-
-      const result = configSchema.safeParse(configWithValidSecret);
-
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.testSecret).toBe('valid-secret-from-env');
       }
     });
   });

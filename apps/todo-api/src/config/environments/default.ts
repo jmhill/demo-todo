@@ -38,5 +38,4 @@ export const getConfig = (getSecretFn: GetSecretFn): AppConfig => ({
       enabled: true,
     },
   },
-  testSecret: getSecretFn('TEST_SECRET'), // Will throw if not in .env
 });

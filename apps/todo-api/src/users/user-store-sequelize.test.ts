@@ -1,13 +1,8 @@
 import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
 import { Sequelize } from 'sequelize';
-import { Umzug, SequelizeStorage } from 'umzug';
 import { createSequelizeUserStore } from './user-store-sequelize.js';
 import type { UserWithHashedPassword } from './user-schemas.js';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { createMigrator } from '../database/migrator.js';
 
 describe('SequelizeUserStore', () => {
   let sequelize: Sequelize;
@@ -22,16 +17,8 @@ describe('SequelizeUserStore', () => {
     });
 
     // Run migrations
-    const umzug = new Umzug({
-      migrations: {
-        glob: path.join(__dirname, '../database/migrations/*.ts'),
-      },
-      context: sequelize.getQueryInterface(),
-      storage: new SequelizeStorage({ sequelize }),
-      logger: undefined,
-    });
-
-    await umzug.up();
+    const migrator = createMigrator(sequelize, { logger: undefined });
+    await migrator.up();
   });
 
   beforeEach(async () => {

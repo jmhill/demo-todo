@@ -10,7 +10,7 @@ export const app = await createApp(config);
 
 // Start server only if this module is run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-  app.listen(config.server.port, config.server.host, () => {
+  const server = app.listen(config.server.port, config.server.host, () => {
     console.log(
       `Server running at http://${config.server.host}:${config.server.port}`,
     );
@@ -25,4 +25,16 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       console.log(JSON.stringify(filterSecrets(config), null, 2));
     }
   });
+
+  // Graceful shutdown handling
+  const shutdown = (signal: string) => {
+    console.log(`Received ${signal}, shutting down gracefully...`);
+    server.close(() => {
+      console.log('Server closed');
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }

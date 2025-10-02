@@ -2,10 +2,21 @@ import { loadConfig } from './index.js';
 import type { GetSecretFn } from './secrets.js';
 import { getSecret } from './secrets.js';
 
-const secretFields = new Set<string>(['testSecret']);
+// Secret paths in the configuration schema that should be hidden
+// These correspond to fields that use secretSchema in schema.ts
+// TODO: Automatically detect these by traversing the Zod schema
+const secretPaths = ['database.password', 'auth.jwtSecret'];
 
-const isSecretField = (key: string): boolean => {
-  return secretFields.has(key);
+const isSecretPath = (path: string[]): boolean => {
+  // Check if the full path or any suffix matches a secret path
+  // This allows secrets to be nested at any level
+  for (let i = 0; i < path.length; i++) {
+    const suffix = path.slice(i).join('.');
+    if (secretPaths.includes(suffix)) {
+      return true;
+    }
+  }
+  return false;
 };
 
 export const filterSecrets = <T>(config: T, path: string[] = []): T => {
@@ -21,9 +32,8 @@ export const filterSecrets = <T>(config: T, path: string[] = []): T => {
     const filtered: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(config)) {
       const currentPath = [...path, key];
-      const fieldName = currentPath[currentPath.length - 1];
 
-      if (fieldName && isSecretField(fieldName)) {
+      if (isSecretPath(currentPath)) {
         filtered[key] = '[HIDDEN]';
       } else if (value !== null && typeof value === 'object') {
         filtered[key] = filterSecrets(value, currentPath);

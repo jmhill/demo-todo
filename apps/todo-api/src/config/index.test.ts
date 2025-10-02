@@ -36,9 +36,7 @@ describe('Configuration Loading', () => {
 
     it('should load production configuration with static values', () => {
       // Production config now has static values, not env vars
-      // Only secrets (like TEST_SECRET) come from env
-      // Mock the TEST_SECRET for production
-      // Only secrets (like TEST_SECRET and DB_PASSWORD) are loaded via mockGetSecret
+      // Only secrets come from env
       const config = loadConfig('production', mockGetSecret);
 
       expect(config.environment).toBe('production');
@@ -63,14 +61,6 @@ describe('Configuration Loading', () => {
       // Should fall back to default config only
       expect(config.environment).toBe('development');
       expect(config.server.port).toBe(3000);
-    });
-
-    it('should load production config successfully when TEST_SECRET is present', () => {
-      // Production requires TEST_SECRET and DB_PASSWORD which mockGetSecret provides
-      const config = loadConfig('production', mockGetSecret);
-
-      expect(config.environment).toBe('production');
-      expect(config.testSecret).toBe('mock-TEST_SECRET');
     });
   });
 
@@ -186,7 +176,7 @@ describe('Configuration Loading', () => {
       const config = loadConfig('development', mockGetSecret);
 
       expect(config.environment).toBe('development');
-      expect(config.testSecret).toBe('mock-TEST_SECRET');
+      expect(config.database.password).toBe('mock-DB_PASSWORD');
     });
 
     it('should allow different secret sources for different environments', () => {
@@ -196,8 +186,8 @@ describe('Configuration Loading', () => {
       const prodConfigWithVault = loadConfig('production', vaultSecretFn);
       const prodConfigWithAws = loadConfig('production', awsSecretFn);
 
-      expect(prodConfigWithVault.testSecret).toBe('vault-TEST_SECRET');
-      expect(prodConfigWithAws.testSecret).toBe('aws-TEST_SECRET');
+      expect(prodConfigWithVault.database.password).toBe('vault-DB_PASSWORD');
+      expect(prodConfigWithAws.database.password).toBe('aws-DB_PASSWORD');
     });
   });
 
@@ -208,7 +198,7 @@ describe('Configuration Loading', () => {
       const config = createTestConfig({}, mockGetSecret);
 
       expect(config.environment).toBe('test');
-      expect(config.testSecret).toBe('test-mock-TEST_SECRET');
+      expect(config.database.password).toBe('test-mock-DB_PASSWORD');
     });
 
     it('should allow testing different secret scenarios', () => {

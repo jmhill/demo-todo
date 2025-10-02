@@ -5,7 +5,6 @@ import type { GetSecretFn, Secret } from './secrets.js';
  */
 export const mockGetSecret: GetSecretFn = (key: string) => {
   const mockSecrets: Record<string, string> = {
-    TEST_SECRET: 'mock-TEST_SECRET',
     DB_PASSWORD: 'mock-db-password',
     JWT_SECRET: 'mock-jwt-secret-for-testing-only',
   };

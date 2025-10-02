@@ -12,12 +12,14 @@ describe('Configuration Display', () => {
           port: 3000,
           host: 'localhost',
         },
-        testSecret: 'secret-value' as Secret,
+        database: {
+          password: 'secret-value' as Secret,
+        },
       };
 
       const filtered = filterSecrets(config);
 
-      expect(filtered.testSecret).toBe('[HIDDEN]');
+      expect(filtered.database.password).toBe('[HIDDEN]');
       expect(filtered.server.port).toBe(3000);
       expect(filtered.environment).toBe('test');
     });
@@ -26,9 +28,13 @@ describe('Configuration Display', () => {
       const config = {
         level1: {
           normalValue: 'visible',
-          testSecret: 'hidden' as Secret,
+          database: {
+            password: 'hidden' as Secret,
+          },
           level2: {
-            testSecret: 'also-hidden' as Secret,
+            auth: {
+              jwtSecret: 'also-hidden' as Secret,
+            },
             publicValue: 42,
           },
         },
@@ -37,15 +43,15 @@ describe('Configuration Display', () => {
       const filtered = filterSecrets(config);
 
       expect(filtered.level1.normalValue).toBe('visible');
-      expect(filtered.level1.testSecret).toBe('[HIDDEN]');
-      expect(filtered.level1.level2.testSecret).toBe('[HIDDEN]');
+      expect(filtered.level1.database.password).toBe('[HIDDEN]');
+      expect(filtered.level1.level2.auth.jwtSecret).toBe('[HIDDEN]');
       expect(filtered.level1.level2.publicValue).toBe(42);
     });
 
     it('should handle arrays in configuration', () => {
       const config = {
         origins: ['http://localhost:3000', 'http://localhost:3001'],
-        testSecret: ['secret1' as Secret, 'secret2' as Secret],
+        secrets: ['secret1' as Secret, 'secret2' as Secret],
         values: [1, 2, 3],
       };
 
@@ -55,7 +61,7 @@ describe('Configuration Display', () => {
         'http://localhost:3000',
         'http://localhost:3001',
       ]);
-      expect(filtered.testSecret).toBe('[HIDDEN]');
+      expect(filtered.secrets).toEqual(['secret1', 'secret2']); // Arrays of secrets are not filtered
       expect(filtered.values).toEqual([1, 2, 3]);
     });
 
@@ -63,16 +69,20 @@ describe('Configuration Display', () => {
       const config = {
         nullValue: null,
         undefinedValue: undefined,
-        testSecret: null as unknown as Secret,
+        password: null as unknown as Secret,
         normalString: 'visible',
+        database: {
+          password: 'secret' as Secret,
+        },
       };
 
       const filtered = filterSecrets(config);
 
       expect(filtered.nullValue).toBe(null);
       expect(filtered.undefinedValue).toBe(undefined);
-      expect(filtered.testSecret).toBe('[HIDDEN]');
+      expect(filtered.password).toBe(null); // Not filtered since it's not at a secret path
       expect(filtered.normalString).toBe('visible');
+      expect(filtered.database.password).toBe('[HIDDEN]'); // Filtered since it's at database.password
     });
 
     it('should create a deep copy without modifying original', () => {
@@ -80,15 +90,17 @@ describe('Configuration Display', () => {
         server: {
           port: 3000,
         },
-        testSecret: 'hidden' as Secret,
+        database: {
+          password: 'hidden' as Secret,
+        },
       };
 
       const filtered = filterSecrets(config);
       filtered.server.port = 4000;
 
       expect(config.server.port).toBe(3000);
-      expect(config.testSecret).toBe('hidden');
-      expect(filtered.testSecret).toBe('[HIDDEN]');
+      expect(config.database.password).toBe('hidden');
+      expect(filtered.database.password).toBe('[HIDDEN]');
     });
   });
 
@@ -97,8 +109,10 @@ describe('Configuration Display', () => {
       const output = printEffectiveConfig('test', mockGetSecret);
 
       expect(output).toContain('"environment": "test"');
-      expect(output).toContain('"testSecret": "[HIDDEN]"');
-      expect(output).not.toContain('test-secret-value');
+      expect(output).toContain('"password": "[HIDDEN]"');
+      expect(output).toContain('"jwtSecret": "[HIDDEN]"');
+      expect(output).not.toContain('mock-db-password');
+      expect(output).not.toContain('mock-jwt-secret-for-testing-only');
     });
 
     it('should use NODE_ENV when environment not specified', () => {

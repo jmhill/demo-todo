@@ -2,7 +2,9 @@ import {
   MySqlContainer,
   type StartedMySqlContainer,
 } from '@testcontainers/mysql';
-import mysql from 'mysql2/promise';
+import { createSequelize } from '../../../src/database/sequelize-config.js';
+import { runMigrations } from '../../../src/database/migrator.js';
+import type { Secret } from '../../../src/config/secrets.js';
 
 let container: StartedMySqlContainer;
 
@@ -34,32 +36,21 @@ export default async function globalSetup() {
 
   console.log('📝 Database config set in environment');
 
-  // Initialize database schema
-  console.log('🔧 Creating database schema...');
-  const connection = await mysql.createConnection({
+  // Run database migrations
+  console.log('🔧 Running database migrations...');
+  const sequelize = createSequelize({
     host: container.getHost(),
     port: container.getPort(),
     user: container.getUsername(),
-    password: container.getUserPassword(),
+    password: container.getUserPassword() as Secret,
     database: container.getDatabase(),
   });
 
   try {
-    await connection.execute(`
-      CREATE TABLE IF NOT EXISTS users (
-        id VARCHAR(36) PRIMARY KEY,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        username VARCHAR(255) UNIQUE NOT NULL,
-        password_hash VARCHAR(255) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        INDEX idx_email (email),
-        INDEX idx_username (username)
-      )
-    `);
-    console.log('✅ Database schema created');
+    await runMigrations(sequelize, { logger: undefined });
+    console.log('✅ Database migrations completed');
   } finally {
-    await connection.end();
+    await sequelize.close();
   }
 
   // Return cleanup function

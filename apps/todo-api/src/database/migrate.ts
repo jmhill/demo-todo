@@ -1,27 +1,20 @@
 #!/usr/bin/env tsx
 
-import { Umzug, SequelizeStorage } from 'umzug';
 import { createSequelize } from './sequelize-config.js';
 import { loadConfig } from '../config/index.js';
+import { createMigrator } from './migrator.js';
 
 async function runMigrations() {
   const command = process.argv[2] || 'up';
 
   // Load config to get database settings
-  const config = await loadConfig();
+  const config = loadConfig();
 
   // Create Sequelize instance
   const sequelize = createSequelize(config.database);
 
   // Create Umzug instance
-  const umzug = new Umzug({
-    migrations: {
-      glob: 'src/database/migrations/*.ts',
-    },
-    context: sequelize.getQueryInterface(),
-    storage: new SequelizeStorage({ sequelize }),
-    logger: console,
-  });
+  const umzug = createMigrator(sequelize, { logger: console });
 
   try {
     switch (command) {

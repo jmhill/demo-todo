@@ -7,7 +7,6 @@ export default defineConfig({
     // Set up environment variables for acceptance tests
     env: {
       DB_PASSWORD: 'test-db-password',
-      TEST_SECRET: 'test-secret',
     },
     // Named 'acceptance' to distinguish in test output when running multiple configs
     name: 'acceptance',

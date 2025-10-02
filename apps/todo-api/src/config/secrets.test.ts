@@ -4,9 +4,9 @@ import { getSecret, secretSchema } from './secrets.js';
 describe('Secrets', () => {
   describe('getSecret', () => {
     it('should return value when secret exists', () => {
-      vi.stubEnv('TEST_SECRET', 'secret-value');
+      vi.stubEnv('DB_PASSWORD', 'secret-value');
 
-      const value = getSecret('TEST_SECRET');
+      const value = getSecret('DB_PASSWORD');
 
       expect(value).toBe('secret-value');
     });
@@ -64,10 +64,10 @@ describe('Secrets', () => {
     });
 
     it('should provide type safety for Secret branded type', () => {
-      vi.stubEnv('TYPE_TEST_SECRET', 'type-test-value');
+      vi.stubEnv('JWT_SECRET', 'type-test-value');
 
       // This demonstrates the compile-time type safety
-      const secret = getSecret('TYPE_TEST_SECRET');
+      const secret = getSecret('JWT_SECRET');
       const result = secretSchema.safeParse(secret);
 
       expect(result.success).toBe(true);

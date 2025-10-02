@@ -59,12 +59,6 @@ export const configSchema = z.object({
     requestLimits: requestLimitsSchema,
     secureHeaders: secureHeadersSchema,
   }),
-  /**
-   * Test secret for demonstration purposes.
-   * SECURITY: Must be loaded via getSecret() from environment variables.
-   * Never hardcode secrets in configuration files.
-   */
-  testSecret: secretSchema,
 });
 
 // Type inference from schema
