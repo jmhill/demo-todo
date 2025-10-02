@@ -6,11 +6,9 @@ import {
   type LoginRequest,
   LoginResponseSchema,
 } from './auth-schemas.js';
-import {
-  type AuthError,
-  toErrorResponse,
-  missingToken,
-} from './auth-errors.js';
+import { type AuthError, toErrorResponse } from './auth-errors.js';
+import { createAuthMiddleware } from './auth-middleware.js';
+import type { UserService } from '../users/user-service.js';
 
 // Helper: Parse and validate request body into LoginRequest
 const parseLoginRequest = (body: unknown): Result<LoginRequest, AuthError> => {
@@ -27,34 +25,17 @@ const parseLoginRequest = (body: unknown): Result<LoginRequest, AuthError> => {
   return ok(result.data);
 };
 
-// Helper: Extract Bearer token from Authorization header
-const extractBearerToken = (
-  authHeader: string | undefined,
-): Result<string, AuthError> => {
-  if (!authHeader) {
-    return err(missingToken());
-  }
-
-  const parts = authHeader.split(' ');
-  if (parts.length !== 2 || parts[0] !== 'Bearer') {
-    return err(
-      missingToken('Authorization header must be in format: Bearer <token>'),
-    );
-  }
-
-  const token = parts[1];
-  if (!token) {
-    return err(missingToken('Token is missing'));
-  }
-
-  return ok(token);
-};
-
-export function createAuthRouter(authService: AuthService): Router {
+export function createAuthRouter(
+  authService: AuthService,
+  userService: UserService,
+): Router {
   const router = Router();
 
   // Parse JSON body for POST requests
   router.use(express.json());
+
+  // Create auth middleware
+  const requireAuth = createAuthMiddleware(authService, userService);
 
   // POST /auth/login - Login with username/email and password
   router.post('/login', async (req: Request, res: Response) => {
@@ -72,17 +53,18 @@ export function createAuthRouter(authService: AuthService): Router {
       );
   });
 
-  // POST /auth/logout - Logout and invalidate token
-  router.post('/logout', async (req: Request, res: Response) => {
-    await extractBearerToken(req.headers.authorization)
-      .asyncAndThen((token) => authService.logout(token))
-      .match(
-        () => res.status(204).send(),
-        (error) => {
-          const errorResponse = toErrorResponse(error);
-          res.status(errorResponse.statusCode).json(errorResponse.body);
-        },
-      );
+  // POST /auth/logout - Logout and invalidate token (protected)
+  router.post('/logout', requireAuth, async (req: Request, res: Response) => {
+    // Token is already verified by middleware and available in req.auth
+    const token = req.auth!.token; // Non-null assertion safe because middleware ensures it exists
+
+    await authService.logout(token).match(
+      () => res.status(204).send(),
+      (error) => {
+        const errorResponse = toErrorResponse(error);
+        res.status(errorResponse.statusCode).json(errorResponse.body);
+      },
+    );
   });
 
   return router;

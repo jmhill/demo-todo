@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
-import { createTestApp, cleanDatabase } from '../helpers/test-helpers.js';
+import {
+  createTestApp,
+  cleanDatabase,
+  createAuthenticatedUser,
+} from '../helpers/test-helpers.js';
 
 describe('Auth API - Login and Logout', () => {
   let app: Express;
@@ -14,14 +18,12 @@ describe('Auth API - Login and Logout', () => {
 
   describe('POST /auth/login', () => {
     it('should login with valid username and password', async () => {
-      // First create a user
-      const createUserResponse = await request(app).post('/users').send({
+      // Create a user directly in DB (bypassing API which now requires auth)
+      await createAuthenticatedUser(app, {
         email: 'testlogin@example.com',
         username: 'testlogin',
         password: 'SecurePass123!',
       });
-
-      expect(createUserResponse.status).toBe(201);
 
       // Then login
       const response = await request(app).post('/auth/login').send({
@@ -38,8 +40,8 @@ describe('Auth API - Login and Logout', () => {
     });
 
     it('should login with valid email and password', async () => {
-      // First create a user
-      await request(app).post('/users').send({
+      // Create a user directly in DB (bypassing API which now requires auth)
+      await createAuthenticatedUser(app, {
         email: 'emaillogin@example.com',
         username: 'emailloginuser',
         password: 'SecurePass123!',
@@ -57,8 +59,8 @@ describe('Auth API - Login and Logout', () => {
     });
 
     it('should reject login with invalid password', async () => {
-      // First create a user
-      await request(app).post('/users').send({
+      // Create a user directly in DB (bypassing API which now requires auth)
+      await createAuthenticatedUser(app, {
         email: 'wrongpass@example.com',
         username: 'wrongpassuser',
         password: 'CorrectPassword123!',
@@ -96,19 +98,12 @@ describe('Auth API - Login and Logout', () => {
 
   describe('POST /auth/logout', () => {
     it('should logout with valid token', async () => {
-      // Create user and login
-      await request(app).post('/users').send({
+      // Create user and get token
+      const { token } = await createAuthenticatedUser(app, {
         email: 'logout@example.com',
         username: 'logoutuser',
         password: 'SecurePass123!',
       });
-
-      const loginResponse = await request(app).post('/auth/login').send({
-        usernameOrEmail: 'logoutuser',
-        password: 'SecurePass123!',
-      });
-
-      const token = loginResponse.body.token;
 
       // Logout
       const response = await request(app)

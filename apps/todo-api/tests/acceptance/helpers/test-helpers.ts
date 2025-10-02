@@ -184,6 +184,50 @@ export const createNormalPayload = (customData?: Record<string, unknown>) => {
   };
 };
 
+// Helper to create an authenticated user and return token
+export async function createAuthenticatedUser(
+  app: Express,
+  userData?: {
+    email?: string;
+    username?: string;
+    password?: string;
+  },
+): Promise<{ token: string; userId: string }> {
+  const email = userData?.email || 'authuser@example.com';
+  const username = userData?.username || 'authuser';
+  const password = userData?.password || 'AuthPass123!';
+
+  // Create user directly in database to bypass auth requirement
+  const pool = await getConnectionPool();
+  const bcrypt = await import('bcrypt');
+  const { v4: uuidv4 } = await import('uuid');
+
+  const userId = uuidv4();
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  await pool.execute(
+    'INSERT INTO users (id, email, username, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())',
+    [userId, email, username, passwordHash],
+  );
+
+  // Login to get token
+  const loginResponse = await request(app).post('/auth/login').send({
+    usernameOrEmail: username,
+    password,
+  });
+
+  if (loginResponse.status !== 200) {
+    throw new Error(
+      `Failed to login test user: ${JSON.stringify(loginResponse.body)}`,
+    );
+  }
+
+  return {
+    token: loginResponse.body.token,
+    userId,
+  };
+}
+
 // Test scenario types
 export type TestScenario = {
   description: string;

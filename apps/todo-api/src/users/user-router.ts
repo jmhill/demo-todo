@@ -11,6 +11,8 @@ import {
   toErrorResponse,
   validationError,
 } from './user-errors.js';
+import type { AuthService } from '../auth/auth-service.js';
+import { createAuthMiddleware } from '../auth/auth-middleware.js';
 
 // Helper: Parse and validate request body into CreateUserCommand
 const parseCreateCommand = (
@@ -20,14 +22,20 @@ const parseCreateCommand = (
   return result.success ? ok(result.data) : err(validationError(result.error));
 };
 
-export function createUserRouter(userService: UserService): Router {
+export function createUserRouter(
+  userService: UserService,
+  authService: AuthService,
+): Router {
   const router = Router();
 
   // Parse JSON body for POST requests
   router.use(express.json());
 
-  // POST /users - Create a new user
-  router.post('/', async (req: Request, res: Response) => {
+  // Create auth middleware
+  const requireAuth = createAuthMiddleware(authService, userService);
+
+  // POST /users - Create a new user (protected)
+  router.post('/', requireAuth, async (req: Request, res: Response) => {
     await parseCreateCommand(req.body)
       .asyncAndThen((command) => userService.createUser(command))
       .map((user) => UserResponseDtoSchema.parse(user))
@@ -40,8 +48,8 @@ export function createUserRouter(userService: UserService): Router {
       );
   });
 
-  // GET /users/:id - Get user by ID
-  router.get('/:id', async (req: Request, res: Response) => {
+  // GET /users/:id - Get user by ID (protected)
+  router.get('/:id', requireAuth, async (req: Request, res: Response) => {
     const { id } = req.params;
 
     if (!id) {

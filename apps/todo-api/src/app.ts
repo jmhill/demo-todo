@@ -65,8 +65,8 @@ export async function createApp(config: AppConfig): Promise<Express> {
   app.post('/health', healthCheckHandler);
 
   // Wire up routes
-  app.use('/users', createUserRouter(userService));
-  app.use('/auth', createAuthRouter(authService));
+  app.use('/users', createUserRouter(userService, authService));
+  app.use('/auth', createAuthRouter(authService, userService));
 
   // Configure default error handlers
   // TODO: Add error handlers
