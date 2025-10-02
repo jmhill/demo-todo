@@ -1,7 +1,11 @@
 import express, { Router, type Request, type Response } from 'express';
 import { ok, err, type Result } from 'neverthrow';
 import type { AuthService } from './auth-service.js';
-import { LoginRequestSchema, type LoginRequest } from './auth-schemas.js';
+import {
+  LoginRequestSchema,
+  type LoginRequest,
+  LoginResponseSchema,
+} from './auth-schemas.js';
 import {
   type AuthError,
   toErrorResponse,
@@ -58,8 +62,9 @@ export function createAuthRouter(authService: AuthService): Router {
       .asyncAndThen((loginReq) =>
         authService.login(loginReq.usernameOrEmail, loginReq.password),
       )
+      .map((result) => LoginResponseSchema.parse(result))
       .match(
-        (result) => res.status(200).json(result),
+        (dto) => res.status(200).json(dto),
         (error) => {
           const errorResponse = toErrorResponse(error);
           res.status(errorResponse.statusCode).json(errorResponse.body);

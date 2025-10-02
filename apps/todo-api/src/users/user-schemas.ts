@@ -36,6 +36,17 @@ export const CreateUserCommandSchema = CreateUserDtoSchema.transform((dto) => ({
 
 export type CreateUserCommand = z.infer<typeof CreateUserCommandSchema>;
 
+// Response DTO for User over HTTP - transforms Date objects to ISO strings
+export const UserResponseDtoSchema = UserSchema.transform((user) => ({
+  id: user.id,
+  email: user.email,
+  username: user.username,
+  createdAt: user.createdAt.toISOString(),
+  updatedAt: user.updatedAt.toISOString(),
+}));
+
+export type UserResponseDto = z.infer<typeof UserResponseDtoSchema>;
+
 export const formatZodError = (error: z.ZodError): string => {
   return error.issues
     .map((issue) => `${issue.path.join('.')}: ${issue.message}`)

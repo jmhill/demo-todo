@@ -4,6 +4,7 @@ import type { UserService } from './user-service.js';
 import {
   CreateUserCommandSchema,
   type CreateUserCommand,
+  UserResponseDtoSchema,
 } from './user-schemas.js';
 import {
   type UserError,
@@ -29,8 +30,9 @@ export function createUserRouter(userService: UserService): Router {
   router.post('/', async (req: Request, res: Response) => {
     await parseCreateCommand(req.body)
       .asyncAndThen((command) => userService.createUser(command))
+      .map((user) => UserResponseDtoSchema.parse(user))
       .match(
-        (user) => res.status(201).json(user),
+        (dto) => res.status(201).json(dto),
         (error) => {
           const errorResponse = toErrorResponse(error);
           res.status(errorResponse.statusCode).json(errorResponse.body);
@@ -47,13 +49,16 @@ export function createUserRouter(userService: UserService): Router {
       return;
     }
 
-    await userService.getById(id).match(
-      (user) => res.json(user),
-      (error) => {
-        const errorResponse = toErrorResponse(error);
-        res.status(errorResponse.statusCode).json(errorResponse.body);
-      },
-    );
+    await userService
+      .getById(id)
+      .map((user) => UserResponseDtoSchema.parse(user))
+      .match(
+        (dto) => res.json(dto),
+        (error) => {
+          const errorResponse = toErrorResponse(error);
+          res.status(errorResponse.statusCode).json(errorResponse.body);
+        },
+      );
   });
 
   return router;
