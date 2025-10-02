@@ -5,13 +5,17 @@ import { configureCors } from './security/cors.js';
 import { configureRateLimiting } from './security/rate-limiting.js';
 import { configureRequestLimits } from './security/request-limits.js';
 import type { AppConfig } from './config/schema.js';
-import { createUserRouter } from './users/user-router.js';
 import { createSequelizeUserStore } from './users/user-store-sequelize.js';
 import { createSequelize } from './database/sequelize-config.js';
 import { createUserService } from './users/user-service.js';
-import { createAuthRouter } from './auth/auth-router.js';
 import { createAuthService } from './auth/auth-service.js';
 import { createInMemoryTokenStore } from './auth/token-store.js';
+import { createAuthMiddleware } from './auth/auth-middleware.js';
+import {
+  createUserHandler,
+  getUserByIdHandler,
+} from './users/user-handlers.js';
+import { loginHandler, logoutHandler } from './auth/auth-handlers.js';
 
 export async function createApp(config: AppConfig): Promise<Express> {
   // Wire all dependencies based on config
@@ -60,13 +64,25 @@ export async function createApp(config: AppConfig): Promise<Express> {
     configureRequestLimits(app, config.security.requestLimits);
   }
 
+  // Create auth middleware for protected routes
+  const requireAuth = createAuthMiddleware(authService, userService);
+
   // Configure route handlers
   app.get('/health', healthCheckHandler);
   app.post('/health', healthCheckHandler);
 
-  // Wire up routes
-  app.use('/users', createUserRouter(userService, authService));
-  app.use('/auth', createAuthRouter(authService, userService));
+  // Auth routes
+  app.post('/auth/login', express.json(), loginHandler(authService));
+  app.post('/auth/logout', requireAuth, logoutHandler(authService));
+
+  // User routes (all protected)
+  app.post(
+    '/users',
+    express.json(),
+    requireAuth,
+    createUserHandler(userService),
+  );
+  app.get('/users/:id', requireAuth, getUserByIdHandler(userService));
 
   // Configure default error handlers
   // TODO: Add error handlers
