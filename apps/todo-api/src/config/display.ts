@@ -1,11 +1,36 @@
 import { loadConfig } from './index.js';
+import { configSchema } from './schema.js';
 import type { GetSecretFn } from './secrets.js';
-import { getSecret } from './secrets.js';
+import { getSecret, secretSchema } from './secrets.js';
+import { z } from 'zod';
 
-// Secret paths in the configuration schema that should be hidden
-// These correspond to fields that use secretSchema in schema.ts
-// TODO: Automatically detect these by traversing the Zod schema
-const secretPaths = ['database.password', 'auth.jwtSecret'];
+// Extract secret paths from the schema automatically
+export const getSecretPaths = (
+  schema: z.ZodTypeAny,
+  path: string[] = [],
+): string[] => {
+  const paths: string[] = [];
+
+  if (schema instanceof z.ZodObject) {
+    for (const [key, fieldSchema] of Object.entries(schema.shape)) {
+      const currentPath = [...path, key];
+
+      // Check if this field uses secretSchema directly
+      if (fieldSchema === secretSchema) {
+        paths.push(currentPath.join('.'));
+      }
+      // Recursively check nested objects
+      else if (fieldSchema instanceof z.ZodObject) {
+        paths.push(...getSecretPaths(fieldSchema, currentPath));
+      }
+    }
+  }
+
+  return paths;
+};
+
+// Automatically detect secret paths from the schema
+const secretPaths = getSecretPaths(configSchema);
 
 const isSecretPath = (path: string[]): boolean => {
   // Check if the full path or any suffix matches a secret path

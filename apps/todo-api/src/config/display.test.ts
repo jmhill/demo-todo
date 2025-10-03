@@ -1,9 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { filterSecrets, printEffectiveConfig } from './display.js';
+import {
+  filterSecrets,
+  printEffectiveConfig,
+  getSecretPaths,
+} from './display.js';
+import { configSchema } from './schema.js';
 import type { Secret } from './secrets.js';
 import { mockGetSecret } from './test-helpers.js';
 
 describe('Configuration Display', () => {
+  describe('getSecretPaths', () => {
+    it('should automatically detect secret paths from the schema', () => {
+      const secretPaths = getSecretPaths(configSchema);
+
+      expect(secretPaths).toContain('database.password');
+      expect(secretPaths).toContain('auth.jwtSecret');
+      expect(secretPaths).not.toContain('server.port');
+      expect(secretPaths).not.toContain('environment');
+    });
+  });
+
   describe('filterSecrets', () => {
     it('should replace Secret-branded values with [HIDDEN]', () => {
       const config = {
