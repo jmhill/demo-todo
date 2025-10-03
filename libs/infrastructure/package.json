@@ -7,7 +7,7 @@
   "types": "./src/index.ts",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "echo 'No tests for infrastructure (utility library only)'"
+    "test": "vitest run"
   },
   "dependencies": {
     "uuid": "^11.0.5"

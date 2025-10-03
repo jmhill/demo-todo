@@ -44,8 +44,5 @@
     "sequelize": "^6.37.7",
     "umzug": "^3.8.2",
     "uuid": "^13.0.0"
-  },
-  "devDependencies": {
-    "sqlite3": "^5.1.7"
   }
 }

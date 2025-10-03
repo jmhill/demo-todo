@@ -34,14 +34,11 @@
   - [x] view all todos for user
 - [x] organize schemas and domain code
 - [x] extract all domain packages to lib directory
-- [ ] demo 'modular monolith' restrictions on cross-domain imports
-- [ ] demo logging implementation
-- [ ] remove sqlite (use mysql for unit testing mysql-specific adapter code)
-- [ ] remove testing-library? I think vitest already provides all these tools?
+- [x] demo 'modular monolith' restrictions on cross-domain imports
+- [x] remove sqlite (use mysql for unit testing mysql-specific adapter code)
+- [x] remove testing-library? I think vitest already provides all these tools? (nevermind - it's experimental still)
+- [x] add unit tests for infrastructure utility library
 - [ ] general code duplication and cruft cleanup
-- [ ] add demo logging infrastructure (otel?)
-- [ ] add unit tests for infrastructure utility library
-- [ ] add enough react code to make the demo look pretty
 - [ ] update readme with more documentation
   - [ ] how to run
     - [ ] (devbox and docker prereqs)
@@ -57,9 +54,10 @@
     - [ ] using services to define domain model operations
     - [ ] multiple drivers (http api vs dev seeders)
     - [ ] multiple implementations of external systems
-- [ ] basic authorization demo
 
 ## polish and next steps
 
-- [ ] remove unnecessary dependencies (vitest now does most of what testing-library does, I think)
+- [ ] add demo logging infrastructure (otel?)
+- [ ] basic authorization demo
+- [ ] add enough react code to make the demo look pretty
 - [ ] existing JWT polish (e.g., invalidate all users on logout) or just integrate something like OpenAuth to show full OAuth implementation

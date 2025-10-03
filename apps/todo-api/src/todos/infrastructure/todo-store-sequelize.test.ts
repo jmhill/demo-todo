@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
 import { Sequelize } from 'sequelize';
 import { createSequelizeTodoStore } from './todo-store-sequelize.js';
 import type { Todo } from '../domain/todo-schemas.js';
-import { createMigrator } from '../../database/migrator.js';
+import type { Secret } from '../../config/secrets.js';
 
 describe('SequelizeTodoStore', () => {
   let sequelize: Sequelize;
@@ -23,16 +23,31 @@ describe('SequelizeTodoStore', () => {
   };
 
   beforeAll(async () => {
-    // Create in-memory SQLite instance
+    // Connect to MySQL testcontainer (started by global setup)
+    const host = process.env.TEST_DB_HOST;
+    const port = process.env.TEST_DB_PORT;
+    const user = process.env.TEST_DB_USER;
+    const password = process.env.TEST_DB_PASSWORD;
+    const database = process.env.TEST_DB_DATABASE;
+
+    if (!host || !port || !user || !password || !database) {
+      throw new Error(
+        'Database config not found in environment. ' +
+          'Make sure tests are running with globalSetup configured.',
+      );
+    }
+
     sequelize = new Sequelize({
-      dialect: 'sqlite',
-      storage: ':memory:',
+      dialect: 'mysql',
+      host,
+      port: parseInt(port, 10),
+      username: user,
+      password: password as Secret,
+      database,
       logging: false,
     });
 
-    // Run migrations
-    const migrator = createMigrator(sequelize, { logger: undefined });
-    await migrator.up();
+    // Migrations already run by global setup
   });
 
   beforeEach(async () => {
