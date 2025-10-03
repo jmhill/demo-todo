@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
-import type { TodoResponseDto } from '../../../src/todos/domain/todo-schemas.js';
+import type { TodoResponseDto } from '../../../src/todos/application/todo-dto-schemas.js';
 import {
   createTestApp,
   cleanDatabase,

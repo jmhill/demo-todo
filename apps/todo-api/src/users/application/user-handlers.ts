@@ -4,13 +4,13 @@ import type { UserService } from '../domain/user-service.js';
 import {
   CreateUserCommandSchema,
   type CreateUserCommand,
-  UserResponseDtoSchema,
 } from '../domain/user-schemas.js';
 import {
   type UserError,
   toErrorResponse,
   validationError,
 } from '../domain/user-errors.js';
+import { UserResponseDtoSchema } from './user-dto-schemas.js';
 
 // Helper: Parse and validate request body into CreateUserCommand
 const parseCreateCommand = (

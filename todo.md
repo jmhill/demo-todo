@@ -24,13 +24,16 @@
   - [x] TDD basic service operations (createTodo, listTodos, completeTodo)
   - [x] acceptance tests with realistic app setup
   - [x] todo service with sequelize store
+- [x] tiny react app for demo purposes (hello user)
 - [ ] organize schemas and domain code
-- [ ] tiny react app for demo purposes (hello user)
-- [ ] basic authorization demo
-- [ ] dev data management (add test users via API)
-- [ ] dev data management (add todos via API)
 - [ ] demo todos in react app
+  - [ ] ts-rest setup
+  - [ ] dev data management (add test users via API)
+  - [ ] login (see user info)
+  - [ ] dev data management (add todos via API)
+  - [ ] view all todos for user
 - [ ] demo 'modular monolith' restrictions on cross-domain imports
+- [ ] basic authorization demo
 
 ## polish and next steps
 
