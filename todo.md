@@ -29,8 +29,8 @@
 - [ ] demo todos in react app
   - [x] ts-rest setup
   - [x] migrate other routes to ts-rest
-  - [ ] dev data management (add test users via API)
-  - [ ] login (see user info)
+  - [x] dev data management (add test users via API)
+  - [x] login (see user info)
   - [ ] dev data management (add todos via API)
   - [ ] view all todos for user
 - [ ] demo 'modular monolith' restrictions on cross-domain imports
@@ -38,4 +38,5 @@
 
 ## polish and next steps
 
+- [ ] remove unnecessary dependencies (vitest now does most of what testing-library does, I think)
 - [ ] existing JWT polish (e.g., invalidate all users on logout) or just integrate something like OpenAuth to show full OAuth implementation

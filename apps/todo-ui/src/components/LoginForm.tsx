@@ -1,15 +1,19 @@
 import { useState, type FormEvent } from 'react';
-import { apiClient } from '../lib/api-client';
+import { tsr } from '../lib/api-client';
 
-export const LoginForm = () => {
+interface LoginFormProps {
+  onLoginSuccess: (
+    user: { id: string; username: string; email: string },
+    token: string,
+  ) => void;
+}
+
+export const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [user, setUser] = useState<{ username: string; email: string } | null>(
-    null,
-  );
 
-  const loginMutation = apiClient.login.useMutation();
+  const loginMutation = tsr.login.useMutation();
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -27,8 +31,7 @@ export const LoginForm = () => {
           // ts-rest mutations return all responses in onSuccess
           // We need to check the status to determine success vs error
           if (response.status === 200) {
-            setUser(response.body.user);
-            console.log('Login successful!', response.body);
+            onLoginSuccess(response.body.user, response.body.token);
           } else {
             // Handle error cases (401, 500)
             setError((response.body as unknown as { message: string }).message);
@@ -40,22 +43,6 @@ export const LoginForm = () => {
       },
     );
   };
-
-  const handleLogout = () => {
-    setUser(null);
-    setUsernameOrEmail('');
-    setPassword('');
-  };
-
-  if (user) {
-    return (
-      <div>
-        <h2>Welcome, {user.username}!</h2>
-        <p>Email: {user.email}</p>
-        <button onClick={handleLogout}>Logout</button>
-      </div>
-    );
-  }
 
   return (
     <div>

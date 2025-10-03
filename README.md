@@ -288,6 +288,12 @@ This starts:
 - **API**: http://localhost:3000
 - **UI**: http://localhost:5173
 
+**Test Users**: The development environment automatically seeds test users through the domain service layer:
+
+- Username: `alice`, Password: `password123`
+- Username: `bob`, Password: `password123`
+- Username: `charlie`, Password: `password123`
+
 ### Testing
 
 ```bash
@@ -297,11 +303,122 @@ npm run quality       # Format, lint, typecheck, test
 
 ## Benefits Realized
 
+### End-to-End Type Safety with ts-rest
+
+**Traditional API Development Pain Points:**
+
+- Manual type definitions duplicated between frontend and backend
+- API changes break frontend silently at runtime
+- Request/response shapes drift out of sync
+- No autocomplete for API endpoints
+
+**ts-rest Solution:**
+
+```typescript
+// 1. Define contract ONCE (libs/api-contracts)
+export const authContract = c.router({
+  login: {
+    method: 'POST',
+    path: '/auth/login',
+    body: LoginRequestSchema,
+    responses: {
+      200: LoginResponseSchema,
+      401: ErrorResponseSchema,
+    },
+  },
+});
+
+// 2. Backend implements contract (compile-time checked!)
+createExpressEndpoints(authContract, authRouter, app);
+
+// 3. Frontend gets full type safety automatically
+const tsr = initTsrReactQuery(authContract, { baseUrl });
+const mutation = tsr.login.useMutation();
+//    ^-- Fully typed! No manual type definitions needed
+```
+
+**Benefits:**
+
+- ✅ **Breaking changes caught at compile time** - Rename a field? TypeScript errors guide you to every affected call site
+- ✅ **Autocomplete everywhere** - IDE knows all endpoints, request/response shapes, status codes
+- ✅ **Zero type duplication** - Write the contract once, types flow to both ends
+- ✅ **Refactor fearlessly** - Compiler ensures frontend stays in sync with backend
+- ✅ **Self-documenting** - Contract serves as API documentation
+
+### Domain-Driven Data Seeding
+
+**Traditional Seeding Approach (Direct Database):**
+
+```sql
+-- ❌ Bypasses business logic
+INSERT INTO users (id, email, username, password_hash, created_at, updated_at)
+VALUES (uuid(), 'alice@example.com', 'alice', '$2b$10$...', NOW(), NOW());
+```
+
+**Problems:**
+
+- ❌ Bypasses validation rules
+- ❌ Skips password hashing
+- ❌ Misses audit trails
+- ❌ Breaks when domain logic changes
+- ❌ Doesn't enforce business invariants
+
+**Our Approach (Domain Service Layer):**
+
+```typescript
+// ✅ Seed through domain services
+const testUsers = [
+  { email: 'alice@example.com', username: 'alice', password: 'password123' },
+];
+
+for (const testUser of testUsers) {
+  const result = await userService.createUser(testUser);
+  // ✅ Password gets hashed
+  // ✅ Email gets validated
+  // ✅ Uniqueness gets checked
+  // ✅ Timestamps get set correctly
+  // ✅ All business rules applied
+}
+```
+
+**Benefits:**
+
+- ✅ **Business logic guaranteed** - Every validation, transformation, and side effect happens correctly
+- ✅ **Consistency across environments** - Test data created exactly like production data
+- ✅ **Refactor-safe** - Domain logic changes automatically apply to seeding
+- ✅ **Testing alignment** - Seed scripts use same code paths as tests
+- ✅ **Type safety** - Compiler ensures seed data matches domain contracts
+
+**Real Example from This Project:**
+
+```typescript
+// apps/todo-api/seed-data/test-users.json
+[
+  {
+    email: 'alice@example.com',
+    username: 'alice',
+    password: 'password123', // ← Plain text in seed file
+  },
+];
+
+// apps/todo-api/src/scripts/seed-test-users.ts
+const result = await userService.createUser(testUser);
+// ✅ Password hashed with bcrypt
+// ✅ Email validated
+// ✅ Username uniqueness checked
+// ✅ Timestamps generated
+// ✅ ID generated with UUID
+```
+
+**Location**: See `apps/todo-api/src/scripts/seed-test-users.ts` and `apps/todo-api/seed-data/test-users.json`
+
 ### Type Safety
 
 - ✅ End-to-end types from database to UI
 - ✅ Refactor with confidence - breaking changes caught at compile time
 - ✅ Autocomplete everywhere in the stack
+- ✅ Zero manual type duplication between frontend and backend
+- ✅ API contracts enforce consistency across teams
 
 ### Error Handling
 
@@ -315,6 +432,7 @@ npm run quality       # Format, lint, typecheck, test
 - ✅ Infrastructure easily swappable
 - ✅ Clear boundaries between layers
 - ✅ Self-documenting code via schemas and types
+- ✅ Seed data evolves with domain logic
 
 ### Developer Experience
 
@@ -322,3 +440,4 @@ npm run quality       # Format, lint, typecheck, test
 - ✅ IntelliSense guides development
 - ✅ Minimal boilerplate
 - ✅ Single source of truth for schemas and contracts
+- ✅ Test data setup mirrors production code paths

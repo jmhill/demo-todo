@@ -22,6 +22,10 @@ export default [
         global: 'readonly',
         module: 'readonly',
         require: 'readonly',
+        localStorage: 'readonly',
+        Headers: 'readonly',
+        fetch: 'readonly',
+        RequestInit: 'readonly',
       },
     },
     plugins: {

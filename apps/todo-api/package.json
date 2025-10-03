@@ -5,8 +5,9 @@
   "scripts": {
     "build": "tsc --project tsconfig.build.json",
     "typecheck": "tsc --noEmit",
-    "predev": "npm run db:migrate",
+    "predev": "npm run db:migrate && npm run seed:users",
     "dev": "tsx watch src/main.ts",
+    "seed:users": "tsx src/scripts/seed-test-users.ts",
     "start": "node dist/src/main.js",
     "test": "NODE_ENV=test npm run test:unit && NODE_ENV=test npm run test:acceptance",
     "test:unit": "NODE_ENV=test vitest run --config vitest.unit.config.ts",
