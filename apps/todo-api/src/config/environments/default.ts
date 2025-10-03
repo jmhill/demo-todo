@@ -21,7 +21,7 @@ export const getConfig = (getSecretFn: GetSecretFn): AppConfig => ({
   security: {
     cors: {
       enabled: true,
-      origins: ['http://localhost:3001'],
+      origins: ['http://localhost:5173'], // Vite dev server
     },
     // Rate limiting disabled in development for unrestricted debugging/testing
     rateLimiting: {

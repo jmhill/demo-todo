@@ -23,7 +23,9 @@ import {
   createUserHandler,
   getUserByIdHandler,
 } from './users/application/user-handlers.js';
-import { loginHandler, logoutHandler } from './auth/auth-handlers.js';
+import { createAuthRouter } from './auth/auth-router.js';
+import { createExpressEndpoints } from '@ts-rest/express';
+import { authContract } from '@demo-todo/api-contracts';
 import { createSequelizeTodoStore } from './todos/infrastructure/todo-store-sequelize.js';
 import { createTodoService } from './todos/domain/todo-service.js';
 import { createUuidIdGenerator as createTodoUuidIdGenerator } from './todos/infrastructure/uuid-id-generator.js';
@@ -102,9 +104,11 @@ export async function createApp(config: AppConfig): Promise<Express> {
   app.get('/health', healthCheckHandler);
   app.post('/health', healthCheckHandler);
 
-  // Auth routes
-  app.post('/auth/login', loginHandler(authService));
-  app.post('/auth/logout', requireAuth, logoutHandler(authService));
+  // Auth routes (using ts-rest)
+  const authRouter = createAuthRouter(authService);
+  createExpressEndpoints(authContract, authRouter, app, {
+    logInitialization: false,
+  });
 
   // User routes (all protected)
   app.post('/users', requireAuth, createUserHandler(userService));

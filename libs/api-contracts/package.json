@@ -1,0 +1,16 @@
+{
+  "name": "@demo-todo/api-contracts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'No tests for api-contracts (contract definitions only)'"
+  },
+  "dependencies": {
+    "@ts-rest/core": "3.53.0-rc.1",
+    "zod": "^4.1.5"
+  }
+}
