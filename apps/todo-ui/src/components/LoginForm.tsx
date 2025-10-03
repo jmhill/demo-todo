@@ -13,7 +13,7 @@ export const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const loginMutation = tsr.login.useMutation();
+  const loginMutation = tsr.auth.login.useMutation();
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();

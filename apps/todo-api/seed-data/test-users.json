@@ -2,16 +2,50 @@
   {
     "email": "alice@example.com",
     "username": "alice",
-    "password": "password123"
+    "password": "password123",
+    "todos": [
+      {
+        "title": "Buy groceries",
+        "description": "Get milk, eggs, and bread from the store",
+        "completed": false
+      },
+      {
+        "title": "Finish project report",
+        "description": "Complete the Q4 analysis report",
+        "completed": false
+      },
+      {
+        "title": "Call dentist",
+        "completed": true
+      }
+    ]
   },
   {
     "email": "bob@example.com",
     "username": "bob",
-    "password": "password123"
+    "password": "password123",
+    "todos": [
+      {
+        "title": "Review pull requests",
+        "description": "Check team's PRs before end of day",
+        "completed": false
+      },
+      {
+        "title": "Update documentation",
+        "completed": false
+      }
+    ]
   },
   {
     "email": "charlie@example.com",
     "username": "charlie",
-    "password": "password123"
+    "password": "password123",
+    "todos": [
+      {
+        "title": "Plan team meeting",
+        "description": "Schedule and prepare agenda for next sprint planning",
+        "completed": false
+      }
+    ]
   }
 ]

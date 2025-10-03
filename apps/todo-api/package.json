@@ -27,7 +27,8 @@
     "db:migrate:down": "tsx src/database/migrate.ts down",
     "db:migrate:status": "tsx src/database/migrate.ts pending",
     "db:migrate:executed": "tsx src/database/migrate.ts executed",
-    "db:migrate:raw": "tsx src/database/migrate-mysql-raw.ts"
+    "db:migrate:raw": "tsx src/database/migrate-mysql-raw.ts",
+    "db:reset": "docker compose down -v"
   },
   "type": "module",
   "dependencies": {

@@ -1,3 +1,5 @@
+import { TodoList } from './TodoList';
+
 interface UserProfileProps {
   user: {
     id: string;
@@ -23,6 +25,7 @@ export const UserProfile = ({ user, onLogout }: UserProfileProps) => {
         </p>
       </div>
       <button onClick={onLogout}>Logout</button>
+      <TodoList />
     </div>
   );
 };

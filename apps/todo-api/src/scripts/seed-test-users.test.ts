@@ -8,10 +8,17 @@ import type { CreateUserCommand } from '../users/domain/user-schemas.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+const TestTodoSchema = z.object({
+  title: z.string().min(1).max(500),
+  description: z.string().max(2000).optional(),
+  completed: z.boolean().optional(),
+});
+
 const TestUserSchema = z.object({
   email: z.string().email(),
   username: z.string().min(3).max(50),
   password: z.string().min(8),
+  todos: z.array(TestTodoSchema).optional(),
 });
 
 const TestUsersSchema = z.array(TestUserSchema);
@@ -66,6 +73,27 @@ describe('Test User Seeding', () => {
         expect(user.password.length).toBeGreaterThanOrEqual(8);
       });
     });
+
+    it('should have valid todos when present', async () => {
+      const testUsersPath = join(__dirname, '../../seed-data/test-users.json');
+      const testUsersJson = await readFile(testUsersPath, 'utf-8');
+      const testUsersData = JSON.parse(testUsersJson);
+      const testUsers = TestUsersSchema.parse(testUsersData);
+
+      testUsers.forEach((user) => {
+        if (user.todos) {
+          expect(Array.isArray(user.todos)).toBe(true);
+          user.todos.forEach((todo) => {
+            expect(todo.title).toBeTruthy();
+            expect(todo.title.length).toBeGreaterThan(0);
+            expect(todo.title.length).toBeLessThanOrEqual(500);
+            if (todo.description) {
+              expect(todo.description.length).toBeLessThanOrEqual(2000);
+            }
+          });
+        }
+      });
+    });
   });
 
   describe('seeding behavior', () => {
@@ -88,6 +116,41 @@ describe('Test User Seeding', () => {
 
       expect(mockUserService.createUser).toHaveBeenCalledWith(testUser);
       expect(mockUserService.createUser).toHaveBeenCalledTimes(1);
+    });
+
+    it('should create todos for users when todos are present', async () => {
+      const mockTodoService = {
+        createTodo: vi.fn(),
+        listTodos: vi.fn(),
+        getTodoById: vi.fn(),
+        completeTodo: vi.fn(),
+      };
+
+      const userId = 'user-123';
+      const todos = [
+        { title: 'Test todo 1', description: 'Description 1' },
+        { title: 'Test todo 2' },
+      ];
+
+      for (const todo of todos) {
+        await mockTodoService.createTodo({
+          userId,
+          title: todo.title,
+          description: todo.description,
+        });
+      }
+
+      expect(mockTodoService.createTodo).toHaveBeenCalledTimes(2);
+      expect(mockTodoService.createTodo).toHaveBeenNthCalledWith(1, {
+        userId,
+        title: 'Test todo 1',
+        description: 'Description 1',
+      });
+      expect(mockTodoService.createTodo).toHaveBeenNthCalledWith(2, {
+        userId,
+        title: 'Test todo 2',
+        description: undefined,
+      });
     });
   });
 });

@@ -25,16 +25,36 @@
   - [x] acceptance tests with realistic app setup
   - [x] todo service with sequelize store
 - [x] tiny react app for demo purposes (hello user)
-- [ ] organize schemas and domain code
-- [ ] demo todos in react app
+- [x] demo todos in react app
   - [x] ts-rest setup
   - [x] migrate other routes to ts-rest
   - [x] dev data management (add test users via API)
   - [x] login (see user info)
-  - [ ] dev data management (add todos via API)
-  - [ ] view all todos for user
+  - [x] dev data management (add todos via API)
+  - [x] view all todos for user
+- [ ] organize schemas and domain code
+- [ ] remove sqlite (use mysql for unit testing mysql-specific adapter code)
+- [ ] remove testing-library? I think vitest already provides all these tools?
+- [ ] update readme with more documentation
+  - [ ] how to run
+    - [ ] (devbox and docker prereqs)
+    - [ ] workspaces setup
+    - [ ] workspace npm install
+    - [ ] what does npm run dev do
+  - [ ] what the quality script does
+  - [ ] unit testing vs acceptance testing
+  - [ ] ts-rest and end to end type safety
+  - [ ] error handling with neverthrow
+  - [ ] hexagonal architecture:
+    - [ ] using zod to define domain model schemas
+    - [ ] using services to define domain model operations
+    - [ ] multiple drivers (http api vs dev seeders)
+    - [ ] multiple implementations of external systems
 - [ ] demo 'modular monolith' restrictions on cross-domain imports
+- [ ] extract all domain packages to lib directory
 - [ ] basic authorization demo
+- [ ] add enough react code to make the demo look pretty
+- [ ] general code duplication and cruft cleanup
 
 ## polish and next steps
 

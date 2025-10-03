@@ -1,7 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { UserProfile } from './UserProfile';
+
+vi.mock('./TodoList', () => ({
+  TodoList: () => <div data-testid="todo-list">TodoList Component</div>,
+}));
 
 describe('UserProfile', () => {
   const getMockUser = () => ({
@@ -10,11 +15,28 @@ describe('UserProfile', () => {
     email: 'test@example.com',
   });
 
+  const renderUserProfile = (
+    user: ReturnType<typeof getMockUser>,
+    onLogout: () => void,
+  ) => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    });
+
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <UserProfile user={user} onLogout={onLogout} />
+      </QueryClientProvider>,
+    );
+  };
+
   it('should display user information', () => {
     const user = getMockUser();
     const onLogout = vi.fn();
 
-    render(<UserProfile user={user} onLogout={onLogout} />);
+    renderUserProfile(user, onLogout);
 
     expect(screen.getByText('Welcome, testuser!')).toBeInTheDocument();
     expect(screen.getByText('testuser')).toBeInTheDocument();
@@ -28,7 +50,7 @@ describe('UserProfile', () => {
     const user = getMockUser();
     const onLogout = vi.fn();
 
-    render(<UserProfile user={user} onLogout={onLogout} />);
+    renderUserProfile(user, onLogout);
 
     const logoutButton = screen.getByRole('button', { name: /logout/i });
     await userEvent.click(logoutButton);
@@ -40,7 +62,7 @@ describe('UserProfile', () => {
     const user = { ...getMockUser(), username: 'alice' };
     const onLogout = vi.fn();
 
-    render(<UserProfile user={user} onLogout={onLogout} />);
+    renderUserProfile(user, onLogout);
 
     expect(screen.getByText('Welcome, alice!')).toBeInTheDocument();
   });
@@ -49,10 +71,19 @@ describe('UserProfile', () => {
     const user = getMockUser();
     const onLogout = vi.fn();
 
-    render(<UserProfile user={user} onLogout={onLogout} />);
+    renderUserProfile(user, onLogout);
 
     expect(screen.getByText(/Username:/)).toBeInTheDocument();
     expect(screen.getByText(/Email:/)).toBeInTheDocument();
     expect(screen.getByText(/User ID:/)).toBeInTheDocument();
+  });
+
+  it('should display the TodoList component', () => {
+    const user = getMockUser();
+    const onLogout = vi.fn();
+
+    renderUserProfile(user, onLogout);
+
+    expect(screen.getByTestId('todo-list')).toBeInTheDocument();
   });
 });
