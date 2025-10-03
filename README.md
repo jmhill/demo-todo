@@ -266,40 +266,755 @@ demo-todo/
 
 ### Prerequisites
 
-- Node.js 18+
-- MySQL 8.0+
+This project requires the following tools:
+
+#### Required Software
+
+- **Node.js 18+** - JavaScript runtime for both API and UI
+- **Docker** - For running MySQL database container
+
+#### Optional (Recommended)
+
+- **[Devbox](https://www.jetify.com/devbox)** - Provides isolated development environment with:
+  - Automatic Node.js installation
+  - TypeScript language server
+  - Auto-starts MySQL container on shell activation
+
+To use Devbox:
+
+```bash
+# Install devbox (see https://www.jetify.com/devbox/docs/installing_devbox/)
+# Then start the devbox shell
+devbox shell
+
+# This automatically:
+# - Installs Node.js and TypeScript language server
+# - Starts MySQL container via docker-compose
+```
+
+#### Manual Setup (Without Devbox)
+
+If not using Devbox, manually start the database:
+
+```bash
+# Start MySQL container
+docker compose up -d mysql
+
+# This creates:
+# - MySQL 8.0 container on port 3306
+# - Database: todo_dev
+# - Root password: dev
+# - Persistent volume: mysql-data
+```
 
 ### Installation
 
+This project uses **NPM Workspaces** for monorepo management. Workspaces allow multiple packages to share dependencies and be developed together.
+
 ```bash
+# From repository root - installs all workspace dependencies
 npm install
 ```
 
+#### How NPM Workspaces Work
+
+**Structure:**
+
+```
+demo-todo/                    # Repository root (main package.json)
+├── apps/                     # Application workspaces
+│   ├── todo-api/            # Express API workspace
+│   └── todo-ui/             # React UI workspace
+└── libs/                     # Library workspaces
+    ├── api-contracts/        # Shared TS-REST contracts
+    └── infrastructure/       # Shared utilities
+```
+
+**What happens when you run `npm install`:**
+
+1. **Dependency Resolution** - NPM analyzes all workspace package.json files
+2. **Hoisting** - Common dependencies are installed once at the root `node_modules`
+3. **Workspace Linking** - Internal workspace dependencies are symlinked
+4. **Deduplication** - Shared dependencies use single version when possible
+
+**Example:** When `todo-api` depends on `@demo-todo/api-contracts`:
+
+- NPM creates a symlink from `node_modules/@demo-todo/api-contracts` → `libs/api-contracts`
+- Changes to contracts immediately reflect in the API without rebuilding
+- TypeScript sees real-time updates across workspace boundaries
+
+**Key Benefits:**
+
+- ✅ Single `npm install` for entire project
+- ✅ Shared dependencies reduce disk usage
+- ✅ Atomic changes across packages
+- ✅ No need to publish/version internal packages
+
 ### Development
 
-Run both API and UI in parallel:
+#### Starting the Development Environment
 
 ```bash
 npm run dev
 ```
 
-This starts:
+**What `npm run dev` does:**
 
-- **API**: http://localhost:3000
-- **UI**: http://localhost:5173
+1. **Runs concurrently** - Uses `concurrently` package to run multiple processes in parallel
+2. **Starts API server** (`npm run dev --workspace=todo-api`):
+   - Runs database migrations (`npm run db:migrate`)
+   - Seeds test users (`npm run seed:users`)
+   - Starts TypeScript watch mode with `tsx watch`
+   - Auto-reloads on code changes
+   - Listens on http://localhost:3000
+3. **Starts UI dev server** (`npm run dev --workspace=todo-ui`):
+   - Runs Vite development server
+   - Hot Module Replacement (HMR) enabled
+   - Auto-refreshes on code changes
+   - Serves on http://localhost:5173
+4. **Color-coded output** - API logs in blue, UI logs in magenta
 
-**Test Users**: The development environment automatically seeds test users through the domain service layer:
+**Test Users** automatically seeded:
 
 - Username: `alice`, Password: `password123`
 - Username: `bob`, Password: `password123`
 - Username: `charlie`, Password: `password123`
 
-### Testing
+#### Database Management
 
 ```bash
-npm test              # All tests
-npm run quality       # Format, lint, typecheck, test
+# Reset database (removes all data and re-runs migrations)
+npm run db:reset --workspace=todo-api
+
+# Run migrations
+npm run db:migrate --workspace=todo-api
+
+# Check migration status
+npm run db:migrate:status --workspace=todo-api
 ```
+
+### Quality Checks
+
+```bash
+npm run quality
+```
+
+**What the quality script does:**
+
+The quality script runs a comprehensive suite of checks to ensure code meets project standards:
+
+1. **Format Check** (`npm run format`):
+   - Runs Prettier to check code formatting
+   - Ensures consistent style across all files
+   - Fails if any files need reformatting
+
+2. **Lint Check** (`npm run lint`):
+   - Runs ESLint with TypeScript parser
+   - Catches potential bugs and code smells
+   - Enforces coding standards and best practices
+
+3. **Type Check** (`npm run typecheck`):
+   - Runs TypeScript compiler in check mode (`tsc --noEmit`)
+   - Validates all type annotations
+   - Ensures type safety across workspaces
+   - Runs for all workspaces with typecheck script
+
+4. **Test Suite** (`npm test`):
+   - Runs both unit and acceptance tests
+   - Executes tests for all workspaces
+   - Ensures functionality works as expected
+
+**Fix Issues Automatically:**
+
+```bash
+# Auto-fix formatting and linting issues, then re-run quality checks
+npm run quality:fix
+```
+
+**When to run:**
+
+- Before committing code
+- Before opening pull requests
+- After significant refactoring
+- As part of CI/CD pipeline
+
+### Testing
+
+#### Testing Philosophy
+
+This project uses two distinct testing approaches for different purposes:
+
+##### Unit Tests
+
+**Purpose:** Test individual functions and modules in isolation
+
+**Characteristics:**
+
+- Fast execution (milliseconds)
+- No external dependencies (database, network)
+- Use mocks/stubs for dependencies
+- Test pure business logic
+- Located in `*.test.ts` files alongside source code
+
+**Example:**
+
+```typescript
+// libs/infrastructure/src/config.test.ts
+describe('mergeConfigs', () => {
+  it('should merge nested objects correctly', () => {
+    const base = { db: { host: 'localhost' } };
+    const override = { db: { port: 3306 } };
+    const result = mergeConfigs(base, override);
+    expect(result).toEqual({ db: { host: 'localhost', port: 3306 } });
+  });
+});
+```
+
+**Run unit tests:**
+
+```bash
+npm run test:unit --workspace=todo-api
+```
+
+##### Acceptance Tests
+
+**Purpose:** Test complete user scenarios through the full stack
+
+**Characteristics:**
+
+- Slower execution (seconds)
+- Use real infrastructure (TestContainers for MySQL)
+- Test through HTTP API endpoints
+- Validate end-to-end workflows
+- Located in `tests/acceptance/` directories
+
+**Example:**
+
+```typescript
+// apps/todo-api/tests/acceptance/auth/login-logout.test.ts
+describe('Authentication Flow', () => {
+  it('should allow user to login and access protected routes', async () => {
+    // Create user through domain service
+    await userService.createUser({
+      email: 'test@example.com',
+      username: 'testuser',
+      password: 'password123',
+    });
+
+    // Login via HTTP endpoint
+    const loginResponse = await request(app)
+      .post('/auth/login')
+      .send({ usernameOrEmail: 'testuser', password: 'password123' });
+
+    expect(loginResponse.status).toBe(200);
+    expect(loginResponse.body).toHaveProperty('token');
+
+    // Access protected route with token
+    const profileResponse = await request(app)
+      .get('/users/me')
+      .set('Authorization', `Bearer ${loginResponse.body.token}`);
+
+    expect(profileResponse.status).toBe(200);
+    expect(profileResponse.body.username).toBe('testuser');
+  });
+});
+```
+
+**Run acceptance tests:**
+
+```bash
+npm run test:acceptance --workspace=todo-api
+```
+
+#### Test Infrastructure
+
+**TestContainers** for acceptance tests:
+
+- Spins up real MySQL containers for each test suite
+- Ensures test isolation
+- Provides production-like environment
+- Automatically cleans up after tests
+
+**Coverage Goals:**
+
+- Unit tests: Cover business logic edge cases
+- Acceptance tests: Cover user workflows
+- Combined: Achieve comprehensive coverage without testing implementation details
+
+#### Running Tests
+
+```bash
+# All tests in all workspaces
+npm test
+
+# Specific workspace tests
+npm run test --workspace=todo-api
+npm run test --workspace=todo-ui
+
+# Watch mode for TDD
+npm run test:watch:unit --workspace=todo-api
+
+# With coverage report
+npm run test:coverage --workspace=todo-api
+```
+
+## Hexagonal Architecture in Practice
+
+This project demonstrates hexagonal architecture (Ports & Adapters) with concrete examples showing how domain logic remains independent of infrastructure.
+
+### Core Architecture Principles
+
+#### 1. Domain Model with Zod Schemas
+
+The domain model is defined using Zod schemas, providing both runtime validation and compile-time types:
+
+```typescript
+// libs/api-contracts/src/todos/todo-schemas.ts
+export const TodoSchema = z.object({
+  id: z.string().uuid(),
+  userId: z.string().uuid(),
+  title: z.string().min(1).max(200),
+  description: z.string().optional(),
+  completed: z.boolean(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export type Todo = z.infer<typeof TodoSchema>;
+
+// Domain-specific validation rules
+export const CreateTodoSchema = TodoSchema.omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+```
+
+**Benefits of Schema-First:**
+
+- ✅ Single source of truth for data shape
+- ✅ Automatic TypeScript type generation
+- ✅ Runtime validation at boundaries
+- ✅ Self-documenting contracts
+
+#### 2. Domain Services Define Operations
+
+Services encapsulate business logic and define the core operations:
+
+```typescript
+// apps/todo-api/src/todos/todo-service.ts
+export class TodoService {
+  constructor(private todoStore: TodoStore) {}
+
+  createTodo(data: CreateTodoRequest): ResultAsync<Todo, TodoError> {
+    // Business logic: validate, transform, persist
+    return this.validateTodoData(data)
+      .andThen((validData) => this.todoStore.create(validData))
+      .andThen((todo) => this.enrichTodoWithMetadata(todo))
+      .map((todo) => this.toTodoDto(todo));
+  }
+
+  listTodosForUser(userId: string): ResultAsync<Todo[], TodoError> {
+    // Business logic: authorization, filtering, sorting
+    return this.todoStore
+      .findByUserId(userId)
+      .map((todos) => this.applyBusinessRules(todos))
+      .map((todos) => todos.map(this.toTodoDto));
+  }
+}
+```
+
+**Service Characteristics:**
+
+- Pure business logic, no HTTP/DB concerns
+- Returns Result types for explicit error handling
+- Depends on abstractions (TodoStore interface)
+- Easily unit testable with mock stores
+
+#### 3. Multiple Drivers (Ports In)
+
+The same domain logic is exposed through multiple entry points:
+
+##### HTTP API Driver
+
+```typescript
+// apps/todo-api/src/todos/todo-router.ts
+export const todoRouter = s.router(todoContract, {
+  createTodo: async ({ body, headers }) => {
+    const userId = getUserIdFromToken(headers.authorization);
+    const result = await todoService.createTodo({ ...body, userId });
+
+    return result.match(
+      (todo) => ({ status: 201, body: todo }),
+      (error) => ({ status: 400, body: { message: error.message } }),
+    );
+  },
+});
+```
+
+##### Development Seeder Driver
+
+```typescript
+// apps/todo-api/src/scripts/seed-test-todos.ts
+export async function seedTestTodos() {
+  const users = await userService.getAllUsers();
+
+  for (const user of users) {
+    // Uses the SAME domain service as HTTP API
+    const result = await todoService.createTodo({
+      userId: user.id,
+      title: 'Sample Todo',
+      description: 'Seeded through domain service',
+    });
+
+    result.match(
+      (todo) => console.log(`Created todo: ${todo.id}`),
+      (error) => console.error(`Failed: ${error.message}`),
+    );
+  }
+}
+```
+
+**Key Insight:** Both the HTTP API and seeder use the same `todoService.createTodo()` method, ensuring business rules are always applied regardless of entry point.
+
+#### 4. Multiple Adapter Implementations (Ports Out)
+
+The domain defines interfaces (ports) that can have multiple implementations:
+
+##### Port Definition
+
+```typescript
+// apps/todo-api/src/todos/todo-store.ts
+export interface TodoStore {
+  create(data: CreateTodoData): ResultAsync<Todo, StoreError>;
+  findById(id: string): ResultAsync<Todo | null, StoreError>;
+  findByUserId(userId: string): ResultAsync<Todo[], StoreError>;
+  update(id: string, data: UpdateTodoData): ResultAsync<Todo, StoreError>;
+  delete(id: string): ResultAsync<void, StoreError>;
+}
+```
+
+##### MySQL Implementation (Production)
+
+```typescript
+// apps/todo-api/src/todos/adapters/sequelize-todo-store.ts
+export class SequelizeTodoStore implements TodoStore {
+  create(data: CreateTodoData): ResultAsync<Todo, StoreError> {
+    return ResultAsync.fromPromise(
+      TodoModel.create({
+        id: uuid(),
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }),
+      (error) => new StoreError('Failed to create todo', error),
+    ).map((model) => model.toJSON() as Todo);
+  }
+
+  // ... other methods
+}
+```
+
+##### In-Memory Implementation (Testing)
+
+```typescript
+// apps/todo-api/src/todos/adapters/in-memory-todo-store.ts
+export class InMemoryTodoStore implements TodoStore {
+  private todos: Map<string, Todo> = new Map();
+
+  create(data: CreateTodoData): ResultAsync<Todo, StoreError> {
+    const todo: Todo = {
+      id: uuid(),
+      ...data,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    this.todos.set(todo.id, todo);
+    return okAsync(todo);
+  }
+
+  // ... other methods
+}
+```
+
+##### Redis Implementation (Caching - Example)
+
+```typescript
+// Could easily add a Redis implementation
+export class RedisTodoStore implements TodoStore {
+  constructor(
+    private redisClient: RedisClient,
+    private fallbackStore: TodoStore,
+  ) {}
+
+  create(data: CreateTodoData): ResultAsync<Todo, StoreError> {
+    return this.fallbackStore
+      .create(data)
+      .andThen((todo) => this.cacheInRedis(todo).map(() => todo));
+  }
+
+  // ... implement caching strategies
+}
+```
+
+### Dependency Injection and Wiring
+
+The application wires everything together at startup:
+
+```typescript
+// apps/todo-api/src/main.ts
+async function createApp() {
+  // Choose implementation based on environment
+  const todoStore =
+    process.env.NODE_ENV === 'test'
+      ? new InMemoryTodoStore()
+      : new SequelizeTodoStore();
+
+  // Inject dependencies into service
+  const todoService = new TodoService(todoStore);
+
+  // Wire service to HTTP router
+  const app = express();
+  createExpressEndpoints(todoContract, todoRouter(todoService), app);
+
+  return app;
+}
+```
+
+### Testing Strategy with Hexagonal Architecture
+
+#### Unit Tests (Domain Logic)
+
+```typescript
+// apps/todo-api/src/todos/todo-service.test.ts
+describe('TodoService', () => {
+  it('should enforce business rules when creating todos', async () => {
+    // Use in-memory store for fast, isolated tests
+    const store = new InMemoryTodoStore();
+    const service = new TodoService(store);
+
+    const result = await service.createTodo({
+      userId: 'user-123',
+      title: '', // Invalid - empty title
+      description: 'Test',
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(result._unsafeUnwrapErr().message).toContain('Title required');
+  });
+});
+```
+
+#### Acceptance Tests (Full Stack)
+
+```typescript
+// apps/todo-api/tests/acceptance/todos/todo-crud.test.ts
+describe('Todo CRUD Operations', () => {
+  let container: StartedMySqlContainer;
+  let app: Express;
+
+  beforeAll(async () => {
+    // Use TestContainers for real database
+    container = await new MySqlContainer().start();
+
+    // Wire up real implementations
+    const todoStore = new SequelizeTodoStore(container.getConnectionUri());
+    const todoService = new TodoService(todoStore);
+    app = createApp(todoService);
+  });
+
+  it('should create and retrieve todos', async () => {
+    // Test through HTTP API with real database
+    const createResponse = await request(app)
+      .post('/todos')
+      .send({ title: 'Buy milk', description: 'From the store' });
+
+    expect(createResponse.status).toBe(201);
+
+    const getResponse = await request(app).get(
+      `/todos/${createResponse.body.id}`,
+    );
+
+    expect(getResponse.body.title).toBe('Buy milk');
+  });
+});
+```
+
+### Benefits of This Architecture
+
+1. **Testability**: Domain logic tested in isolation with in-memory stores
+2. **Flexibility**: Swap MySQL for PostgreSQL without changing domain code
+3. **Consistency**: Business rules enforced regardless of entry point
+4. **Maintainability**: Clear boundaries make code easy to understand
+5. **Evolution**: Add new adapters (Redis cache, EventStore) without touching domain
+
+## Error Handling with neverthrow
+
+### Railway-Oriented Programming
+
+neverthrow implements the Railway-Oriented Programming pattern, where operations flow on a "success track" or switch to an "error track":
+
+```typescript
+// Traditional try-catch approach (problems: hidden errors, nested try blocks)
+async function traditionalApproach(email: string, password: string) {
+  try {
+    const user = await findUserByEmail(email); // might throw
+    try {
+      const isValid = await verifyPassword(user, password); // might throw
+      if (!isValid) {
+        throw new Error('Invalid password');
+      }
+      const token = generateToken(user); // might throw
+      return { token, user };
+    } catch (passwordError) {
+      logError(passwordError);
+      throw new AuthError('Authentication failed');
+    }
+  } catch (userError) {
+    logError(userError);
+    throw new AuthError('User not found');
+  }
+}
+
+// neverthrow approach (explicit, composable, type-safe)
+function railwayApproach(
+  email: string,
+  password: string,
+): ResultAsync<LoginResult, AuthError> {
+  return findUserByEmail(email) // Returns ResultAsync<User, UserError>
+    .mapErr((e) => new AuthError('User not found')) // Convert UserError to AuthError
+    .andThen(
+      (
+        user, // Only runs if previous succeeded
+      ) => verifyPassword(user, password).map((isValid) => ({ user, isValid })),
+    )
+    .andThen(
+      (
+        { user, isValid }, // Chain operations
+      ) => (isValid ? ok(user) : err(new AuthError('Invalid password'))),
+    )
+    .andThen(
+      (
+        user, // Generate token
+      ) => generateToken(user).map((token) => ({ token, user })),
+    );
+}
+```
+
+### Error Handling Patterns
+
+#### 1. Explicit Error Types
+
+```typescript
+// Define domain-specific errors
+export class TodoError extends Error {
+  constructor(
+    message: string,
+    public code: 'NOT_FOUND' | 'UNAUTHORIZED' | 'VALIDATION_FAILED',
+    public details?: unknown
+  ) {
+    super(message);
+  }
+}
+
+// Service methods return specific error types
+createTodo(data: CreateTodoData): ResultAsync<Todo, TodoError> {
+  if (!data.title) {
+    return errAsync(new TodoError(
+      'Title is required',
+      'VALIDATION_FAILED'
+    ));
+  }
+  // ...
+}
+```
+
+#### 2. Error Transformation
+
+```typescript
+// Transform infrastructure errors to domain errors
+class SequelizeTodoStore implements TodoStore {
+  create(data: CreateTodoData): ResultAsync<Todo, TodoError> {
+    return ResultAsync.fromPromise(
+      TodoModel.create(data),
+      // Transform Sequelize error to domain error
+      (error) => {
+        if (error.name === 'SequelizeValidationError') {
+          return new TodoError('Invalid data', 'VALIDATION_FAILED', error);
+        }
+        return new TodoError('Database error', 'INTERNAL_ERROR', error);
+      },
+    );
+  }
+}
+```
+
+#### 3. Error Aggregation
+
+```typescript
+// Collect multiple validation errors
+function validateTodo(data: unknown): Result<ValidTodo, TodoError[]> {
+  const errors: TodoError[] = [];
+
+  if (!data.title || data.title.length === 0) {
+    errors.push(new TodoError('Title required', 'VALIDATION_FAILED'));
+  }
+
+  if (data.title && data.title.length > 200) {
+    errors.push(new TodoError('Title too long', 'VALIDATION_FAILED'));
+  }
+
+  if (errors.length > 0) {
+    return err(errors);
+  }
+
+  return ok(data as ValidTodo);
+}
+```
+
+#### 4. HTTP Error Mapping
+
+```typescript
+// Map domain errors to HTTP responses
+function toHttpResponse<T>(result: Result<T, TodoError>): {
+  status: number;
+  body: T | ErrorResponse;
+} {
+  return result.match(
+    // Success case
+    (data) => ({ status: 200, body: data }),
+
+    // Error cases mapped to appropriate HTTP status
+    (error) => {
+      switch (error.code) {
+        case 'NOT_FOUND':
+          return { status: 404, body: { message: error.message } };
+        case 'UNAUTHORIZED':
+          return { status: 401, body: { message: error.message } };
+        case 'VALIDATION_FAILED':
+          return {
+            status: 400,
+            body: {
+              message: error.message,
+              details: error.details,
+            },
+          };
+        default:
+          return { status: 500, body: { message: 'Internal server error' } };
+      }
+    },
+  );
+}
+```
+
+### Benefits of neverthrow
+
+1. **Type Safety**: Errors are part of the type signature
+2. **Explicit Flow**: Success and error paths are clear
+3. **Composability**: Chain operations with `andThen`, `map`, `mapErr`
+4. **No Hidden Exceptions**: All errors must be handled
+5. **Better Testing**: Test both success and error paths easily
 
 ## Benefits Realized
 

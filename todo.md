@@ -38,26 +38,29 @@
 - [x] remove sqlite (use mysql for unit testing mysql-specific adapter code)
 - [x] remove testing-library? I think vitest already provides all these tools? (nevermind - it's experimental still)
 - [x] add unit tests for infrastructure utility library
-- [ ] general code duplication and cruft cleanup
-- [ ] update readme with more documentation
-  - [ ] how to run
-    - [ ] (devbox and docker prereqs)
-    - [ ] npm workspaces setup
-    - [ ] npm workspace npm install (what happens when you run install)
-    - [ ] what does npm run dev do
-  - [ ] what the quality script does
-  - [ ] unit testing vs acceptance testing
-  - [ ] ts-rest and end to end type safety
-  - [ ] error handling with neverthrow
-  - [ ] hexagonal architecture:
-    - [ ] using zod to define domain model schemas
-    - [ ] using services to define domain model operations
-    - [ ] multiple drivers (http api vs dev seeders)
-    - [ ] multiple implementations of external systems
+- [x] review for general code duplication and cruft cleanup
+- [x] update readme with more documentation
+  - [x] how to run
+    - [x] (devbox and docker prereqs)
+    - [x] npm workspaces setup
+    - [x] npm workspace npm install (what happens when you run install)
+    - [x] what does npm run dev do
+  - [x] what the quality script does
+  - [x] unit testing vs acceptance testing
+  - [x] ts-rest and end to end type safety
+  - [x] error handling with neverthrow
+  - [x] hexagonal architecture:
+    - [x] using zod to define domain model schemas
+    - [x] using services to define domain model operations
+    - [x] multiple drivers (http api vs dev seeders)
+    - [x] multiple implementations of external systems
 
-## polish and next steps
+## milestone 2: cleanup and authorization
 
+- [ ] manual review of readme
+- [ ] review error response schemas and unions (see docs/CODE_CLEANUP_RECOMMENDATIONS.md)
 - [ ] add demo logging infrastructure (otel?)
+- [ ] show how to run one set of test against different implementations of an adapter
 - [ ] basic authorization demo
 - [ ] add enough react code to make the demo look pretty
 - [ ] existing JWT polish (e.g., invalidate all users on logout) or just integrate something like OpenAuth to show full OAuth implementation
