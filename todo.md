@@ -21,10 +21,11 @@
 - [x] fix sequelize/umzug migrations
 - [x] dev mode setup (mysql)
 - [ ] todo service
-  - [ ] TDD basic service operations (createTodo, listTodos, completeTodo)
+  - [x] TDD basic service operations (createTodo, listTodos, completeTodo)
   - [ ] acceptance tests with realistic app setup
   - [ ] todo service with sequelize store
 - [ ] basic authorization demo
+- [ ] organize schemas and domain code
 - [ ] dev data management (add test users via API)
 - [ ] tiny react app for demo purposes (hello user)
 - [ ] dev data management (add todos via API)
