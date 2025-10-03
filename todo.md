@@ -18,8 +18,8 @@
 - [x] database migrations/use ORM in user store
 - [x] basic authentication demo
 - [x] global/catch-all error handler
-- [ ] fix sequelize/umzug migrations
-- [ ] dev mode setup (mysql)
+- [x] fix sequelize/umzug migrations
+- [x] dev mode setup (mysql)
 - [ ] todo service
   - [ ] TDD basic service operations (createTodo, listTodos, completeTodo)
   - [ ] acceptance tests with realistic app setup
