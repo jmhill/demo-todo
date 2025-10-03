@@ -15,11 +15,13 @@ Referencing column 'user_id' and referenced column 'id' in foreign key constrain
 ### What Happened
 
 1. **Initial Users Table Creation**: The users.id column was created with:
+
    ```sql
    `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin
    ```
 
 2. **Todos Table Attempt**: We initially tried to create todos.user_id with:
+
    ```typescript
    user_id: {
      type: DataTypes.UUID, // Sequelize converts to CHAR(36)
@@ -28,6 +30,7 @@ Referencing column 'user_id' and referenced column 'id' in foreign key constrain
    ```
 
 3. **MySQL's Complaint**: The generated SQL was:
+
    ```sql
    `user_id` CHAR(36) BINARY  -- Different charset/collation!
    ```
@@ -35,16 +38,19 @@ Referencing column 'user_id' and referenced column 'id' in foreign key constrain
    MySQL requires foreign key columns to have **identical** type, charset, and collation to their referenced columns.
 
 4. **First Fix Attempt**: Hardcoded the full type definition:
+
    ```typescript
-   type: 'CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin'
+   type: 'CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin';
    ```
 
    This worked for MySQL but broke SQLite:
+
    ```
    SQLITE_ERROR: near "CHARACTER": syntax error
    ```
 
 5. **Final Solution**: Dialect-aware migration:
+
    ```typescript
    const isMySql = queryInterface.sequelize.getDialect() === 'mysql';
 
@@ -94,7 +100,9 @@ export const createUuidColumn = (queryInterface: QueryInterface) => {
 // In migrations:
 import { createUuidColumn } from '../column-types.js';
 
-export const up: MigrationFn<QueryInterface> = async ({ context: queryInterface }) => {
+export const up: MigrationFn<QueryInterface> = async ({
+  context: queryInterface,
+}) => {
   await queryInterface.createTable('todos', {
     id: {
       type: createUuidColumn(queryInterface),
@@ -154,17 +162,20 @@ async function inspectSchema() {
 **Recommendation**: Use MySQL with testcontainers for both unit and acceptance tests.
 
 **Pros**:
+
 - Consistent behavior across all test environments
 - Tests match production environment
 - No dialect-specific workarounds in migrations
 - Foreign key constraints work correctly in all tests
 
 **Cons**:
+
 - Slightly slower test startup (testcontainers overhead)
 - Requires Docker to be running
 - More complex CI/CD setup
 
 **Implementation**:
+
 ```typescript
 // vitest.unit.config.ts
 export default defineConfig({
@@ -184,6 +195,7 @@ npm run migrate:validate
 ```
 
 Features:
+
 - Detect missing charset/collation on foreign key columns
 - Warn about dialect-specific syntax
 - Verify up/down migrations are reversible
@@ -201,11 +213,13 @@ if (config.environment === 'development') {
 ```
 
 **Pros**:
+
 - Single definition of schema (models)
 - No migration files to maintain
 - Automatic schema updates
 
 **Cons**:
+
 - Not suitable for production
 - Can lose data during sync
 - Doesn't support complex migrations (data transformations)
@@ -216,7 +230,11 @@ Create higher-level migration helpers:
 
 ```typescript
 // src/database/migration-helpers.ts
-export const createTable = (queryInterface: QueryInterface, tableName: string, schema: Schema) => {
+export const createTable = (
+  queryInterface: QueryInterface,
+  tableName: string,
+  schema: Schema,
+) => {
   const dialect = queryInterface.sequelize.getDialect();
   const normalizedSchema = normalizeSchemaForDialect(schema, dialect);
 
@@ -227,13 +245,13 @@ export const addForeignKey = (
   queryInterface: QueryInterface,
   tableName: string,
   columnName: string,
-  references: { table: string; column: string }
+  references: { table: string; column: string },
 ) => {
   // Automatically ensure column types match
   const referencedColumn = await getColumnDefinition(
     queryInterface,
     references.table,
-    references.column
+    references.column,
   );
 
   return queryInterface.addColumn(tableName, columnName, {
@@ -278,12 +296,16 @@ export async function autoMigrate(sequelize: Sequelize) {
 }
 
 // In development server startup:
-if (config.environment === 'development' && process.env.AUTO_MIGRATE === 'true') {
+if (
+  config.environment === 'development' &&
+  process.env.AUTO_MIGRATE === 'true'
+) {
   await autoMigrate(sequelize);
 }
 ```
 
 Usage:
+
 ```bash
 # Fresh database every time
 AUTO_MIGRATE=true npm run dev
@@ -312,6 +334,7 @@ export async function setup() {
 #### Production Mode: Safe Migrations
 
 For production, maintain current approach:
+
 - Manual migration review
 - Run migrations during deployment
 - Rollback capability
