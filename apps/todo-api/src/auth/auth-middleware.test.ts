@@ -80,7 +80,7 @@ describe('createAuthMiddleware', () => {
     expect(mockUserService.getById).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith({
-      error: 'Missing authorization token',
+      message: 'Missing authorization token',
     });
     expect(next).not.toHaveBeenCalled();
   });
@@ -107,7 +107,7 @@ describe('createAuthMiddleware', () => {
     expect(mockUserService.getById).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith({
-      error: 'Missing authorization token',
+      message: 'Missing authorization token',
     });
     expect(next).not.toHaveBeenCalled();
   });
@@ -135,7 +135,7 @@ describe('createAuthMiddleware', () => {
     expect(mockAuthService.verifyToken).toHaveBeenCalledWith('invalid-token');
     expect(mockUserService.getById).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ error: 'Invalid token' });
+    expect(res.json).toHaveBeenCalledWith({ message: 'Invalid token' });
     expect(next).not.toHaveBeenCalled();
   });
 
@@ -161,7 +161,7 @@ describe('createAuthMiddleware', () => {
     expect(mockUserService.getById).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith({
-      error: 'Missing authorization token',
+      message: 'Missing authorization token',
     });
     expect(next).not.toHaveBeenCalled();
   });
@@ -187,7 +187,7 @@ describe('createAuthMiddleware', () => {
     expect(mockAuthService.verifyToken).toHaveBeenCalledWith('valid-token');
     expect(mockUserService.getById).toHaveBeenCalledWith('user-123');
     expect(res.status).toHaveBeenCalledWith(404);
-    expect(res.json).toHaveBeenCalledWith({ error: 'User not found' });
+    expect(res.json).toHaveBeenCalledWith({ message: 'User not found' });
     expect(next).not.toHaveBeenCalled();
   });
 });

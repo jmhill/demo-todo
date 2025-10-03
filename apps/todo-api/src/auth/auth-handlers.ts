@@ -5,7 +5,7 @@ import {
   LoginRequestSchema,
   type LoginRequest,
   LoginResponseSchema,
-} from './auth-schemas.js';
+} from '@demo-todo/api-contracts';
 import { type AuthError, toErrorResponse } from './auth-errors.js';
 
 // Helper: Parse and validate request body into LoginRequest

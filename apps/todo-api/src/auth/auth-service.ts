@@ -4,7 +4,7 @@ import type { StringValue } from 'ms';
 import type { UserService } from '../users/domain/user-service.js';
 import type { TokenStore } from './token-store.js';
 import type { User } from '../users/domain/user-schemas.js';
-import type { TokenPayload } from './auth-schemas.js';
+import type { TokenPayload } from '@demo-todo/api-contracts';
 import {
   type AuthError,
   invalidToken,

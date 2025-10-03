@@ -1,1 +1,3 @@
 - Always run `npm run quality` before and after changes to verify that system meets minimum prerequisites for integration.
+- If `npm run quality` fails on formatting or type-checking, try to run `npm run quality:fix` first
+- `npm run quality` MUST complete successfully to call a coding task 'done'. We're not done until quality checks pass!

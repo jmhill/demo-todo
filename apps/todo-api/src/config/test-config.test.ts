@@ -19,7 +19,7 @@ describe('createTestConfig Function', () => {
       expect(config.server.port).toBe(3000);
       expect(config.server.host).toBe('localhost');
       expect(config.security.cors.enabled).toBe(true);
-      expect(config.security.cors.origins).toEqual(['http://localhost:3001']);
+      expect(config.security.cors.origins).toEqual(['http://localhost:5173']);
       expect(config.security.requestLimits.enabled).toBe(true);
       expect(config.security.requestLimits.jsonLimit).toBe('1mb');
       expect(config.security.secureHeaders.enabled).toBe(true);

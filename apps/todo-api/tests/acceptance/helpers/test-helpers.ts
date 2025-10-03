@@ -88,7 +88,7 @@ export async function createTestApp(
 
 // Common test origins for CORS testing
 export const TEST_ORIGINS = {
-  ALLOWED: 'http://localhost:3001',
+  ALLOWED: 'http://localhost:5173',
   BLOCKED: 'http://evil.com',
   ANOTHER_BLOCKED: 'http://malicious-site.com',
 } as const;

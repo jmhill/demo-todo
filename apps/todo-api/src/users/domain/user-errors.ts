@@ -12,27 +12,27 @@ export type UserError =
 
 export type ErrorResponse = {
   statusCode: number;
-  body: { error: string };
+  body: { message: string };
 };
 
 export const toErrorResponse = (error: UserError): ErrorResponse => {
   switch (error.code) {
     case 'VALIDATION_ERROR':
-      return { statusCode: 400, body: { error: error.message } };
+      return { statusCode: 400, body: { message: error.message } };
     case 'EMAIL_ALREADY_EXISTS':
-      return { statusCode: 400, body: { error: 'Unable to create account' } };
+      return { statusCode: 400, body: { message: 'Unable to create account' } };
     case 'USERNAME_ALREADY_EXISTS':
-      return { statusCode: 400, body: { error: 'Username already taken' } };
+      return { statusCode: 400, body: { message: 'Username already taken' } };
     case 'USER_NOT_FOUND':
-      return { statusCode: 404, body: { error: 'User not found' } };
+      return { statusCode: 404, body: { message: 'User not found' } };
     case 'INVALID_USER_ID':
-      return { statusCode: 400, body: { error: 'Invalid user ID format' } };
+      return { statusCode: 400, body: { message: 'Invalid user ID format' } };
     case 'INVALID_EMAIL_FORMAT':
-      return { statusCode: 400, body: { error: 'Invalid email format' } };
+      return { statusCode: 400, body: { message: 'Invalid email format' } };
     case 'INVALID_CREDENTIALS':
-      return { statusCode: 401, body: { error: 'Invalid credentials' } };
+      return { statusCode: 401, body: { message: 'Invalid credentials' } };
     case 'UNEXPECTED_ERROR':
-      return { statusCode: 500, body: { error: 'Internal server error' } };
+      return { statusCode: 500, body: { message: 'Internal server error' } };
   }
 };
 

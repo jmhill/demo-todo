@@ -17,7 +17,7 @@ describe('Configuration Loading', () => {
       expect(config.server.port).toBe(3000);
       expect(config.server.host).toBe('localhost');
       expect(config.security.cors.enabled).toBe(true);
-      expect(config.security.cors.origins).toEqual(['http://localhost:3001']);
+      expect(config.security.cors.origins).toEqual(['http://localhost:5173']);
       expect(config.security.rateLimiting.enabled).toBe(false); // Disabled in development
       expect(config.security.rateLimiting.max).toBe(100);
       expect(config.security.rateLimiting.windowMs).toBe(900000);
@@ -110,7 +110,7 @@ describe('Configuration Loading', () => {
       expect(config.security.rateLimiting.enabled).toBe(false); // Override
       expect(config.security.rateLimiting.max).toBe(10000); // From test base
       expect(config.security.cors.enabled).toBe(true); // From test base
-      expect(config.security.cors.origins).toEqual(['http://localhost:3001']); // From test base
+      expect(config.security.cors.origins).toEqual(['http://localhost:5173']); // From test base
     });
 
     it('should validate custom test configurations', () => {

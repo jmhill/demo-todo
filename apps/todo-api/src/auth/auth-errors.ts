@@ -7,24 +7,24 @@ export type AuthError =
 
 export type ErrorResponse = {
   statusCode: number;
-  body: { error: string };
+  body: { message: string };
 };
 
 export const toErrorResponse = (error: AuthError): ErrorResponse => {
   switch (error.code) {
     case 'INVALID_CREDENTIALS':
-      return { statusCode: 401, body: { error: 'Invalid credentials' } };
+      return { statusCode: 401, body: { message: 'Invalid credentials' } };
     case 'INVALID_TOKEN':
-      return { statusCode: 401, body: { error: 'Invalid token' } };
+      return { statusCode: 401, body: { message: 'Invalid token' } };
     case 'TOKEN_EXPIRED':
-      return { statusCode: 401, body: { error: 'Token expired' } };
+      return { statusCode: 401, body: { message: 'Token expired' } };
     case 'MISSING_TOKEN':
       return {
         statusCode: 401,
-        body: { error: 'Missing authorization token' },
+        body: { message: 'Missing authorization token' },
       };
     case 'UNEXPECTED_ERROR':
-      return { statusCode: 500, body: { error: 'Internal server error' } };
+      return { statusCode: 500, body: { message: 'Internal server error' } };
   }
 };
 

@@ -10,23 +10,23 @@ export type TodoError =
 
 export type ErrorResponse = {
   statusCode: number;
-  body: { error: string };
+  body: { message: string };
 };
 
 export const toErrorResponse = (error: TodoError): ErrorResponse => {
   switch (error.code) {
     case 'VALIDATION_ERROR':
-      return { statusCode: 400, body: { error: error.message } };
+      return { statusCode: 400, body: { message: error.message } };
     case 'TODO_NOT_FOUND':
-      return { statusCode: 404, body: { error: 'Todo not found' } };
+      return { statusCode: 404, body: { message: 'Todo not found' } };
     case 'INVALID_TODO_ID':
-      return { statusCode: 400, body: { error: 'Invalid todo ID format' } };
+      return { statusCode: 400, body: { message: 'Invalid todo ID format' } };
     case 'TODO_ALREADY_COMPLETED':
-      return { statusCode: 400, body: { error: 'Todo already completed' } };
+      return { statusCode: 400, body: { message: 'Todo already completed' } };
     case 'UNAUTHORIZED_ACCESS':
-      return { statusCode: 403, body: { error: 'Unauthorized access' } };
+      return { statusCode: 403, body: { message: 'Unauthorized access' } };
     case 'UNEXPECTED_ERROR':
-      return { statusCode: 500, body: { error: 'Internal server error' } };
+      return { statusCode: 500, body: { message: 'Internal server error' } };
   }
 };
 

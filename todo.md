@@ -27,7 +27,8 @@
 - [x] tiny react app for demo purposes (hello user)
 - [ ] organize schemas and domain code
 - [ ] demo todos in react app
-  - [ ] ts-rest setup
+  - [x] ts-rest setup
+  - [x] migrate other routes to ts-rest
   - [ ] dev data management (add test users via API)
   - [ ] login (see user info)
   - [ ] dev data management (add todos via API)

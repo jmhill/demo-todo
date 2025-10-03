@@ -19,23 +19,19 @@ import { createSystemClock } from './users/infrastructure/system-clock.js';
 import { createAuthService } from './auth/auth-service.js';
 import { createInMemoryTokenStore } from './auth/token-store.js';
 import { createAuthMiddleware } from './auth/auth-middleware.js';
-import {
-  createUserHandler,
-  getUserByIdHandler,
-} from './users/application/user-handlers.js';
+import { createUserRouter } from './users/application/user-router.js';
 import { createAuthRouter } from './auth/auth-router.js';
 import { createExpressEndpoints } from '@ts-rest/express';
-import { authContract } from '@demo-todo/api-contracts';
+import {
+  authContract,
+  userContract,
+  todoContract,
+} from '@demo-todo/api-contracts';
 import { createSequelizeTodoStore } from './todos/infrastructure/todo-store-sequelize.js';
 import { createTodoService } from './todos/domain/todo-service.js';
 import { createUuidIdGenerator as createTodoUuidIdGenerator } from './todos/infrastructure/uuid-id-generator.js';
 import { createSystemClock as createTodoSystemClock } from './todos/infrastructure/system-clock.js';
-import {
-  createTodoHandler,
-  listTodosHandler,
-  getTodoByIdHandler,
-  completeTodoHandler,
-} from './todos/application/todo-handlers.js';
+import { createTodoRouter } from './todos/application/todo-router.js';
 
 export async function createApp(config: AppConfig): Promise<Express> {
   // Wire all dependencies based on config
@@ -110,19 +106,19 @@ export async function createApp(config: AppConfig): Promise<Express> {
     logInitialization: false,
   });
 
-  // User routes (all protected)
-  app.post('/users', requireAuth, createUserHandler(userService));
-  app.get('/users/:id', requireAuth, getUserByIdHandler(userService));
+  // User routes (using ts-rest, all protected)
+  const userRouter = createUserRouter(userService);
+  createExpressEndpoints(userContract, userRouter, app, {
+    logInitialization: false,
+    globalMiddleware: [requireAuth],
+  });
 
-  // Todo routes (all protected)
-  app.post('/todos', requireAuth, createTodoHandler(todoService));
-  app.get('/todos', requireAuth, listTodosHandler(todoService));
-  app.get('/todos/:id', requireAuth, getTodoByIdHandler(todoService));
-  app.patch(
-    '/todos/:id/complete',
-    requireAuth,
-    completeTodoHandler(todoService),
-  );
+  // Todo routes (using ts-rest, all protected)
+  const todoRouter = createTodoRouter(todoService);
+  createExpressEndpoints(todoContract, todoRouter, app, {
+    logInitialization: false,
+    globalMiddleware: [requireAuth],
+  });
 
   // Global error handler - must be last middleware
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

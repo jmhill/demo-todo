@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
-import { createTestApp } from '../helpers/test-helpers.js';
+import { createTestApp, TEST_ORIGINS } from '../helpers/test-helpers.js';
 
 describe('Security Middleware Integration (Acceptance)', () => {
   describe('CORS with complete application stack', () => {
@@ -26,12 +26,12 @@ describe('Security Middleware Integration (Acceptance)', () => {
       const testApp = await createTestApp();
       const response = await request(testApp)
         .get('/health')
-        .set('Origin', 'http://localhost:3001')
+        .set('Origin', TEST_ORIGINS.ALLOWED)
         .expect(200);
 
       // CORS should allow the origin
       expect(response.headers['access-control-allow-origin']).toBe(
-        'http://localhost:3001',
+        TEST_ORIGINS.ALLOWED,
       );
 
       // Security headers should still be present
@@ -46,14 +46,14 @@ describe('Security Middleware Integration (Acceptance)', () => {
       const testApp = await createTestApp();
       const response = await request(testApp)
         .options('/health')
-        .set('Origin', 'http://localhost:3001')
+        .set('Origin', TEST_ORIGINS.ALLOWED)
         .set('Access-Control-Request-Method', 'POST')
         .set('Access-Control-Request-Headers', 'Content-Type')
         .expect(204);
 
       // CORS preflight response
       expect(response.headers['access-control-allow-origin']).toBe(
-        'http://localhost:3001',
+        TEST_ORIGINS.ALLOWED,
       );
       expect(response.headers['access-control-allow-methods']).toContain(
         'POST',
@@ -76,7 +76,7 @@ describe('Security Middleware Integration (Acceptance)', () => {
         },
       });
 
-      const origin = 'http://localhost:3001';
+      const origin = TEST_ORIGINS.ALLOWED;
 
       // Make requests up to the rate limit
       const requests = [];
@@ -128,7 +128,7 @@ describe('Security Middleware Integration (Acceptance)', () => {
 
       const response = await request(testApp)
         .post('/health')
-        .set('Origin', 'http://localhost:3001')
+        .set('Origin', TEST_ORIGINS.ALLOWED)
         .set('Content-Type', 'application/json')
         .send(largePayload);
 
@@ -141,7 +141,7 @@ describe('Security Middleware Integration (Acceptance)', () => {
 
       // CORS should still work
       expect(response.headers['access-control-allow-origin']).toBe(
-        'http://localhost:3001',
+        TEST_ORIGINS.ALLOWED,
       );
     });
 
@@ -153,14 +153,14 @@ describe('Security Middleware Integration (Acceptance)', () => {
 
       const response = await request(testApp)
         .post('/health')
-        .set('Origin', 'http://localhost:3001')
+        .set('Origin', TEST_ORIGINS.ALLOWED)
         .set('Content-Type', 'application/json')
         .send(normalPayload)
         .expect(200);
 
       // Should succeed with all security measures
       expect(response.headers['access-control-allow-origin']).toBe(
-        'http://localhost:3001',
+        TEST_ORIGINS.ALLOWED,
       );
       expect(response.headers['x-frame-options']).toBeDefined();
       expect(response.headers['x-content-type-options']).toBeDefined();
@@ -179,7 +179,7 @@ describe('Security Middleware Integration (Acceptance)', () => {
       for (const testCase of testCases) {
         const req = request(testApp)[testCase.method](testCase.path);
         const response = await req
-          .set('Origin', 'http://localhost:3001')
+          .set('Origin', TEST_ORIGINS.ALLOWED)
           .expect(200);
 
         // Verify comprehensive security headers
@@ -194,7 +194,7 @@ describe('Security Middleware Integration (Acceptance)', () => {
 
         // CORS should work
         expect(response.headers['access-control-allow-origin']).toBe(
-          'http://localhost:3001',
+          TEST_ORIGINS.ALLOWED,
         );
 
         // Content should be correct
@@ -209,7 +209,7 @@ describe('Security Middleware Integration (Acceptance)', () => {
       // Test a realistic scenario: authorized origin, normal payload, within rate limits
       const response = await request(testApp)
         .post('/health')
-        .set('Origin', 'http://localhost:3001')
+        .set('Origin', TEST_ORIGINS.ALLOWED)
         .set('Content-Type', 'application/json')
         .set('User-Agent', 'Test Client')
         .send({ message: 'health check' })
@@ -217,7 +217,7 @@ describe('Security Middleware Integration (Acceptance)', () => {
 
       // All middleware should have processed the request successfully
       expect(response.headers['access-control-allow-origin']).toBe(
-        'http://localhost:3001',
+        TEST_ORIGINS.ALLOWED,
       );
       expect(response.headers['x-frame-options']).toBe('SAMEORIGIN');
       expect(response.headers['x-content-type-options']).toBe('nosniff');

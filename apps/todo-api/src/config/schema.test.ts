@@ -57,7 +57,7 @@ describe('Configuration Schema', () => {
         expect(result.data.server.host).toBe('localhost');
         expect(result.data.security.cors.enabled).toBe(true);
         expect(result.data.security.cors.origins).toEqual([
-          'http://localhost:3001',
+          'http://localhost:5173',
         ]);
         expect(result.data.security.rateLimiting.enabled).toBe(true);
         expect(result.data.security.rateLimiting.max).toBe(10000);
