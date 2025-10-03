@@ -21,6 +21,14 @@ import {
   getUserByIdHandler,
 } from './users/user-handlers.js';
 import { loginHandler, logoutHandler } from './auth/auth-handlers.js';
+import { createSequelizeTodoStore } from './todos/todo-store-sequelize.js';
+import { createTodoService } from './todos/todo-service.js';
+import {
+  createTodoHandler,
+  listTodosHandler,
+  getTodoByIdHandler,
+  completeTodoHandler,
+} from './todos/todo-handlers.js';
 
 export async function createApp(config: AppConfig): Promise<Express> {
   // Wire all dependencies based on config
@@ -40,9 +48,9 @@ export async function createApp(config: AppConfig): Promise<Express> {
     jwtExpiresIn: config.auth.jwtExpiresIn,
   });
 
-  // Future dependencies will be added here:
-  // const orderStore = createSequelizeOrderStore(sequelize);
-  // const orderService = createOrderService(orderStore);
+  // Create todo dependencies
+  const todoStore = createSequelizeTodoStore(sequelize);
+  const todoService = createTodoService(todoStore);
 
   const app = express();
 
@@ -87,6 +95,16 @@ export async function createApp(config: AppConfig): Promise<Express> {
   // User routes (all protected)
   app.post('/users', requireAuth, createUserHandler(userService));
   app.get('/users/:id', requireAuth, getUserByIdHandler(userService));
+
+  // Todo routes (all protected)
+  app.post('/todos', requireAuth, createTodoHandler(todoService));
+  app.get('/todos', requireAuth, listTodosHandler(todoService));
+  app.get('/todos/:id', requireAuth, getTodoByIdHandler(todoService));
+  app.patch(
+    '/todos/:id/complete',
+    requireAuth,
+    completeTodoHandler(todoService),
+  );
 
   // Global error handler - must be last middleware
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

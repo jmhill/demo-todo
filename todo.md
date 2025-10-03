@@ -20,14 +20,14 @@
 - [x] global/catch-all error handler
 - [x] fix sequelize/umzug migrations
 - [x] dev mode setup (mysql)
-- [ ] todo service
+- [x] todo service
   - [x] TDD basic service operations (createTodo, listTodos, completeTodo)
-  - [ ] acceptance tests with realistic app setup
-  - [ ] todo service with sequelize store
-- [ ] basic authorization demo
+  - [x] acceptance tests with realistic app setup
+  - [x] todo service with sequelize store
 - [ ] organize schemas and domain code
-- [ ] dev data management (add test users via API)
 - [ ] tiny react app for demo purposes (hello user)
+- [ ] basic authorization demo
+- [ ] dev data management (add test users via API)
 - [ ] dev data management (add todos via API)
 - [ ] demo todos in react app
 - [ ] demo 'modular monolith' restrictions on cross-domain imports
