@@ -1,6 +1,7 @@
 import { ResultAsync, errAsync, okAsync } from 'neverthrow';
-import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
 import type { TodoStore } from './todo-store.js';
+import type { Clock } from './clock.js';
+import type { IdGenerator } from './id-generator.js';
 import { type Todo, type CreateTodoCommand } from './todo-schemas.js';
 import {
   type TodoError,
@@ -24,12 +25,16 @@ export interface TodoService {
   }): ResultAsync<Todo, TodoError>;
 }
 
-export function createTodoService(todoStore: TodoStore): TodoService {
+export function createTodoService(
+  todoStore: TodoStore,
+  idGenerator: IdGenerator,
+  clock: Clock,
+): TodoService {
   return {
     createTodo(command: CreateTodoCommand): ResultAsync<Todo, TodoError> {
-      const now = new Date();
+      const now = clock.now();
       const todo: Todo = {
-        id: uuidv4(),
+        id: idGenerator.generate(),
         userId: command.userId,
         title: command.title,
         description: command.description,
@@ -55,8 +60,8 @@ export function createTodoService(todoStore: TodoStore): TodoService {
     }): ResultAsync<Todo, TodoError> {
       const { todoId, userId } = options;
 
-      // Validate UUID format first
-      if (!uuidValidate(todoId)) {
+      // Validate ID format first
+      if (!idGenerator.validate(todoId)) {
         return errAsync(invalidTodoId(todoId));
       }
 
@@ -80,8 +85,8 @@ export function createTodoService(todoStore: TodoStore): TodoService {
     }): ResultAsync<Todo, TodoError> {
       const { todoId, userId } = options;
 
-      // Validate UUID format first
-      if (!uuidValidate(todoId)) {
+      // Validate ID format first
+      if (!idGenerator.validate(todoId)) {
         return errAsync(invalidTodoId(todoId));
       }
 
@@ -103,7 +108,7 @@ export function createTodoService(todoStore: TodoStore): TodoService {
             return errAsync(todoAlreadyCompleted(todoId));
           }
 
-          const now = new Date();
+          const now = clock.now();
           const updatedTodo: Todo = {
             ...todo,
             completed: true,

@@ -4,7 +4,7 @@ import {
   type ModelCtor,
   type Model,
 } from 'sequelize';
-import type { UserWithHashedPassword } from '../../users/user-schemas.js';
+import type { UserWithHashedPassword } from '../../users/domain/user-schemas.js';
 
 export type UserModelAttributes = UserWithHashedPassword;
 

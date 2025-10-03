@@ -1,16 +1,16 @@
 import type { Request, Response } from 'express';
 import { ok, err, type Result } from 'neverthrow';
-import type { UserService } from './user-service.js';
+import type { UserService } from '../domain/user-service.js';
 import {
   CreateUserCommandSchema,
   type CreateUserCommand,
   UserResponseDtoSchema,
-} from './user-schemas.js';
+} from '../domain/user-schemas.js';
 import {
   type UserError,
   toErrorResponse,
   validationError,
-} from './user-errors.js';
+} from '../domain/user-errors.js';
 
 // Helper: Parse and validate request body into CreateUserCommand
 const parseCreateCommand = (

@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
 import { Sequelize } from 'sequelize';
 import { createSequelizeUserStore } from './user-store-sequelize.js';
-import type { UserWithHashedPassword } from './user-schemas.js';
-import { createMigrator } from '../database/migrator.js';
+import type { UserWithHashedPassword } from '../domain/user-schemas.js';
+import { createMigrator } from '../../database/migrator.js';
 
 describe('SequelizeUserStore', () => {
   let sequelize: Sequelize;

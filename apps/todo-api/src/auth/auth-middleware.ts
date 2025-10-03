@@ -4,12 +4,12 @@ import {
   toErrorResponse as authErrorToResponse,
   type AuthError,
 } from './auth-errors.js';
-import type { UserService } from '../users/user-service.js';
-import type { User } from '../users/user-schemas.js';
+import type { UserService } from '../users/domain/user-service.js';
+import type { User } from '../users/domain/user-schemas.js';
 import {
   toErrorResponse as userErrorToResponse,
   type UserError,
-} from '../users/user-errors.js';
+} from '../users/domain/user-errors.js';
 
 // Extend Express Request type to include auth context
 declare global {

@@ -4,7 +4,7 @@ import {
   type ModelCtor,
   type Model,
 } from 'sequelize';
-import type { Todo } from '../../todos/todo-schemas.js';
+import type { Todo } from '../../todos/domain/todo-schemas.js';
 
 export type TodoModelAttributes = Todo;
 

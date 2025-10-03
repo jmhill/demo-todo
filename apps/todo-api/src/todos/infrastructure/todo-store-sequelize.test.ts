@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
 import { Sequelize } from 'sequelize';
 import { createSequelizeTodoStore } from './todo-store-sequelize.js';
-import type { Todo } from './todo-schemas.js';
-import { createMigrator } from '../database/migrator.js';
+import type { Todo } from '../domain/todo-schemas.js';
+import { createMigrator } from '../../database/migrator.js';
 
 describe('SequelizeTodoStore', () => {
   let sequelize: Sequelize;

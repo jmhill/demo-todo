@@ -1,7 +1,7 @@
 import type { Sequelize, Model } from 'sequelize';
-import type { UserStore } from './user-store.js';
-import type { User, UserWithHashedPassword } from './user-schemas.js';
-import { defineUserModel } from '../database/models/user-model.js';
+import type { UserStore } from '../domain/user-store.js';
+import type { User, UserWithHashedPassword } from '../domain/user-schemas.js';
+import { defineUserModel } from '../../database/models/user-model.js';
 
 export function createSequelizeUserStore(sequelize: Sequelize): UserStore {
   const UserModel = defineUserModel(sequelize);

@@ -18,8 +18,8 @@
  * - Query optimization and prepared statements
  */
 import mysql from 'mysql2/promise';
-import type { User, UserWithHashedPassword } from './user-schemas.js';
-import type { UserStore } from './user-store.js';
+import type { User, UserWithHashedPassword } from '../domain/user-schemas.js';
+import type { UserStore } from '../domain/user-store.js';
 
 export interface MySQLConfig {
   host: string;

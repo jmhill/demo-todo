@@ -10,25 +10,30 @@ import { configureCors } from './security/cors.js';
 import { configureRateLimiting } from './security/rate-limiting.js';
 import { configureRequestLimits } from './security/request-limits.js';
 import type { AppConfig } from './config/schema.js';
-import { createSequelizeUserStore } from './users/user-store-sequelize.js';
+import { createSequelizeUserStore } from './users/infrastructure/user-store-sequelize.js';
 import { createSequelize } from './database/sequelize-config.js';
-import { createUserService } from './users/user-service.js';
+import { createUserService } from './users/domain/user-service.js';
+import { createBcryptPasswordHasher } from './users/infrastructure/bcrypt-password-hasher.js';
+import { createUuidIdGenerator } from './users/infrastructure/uuid-id-generator.js';
+import { createSystemClock } from './users/infrastructure/system-clock.js';
 import { createAuthService } from './auth/auth-service.js';
 import { createInMemoryTokenStore } from './auth/token-store.js';
 import { createAuthMiddleware } from './auth/auth-middleware.js';
 import {
   createUserHandler,
   getUserByIdHandler,
-} from './users/user-handlers.js';
+} from './users/application/user-handlers.js';
 import { loginHandler, logoutHandler } from './auth/auth-handlers.js';
-import { createSequelizeTodoStore } from './todos/todo-store-sequelize.js';
-import { createTodoService } from './todos/todo-service.js';
+import { createSequelizeTodoStore } from './todos/infrastructure/todo-store-sequelize.js';
+import { createTodoService } from './todos/domain/todo-service.js';
+import { createUuidIdGenerator as createTodoUuidIdGenerator } from './todos/infrastructure/uuid-id-generator.js';
+import { createSystemClock as createTodoSystemClock } from './todos/infrastructure/system-clock.js';
 import {
   createTodoHandler,
   listTodosHandler,
   getTodoByIdHandler,
   completeTodoHandler,
-} from './todos/todo-handlers.js';
+} from './todos/application/todo-handlers.js';
 
 export async function createApp(config: AppConfig): Promise<Express> {
   // Wire all dependencies based on config
@@ -37,7 +42,12 @@ export async function createApp(config: AppConfig): Promise<Express> {
 
   // Create stores and services
   const userStore = createSequelizeUserStore(sequelize);
-  const userService = createUserService(userStore);
+  const userService = createUserService(
+    userStore,
+    createBcryptPasswordHasher(),
+    createUuidIdGenerator(),
+    createSystemClock(),
+  );
 
   // Create auth dependencies
   const tokenStore = createInMemoryTokenStore();
@@ -50,7 +60,11 @@ export async function createApp(config: AppConfig): Promise<Express> {
 
   // Create todo dependencies
   const todoStore = createSequelizeTodoStore(sequelize);
-  const todoService = createTodoService(todoStore);
+  const todoService = createTodoService(
+    todoStore,
+    createTodoUuidIdGenerator(),
+    createTodoSystemClock(),
+  );
 
   const app = express();
 

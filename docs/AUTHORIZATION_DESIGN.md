@@ -11,6 +11,7 @@ authorize: (AuthContext, Policy) -> AuthorizationResult
 ## Core Concepts
 
 ### AuthContext
+
 Contains information about the user and optionally the resource being accessed:
 
 ```typescript
@@ -25,6 +26,7 @@ type AuthContext = {
 ```
 
 ### Policy
+
 A function that evaluates authorization rules against the AuthContext:
 
 ```typescript
@@ -32,6 +34,7 @@ type Policy = (context: AuthContext) => Result<void, AuthorizationError>;
 ```
 
 ### AuthorizationResult
+
 Type-safe result using neverthrow's Result type:
 
 ```typescript
@@ -98,24 +101,35 @@ export const toErrorResponse = (error: AuthorizationError): ErrorResponse => {
 };
 
 // Error constructors
-export const insufficientPermissions = (message: string): AuthorizationError => ({
+export const insufficientPermissions = (
+  message: string,
+): AuthorizationError => ({
   code: 'INSUFFICIENT_PERMISSIONS',
   message,
 });
 
-export const missingRole = (required: string, actual?: string): AuthorizationError => ({
+export const missingRole = (
+  required: string,
+  actual?: string,
+): AuthorizationError => ({
   code: 'MISSING_ROLE',
   required,
   actual,
 });
 
-export const unauthorizedAccess = (resource: string, userId: string): AuthorizationError => ({
+export const unauthorizedAccess = (
+  resource: string,
+  userId: string,
+): AuthorizationError => ({
   code: 'UNAUTHORIZED_ACCESS',
   resource,
   userId,
 });
 
-export const policyEvaluationFailed = (message: string, cause?: unknown): AuthorizationError => ({
+export const policyEvaluationFailed = (
+  message: string,
+  cause?: unknown,
+): AuthorizationError => ({
   code: 'POLICY_EVALUATION_FAILED',
   message,
   cause,
@@ -253,7 +267,9 @@ import { toErrorResponse } from './authorization-errors.js';
 
 export interface AuthorizeOptions {
   policy: Policy;
-  resourceGetter?: (req: Request) => Promise<{ type: string; id: string; ownerId?: string } | null>;
+  resourceGetter?: (
+    req: Request,
+  ) => Promise<{ type: string; id: string; ownerId?: string } | null>;
 }
 
 /**
@@ -380,10 +396,7 @@ app.delete(
   '/todos/:id',
   requireAuth,
   createAuthorizationMiddleware({
-    policy: or(
-      requireRole('admin'),
-      requireOwnership(),
-    ),
+    policy: or(requireRole('admin'), requireOwnership()),
     resourceGetter: async (req) => {
       const todo = await todoService.getTodoById({
         todoId: req.params.id,

@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createTodoService } from './todo-service.js';
 import { createInMemoryTodoStore } from './todo-store.js';
+import { createIncrementingClock } from './clock.js';
+import { createUuidIdGenerator } from '../infrastructure/uuid-id-generator.js';
 import type { CreateTodoCommand } from './todo-schemas.js';
 
 describe('TodoService', () => {
@@ -9,7 +11,11 @@ describe('TodoService', () => {
 
   beforeEach(() => {
     todoStore = createInMemoryTodoStore();
-    todoService = createTodoService(todoStore);
+    todoService = createTodoService(
+      todoStore,
+      createUuidIdGenerator(),
+      createIncrementingClock(),
+    );
   });
 
   describe('createTodo', () => {

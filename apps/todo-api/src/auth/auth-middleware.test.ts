@@ -3,10 +3,10 @@ import type { Request, Response, NextFunction } from 'express';
 import { okAsync, errAsync } from 'neverthrow';
 import { createAuthMiddleware } from './auth-middleware.js';
 import type { AuthService } from './auth-service.js';
-import type { UserService } from '../users/user-service.js';
-import type { User } from '../users/user-schemas.js';
+import type { UserService } from '../users/domain/user-service.js';
+import type { User } from '../users/domain/user-schemas.js';
 import { invalidToken } from './auth-errors.js';
-import { userNotFound } from '../users/user-errors.js';
+import { userNotFound } from '../users/domain/user-errors.js';
 
 // Mock user helper
 const createMockUser = (id = 'user-123'): User => ({

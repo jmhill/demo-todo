@@ -1,9 +1,9 @@
 import { ResultAsync, errAsync, okAsync } from 'neverthrow';
 import jwt from 'jsonwebtoken';
 import type { StringValue } from 'ms';
-import type { UserService } from '../users/user-service.js';
+import type { UserService } from '../users/domain/user-service.js';
 import type { TokenStore } from './token-store.js';
-import type { User } from '../users/user-schemas.js';
+import type { User } from '../users/domain/user-schemas.js';
 import type { TokenPayload } from './auth-schemas.js';
 import {
   type AuthError,

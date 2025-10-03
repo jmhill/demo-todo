@@ -1,16 +1,16 @@
 import type { Request, Response } from 'express';
 import { ok, err, type Result } from 'neverthrow';
-import type { TodoService } from './todo-service.js';
+import type { TodoService } from '../domain/todo-service.js';
 import {
   CreateTodoDtoSchema,
   type CreateTodoCommand,
   TodoResponseDtoSchema,
-} from './todo-schemas.js';
+} from '../domain/todo-schemas.js';
 import {
   type TodoError,
   toErrorResponse,
   validationError,
-} from './todo-errors.js';
+} from '../domain/todo-errors.js';
 
 // Helper: Parse and validate request body into CreateTodoDto, then add userId
 const parseCreateTodoDto = (

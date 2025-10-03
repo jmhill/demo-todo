@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
+import type { TodoResponseDto } from '../../../src/todos/domain/todo-schemas.js';
 import {
   createTestApp,
   cleanDatabase,
@@ -111,8 +112,17 @@ describe('Todo CRUD Operations (Acceptance)', () => {
         .expect(200);
 
       expect(response.body).toHaveLength(2);
-      expect(response.body[0].title).toBe('First todo');
-      expect(response.body[1].title).toBe('Second todo');
+
+      // Verify both todos are present (order-agnostic)
+      const titles = response.body.map((todo: TodoResponseDto) => todo.title);
+      expect(titles).toContain('First todo');
+      expect(titles).toContain('Second todo');
+
+      // Verify todo with description has it
+      const todoWithDesc = response.body.find(
+        (t: TodoResponseDto) => t.title === 'Second todo',
+      );
+      expect(todoWithDesc.description).toBe('With description');
     });
 
     it('should return empty array when user has no todos', async () => {

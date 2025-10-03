@@ -1,8 +1,9 @@
 import { ResultAsync, errAsync, okAsync } from 'neverthrow';
-import bcrypt from 'bcrypt';
-import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
 import { z } from 'zod';
 import type { UserStore } from './user-store.js';
+import type { PasswordHasher } from './password-hasher.js';
+import type { IdGenerator } from './id-generator.js';
+import type { Clock } from './clock.js';
 import {
   type User,
   type UserWithHashedPassword,
@@ -19,8 +20,6 @@ import {
   unexpectedError,
 } from './user-errors.js';
 
-const SALT_ROUNDS = 10;
-
 export interface UserService {
   createUser(command: CreateUserCommand): ResultAsync<User, UserError>;
   getById(id: string): ResultAsync<User, UserError>;
@@ -32,7 +31,12 @@ export interface UserService {
   ): ResultAsync<User, UserError>;
 }
 
-export function createUserService(userStore: UserStore): UserService {
+export function createUserService(
+  userStore: UserStore,
+  passwordHasher: PasswordHasher,
+  idGenerator: IdGenerator,
+  clock: Clock,
+): UserService {
   return {
     createUser(command: CreateUserCommand): ResultAsync<User, UserError> {
       // Check if email exists
@@ -60,14 +64,14 @@ export function createUserService(userStore: UserStore): UserService {
         })
         .andThen(() =>
           ResultAsync.fromPromise(
-            bcrypt.hash(command.password, SALT_ROUNDS),
+            passwordHasher.hash(command.password),
             (error) => unexpectedError('Password hashing failed', error),
           ),
         )
         .andThen((passwordHash) => {
-          const now = new Date();
+          const now = clock.now();
           const userWithPassword: UserWithHashedPassword = {
-            id: uuidv4(),
+            id: idGenerator.generate(),
             email: command.email,
             username: command.username,
             passwordHash,
@@ -89,8 +93,8 @@ export function createUserService(userStore: UserStore): UserService {
     },
 
     getById(id: string): ResultAsync<User, UserError> {
-      // Validate UUID format first
-      if (!uuidValidate(id)) {
+      // Validate ID format first
+      if (!idGenerator.validate(id)) {
         return errAsync(invalidUserId(id));
       }
 
@@ -148,7 +152,7 @@ export function createUserService(userStore: UserStore): UserService {
         })
         .andThen((userWithPassword) =>
           ResultAsync.fromPromise(
-            bcrypt.compare(password, userWithPassword.passwordHash),
+            passwordHasher.compare(password, userWithPassword.passwordHash),
             (error) => unexpectedError('Password comparison failed', error),
           ).map((isMatch) => ({ userWithPassword, isMatch })),
         )

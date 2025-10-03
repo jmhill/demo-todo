@@ -1,7 +1,7 @@
 import type { Sequelize, Model } from 'sequelize';
-import type { TodoStore } from './todo-store.js';
-import type { Todo } from './todo-schemas.js';
-import { defineTodoModel } from '../database/models/todo-model.js';
+import type { TodoStore } from '../domain/todo-store.js';
+import type { Todo } from '../domain/todo-schemas.js';
+import { defineTodoModel } from '../../database/models/todo-model.js';
 
 export function createSequelizeTodoStore(sequelize: Sequelize): TodoStore {
   const TodoModel = defineTodoModel(sequelize);
