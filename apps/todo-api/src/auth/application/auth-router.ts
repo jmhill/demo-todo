@@ -1,6 +1,6 @@
 import { initServer } from '@ts-rest/express';
 import { authContract } from '@demo-todo/api-contracts';
-import type { AuthService } from './auth-service.js';
+import type { AuthService } from '../domain/auth-service.js';
 
 const s = initServer();
 

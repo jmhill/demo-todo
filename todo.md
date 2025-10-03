@@ -32,9 +32,13 @@
   - [x] login (see user info)
   - [x] dev data management (add todos via API)
   - [x] view all todos for user
-- [ ] organize schemas and domain code
+- [x] organize schemas and domain code
+- [ ] extract all domain packages to lib directory
+- [ ] demo 'modular monolith' restrictions on cross-domain imports
 - [ ] remove sqlite (use mysql for unit testing mysql-specific adapter code)
 - [ ] remove testing-library? I think vitest already provides all these tools?
+- [ ] general code duplication and cruft cleanup
+- [ ] add enough react code to make the demo look pretty
 - [ ] update readme with more documentation
   - [ ] how to run
     - [ ] (devbox and docker prereqs)
@@ -50,11 +54,7 @@
     - [ ] using services to define domain model operations
     - [ ] multiple drivers (http api vs dev seeders)
     - [ ] multiple implementations of external systems
-- [ ] demo 'modular monolith' restrictions on cross-domain imports
-- [ ] extract all domain packages to lib directory
 - [ ] basic authorization demo
-- [ ] add enough react code to make the demo look pretty
-- [ ] general code duplication and cruft cleanup
 
 ## polish and next steps
 

@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createAuthService } from './auth-service.js';
 import { createInMemoryTokenStore } from './token-store.js';
-import { createUserService } from '../users/domain/user-service.js';
-import { createInMemoryUserStore } from '../users/domain/user-store.js';
-import { createMockPasswordHasher } from '../users/domain/password-hasher.js';
-import { createUuidIdGenerator } from '../users/infrastructure/uuid-id-generator.js';
-import { createSystemClock } from '../users/infrastructure/system-clock.js';
-import type { CreateUserCommand } from '../users/domain/user-schemas.js';
+import { createUserService } from '../../users/domain/user-service.js';
+import { createInMemoryUserStore } from '../../users/domain/user-store.js';
+import { createMockPasswordHasher } from '../../users/domain/password-hasher.js';
+import { createUuidIdGenerator } from '../../users/infrastructure/uuid-id-generator.js';
+import { createSystemClock } from '../../users/infrastructure/system-clock.js';
+import type { CreateUserCommand } from '../../users/domain/user-schemas.js';
 
 describe('AuthService', () => {
   let authService: ReturnType<typeof createAuthService>;

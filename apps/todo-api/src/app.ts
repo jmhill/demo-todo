@@ -10,28 +10,34 @@ import { configureCors } from './security/cors.js';
 import { configureRateLimiting } from './security/rate-limiting.js';
 import { configureRequestLimits } from './security/request-limits.js';
 import type { AppConfig } from './config/schema.js';
-import { createSequelizeUserStore } from './users/infrastructure/user-store-sequelize.js';
 import { createSequelize } from './database/sequelize-config.js';
-import { createUserService } from './users/domain/user-service.js';
-import { createBcryptPasswordHasher } from './users/infrastructure/bcrypt-password-hasher.js';
-import { createUuidIdGenerator } from './users/infrastructure/uuid-id-generator.js';
-import { createSystemClock } from './users/infrastructure/system-clock.js';
-import { createAuthService } from './auth/auth-service.js';
-import { createInMemoryTokenStore } from './auth/token-store.js';
-import { createAuthMiddleware } from './auth/auth-middleware.js';
-import { createUserRouter } from './users/application/user-router.js';
-import { createAuthRouter } from './auth/auth-router.js';
+import {
+  createSequelizeUserStore,
+  createUserService,
+  createBcryptPasswordHasher,
+  createUuidIdGenerator,
+  createSystemClock,
+  createUserRouter,
+} from './users/index.js';
+import {
+  createAuthService,
+  createInMemoryTokenStore,
+  createAuthMiddleware,
+  createAuthRouter,
+} from './auth/index.js';
 import { createExpressEndpoints } from '@ts-rest/express';
 import {
   authContract,
   userContract,
   todoContract,
 } from '@demo-todo/api-contracts';
-import { createSequelizeTodoStore } from './todos/infrastructure/todo-store-sequelize.js';
-import { createTodoService } from './todos/domain/todo-service.js';
-import { createUuidIdGenerator as createTodoUuidIdGenerator } from './todos/infrastructure/uuid-id-generator.js';
-import { createSystemClock as createTodoSystemClock } from './todos/infrastructure/system-clock.js';
-import { createTodoRouter } from './todos/application/todo-router.js';
+import {
+  createSequelizeTodoStore,
+  createTodoService,
+  createUuidIdGenerator as createTodoUuidIdGenerator,
+  createSystemClock as createTodoSystemClock,
+  createTodoRouter,
+} from './todos/index.js';
 
 export async function createApp(config: AppConfig): Promise<Express> {
   // Wire all dependencies based on config

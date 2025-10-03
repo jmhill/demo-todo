@@ -1,15 +1,15 @@
 import type { Request, Response, NextFunction } from 'express';
-import type { AuthService } from './auth-service.js';
+import type { AuthService } from '../domain/auth-service.js';
 import {
   toErrorResponse as authErrorToResponse,
   type AuthError,
-} from './auth-errors.js';
-import type { UserService } from '../users/domain/user-service.js';
-import type { User } from '../users/domain/user-schemas.js';
+} from '../domain/auth-errors.js';
+import type { UserService } from '../../users/domain/user-service.js';
+import type { User } from '../../users/domain/user-schemas.js';
 import {
   toErrorResponse as userErrorToResponse,
   type UserError,
-} from '../users/domain/user-errors.js';
+} from '../../users/domain/user-errors.js';
 
 // Extend Express Request type to include auth context
 declare global {
