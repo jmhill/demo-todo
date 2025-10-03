@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import {
+  createUuidIdGenerator,
+  createSystemClock,
+} from '@demo-todo/infrastructure';
 import { createUserService } from './user-service.js';
 import { createInMemoryUserStore } from './user-store.js';
 import { createMockPasswordHasher } from './password-hasher.js';
-import { createUuidIdGenerator } from '../infrastructure/uuid-id-generator.js';
-import { createSystemClock } from '../infrastructure/system-clock.js';
 import type { CreateUserCommand } from './user-schemas.js';
 
 describe('UserService', () => {

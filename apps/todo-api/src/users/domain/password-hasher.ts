@@ -1,8 +1,4 @@
-// Port: Domain owns this interface, infrastructure implements it
-export interface PasswordHasher {
-  hash(password: string): Promise<string>;
-  compare(password: string, hash: string): Promise<boolean>;
-}
+import type { PasswordHasher } from './user-service.js';
 
 // Test implementation for use in tests - NO REAL HASHING
 export function createMockPasswordHasher(): PasswordHasher {

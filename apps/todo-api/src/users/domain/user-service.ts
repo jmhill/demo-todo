@@ -1,9 +1,6 @@
 import { ResultAsync, errAsync, okAsync } from 'neverthrow';
 import { z } from 'zod';
-import type { UserStore } from './user-store.js';
-import type { PasswordHasher } from './password-hasher.js';
-import type { IdGenerator } from './id-generator.js';
-import type { Clock } from './clock.js';
+import type { Clock, IdGenerator } from '@demo-todo/infrastructure';
 import {
   type User,
   type UserWithHashedPassword,
@@ -19,6 +16,25 @@ import {
   invalidCredentials,
   unexpectedError,
 } from './user-errors.js';
+
+// Domain-owned ports - infrastructure implements these
+export interface UserStore {
+  save(user: UserWithHashedPassword): Promise<void>;
+  findById(id: string): Promise<User | null>;
+  findByEmail(email: string): Promise<User | null>;
+  findByUsername(username: string): Promise<User | null>;
+  findByEmailWithPassword(
+    email: string,
+  ): Promise<UserWithHashedPassword | null>;
+  findByUsernameWithPassword(
+    username: string,
+  ): Promise<UserWithHashedPassword | null>;
+}
+
+export interface PasswordHasher {
+  hash(password: string): Promise<string>;
+  compare(password: string, hash: string): Promise<boolean>;
+}
 
 export interface UserService {
   createUser(command: CreateUserCommand): ResultAsync<User, UserError>;

@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import {
+  createIncrementingClock,
+  createUuidIdGenerator,
+} from '@demo-todo/infrastructure';
 import { createTodoService } from './todo-service.js';
 import { createInMemoryTodoStore } from './todo-store.js';
-import { createIncrementingClock } from './clock.js';
-import { createUuidIdGenerator } from '../infrastructure/uuid-id-generator.js';
 import type { CreateTodoCommand } from './todo-schemas.js';
 
 describe('TodoService', () => {

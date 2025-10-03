@@ -19,7 +19,7 @@
  */
 import mysql from 'mysql2/promise';
 import type { User, UserWithHashedPassword } from '../domain/user-schemas.js';
-import type { UserStore } from '../domain/user-store.js';
+import type { UserStore } from '../domain/user-service.js';
 
 export interface MySQLConfig {
   host: string;

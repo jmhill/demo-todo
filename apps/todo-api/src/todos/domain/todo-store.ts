@@ -1,11 +1,5 @@
 import type { Todo } from './todo-schemas.js';
-
-export interface TodoStore {
-  save(todo: Todo): Promise<void>;
-  findById(id: string): Promise<Todo | null>;
-  findByUserId(userId: string): Promise<Todo[]>;
-  update(todo: Todo): Promise<void>;
-}
+import type { TodoStore } from './todo-service.js';
 
 export function createInMemoryTodoStore(): TodoStore {
   const todos = new Map<string, Todo>();

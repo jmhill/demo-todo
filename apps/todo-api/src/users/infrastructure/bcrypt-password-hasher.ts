@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import type { PasswordHasher } from '../domain/password-hasher.js';
+import type { PasswordHasher } from '../domain/user-service.js';
 
 const SALT_ROUNDS = 10;
 

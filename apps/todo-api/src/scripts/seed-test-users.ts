@@ -2,17 +2,17 @@ import { readFile } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { z } from 'zod';
+import {
+  createUuidIdGenerator,
+  createSystemClock,
+} from '@demo-todo/infrastructure';
 import { createSequelize } from '../database/sequelize-config.js';
 import { createSequelizeUserStore } from '../users/infrastructure/user-store-sequelize.js';
 import { createUserService } from '../users/domain/user-service.js';
 import { createBcryptPasswordHasher } from '../users/infrastructure/bcrypt-password-hasher.js';
-import { createUuidIdGenerator } from '../users/infrastructure/uuid-id-generator.js';
-import { createSystemClock } from '../users/infrastructure/system-clock.js';
 import { loadConfig } from '../config/index.js';
 import { createSequelizeTodoStore } from '../todos/infrastructure/todo-store-sequelize.js';
 import { createTodoService } from '../todos/domain/todo-service.js';
-import { createUuidIdGenerator as createTodoUuidIdGenerator } from '../todos/infrastructure/uuid-id-generator.js';
-import { createSystemClock as createTodoSystemClock } from '../todos/infrastructure/system-clock.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -58,8 +58,8 @@ async function seedTestUsers(): Promise<void> {
     const todoStore = createSequelizeTodoStore(sequelize);
     const todoService = createTodoService(
       todoStore,
-      createTodoUuidIdGenerator(),
-      createTodoSystemClock(),
+      createUuidIdGenerator(),
+      createSystemClock(),
     );
 
     console.log(`Seeding ${testUsers.length} test users...`);

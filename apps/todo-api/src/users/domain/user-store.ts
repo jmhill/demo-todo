@@ -1,17 +1,5 @@
 import type { User, UserWithHashedPassword } from './user-schemas.js';
-
-export interface UserStore {
-  save(user: UserWithHashedPassword): Promise<void>;
-  findById(id: string): Promise<User | null>;
-  findByEmail(email: string): Promise<User | null>;
-  findByUsername(username: string): Promise<User | null>;
-  findByEmailWithPassword(
-    email: string,
-  ): Promise<UserWithHashedPassword | null>;
-  findByUsernameWithPassword(
-    username: string,
-  ): Promise<UserWithHashedPassword | null>;
-}
+import type { UserStore } from './user-service.js';
 
 export function createInMemoryUserStore(): UserStore {
   const users = new Map<string, UserWithHashedPassword>();

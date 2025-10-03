@@ -1,5 +1,5 @@
 import type { Sequelize, Model } from 'sequelize';
-import type { TodoStore } from '../domain/todo-store.js';
+import type { TodoStore } from '../domain/todo-service.js';
 import type { Todo } from '../domain/todo-schemas.js';
 import { defineTodoModel } from '../../database/models/todo-model.js';
 

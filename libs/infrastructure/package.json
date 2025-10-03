@@ -1,0 +1,15 @@
+{
+  "name": "@demo-todo/infrastructure",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'No tests for infrastructure (utility library only)'"
+  },
+  "dependencies": {
+    "uuid": "^11.0.5"
+  }
+}

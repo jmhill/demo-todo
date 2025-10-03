@@ -1,7 +1,5 @@
 import { ResultAsync, errAsync, okAsync } from 'neverthrow';
-import type { TodoStore } from './todo-store.js';
-import type { Clock } from './clock.js';
-import type { IdGenerator } from './id-generator.js';
+import type { Clock, IdGenerator } from '@demo-todo/infrastructure';
 import { type Todo, type CreateTodoCommand } from './todo-schemas.js';
 import {
   type TodoError,
@@ -11,6 +9,14 @@ import {
   unauthorizedAccess,
   unexpectedError,
 } from './todo-errors.js';
+
+// Domain-owned port - infrastructure implements this
+export interface TodoStore {
+  save(todo: Todo): Promise<void>;
+  findById(id: string): Promise<Todo | null>;
+  findByUserId(userId: string): Promise<Todo[]>;
+  update(todo: Todo): Promise<void>;
+}
 
 export interface TodoService {
   createTodo(command: CreateTodoCommand): ResultAsync<Todo, TodoError>;

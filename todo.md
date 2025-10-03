@@ -33,17 +33,20 @@
   - [x] dev data management (add todos via API)
   - [x] view all todos for user
 - [x] organize schemas and domain code
-- [ ] extract all domain packages to lib directory
+- [x] extract all domain packages to lib directory
 - [ ] demo 'modular monolith' restrictions on cross-domain imports
+- [ ] demo logging implementation
 - [ ] remove sqlite (use mysql for unit testing mysql-specific adapter code)
 - [ ] remove testing-library? I think vitest already provides all these tools?
 - [ ] general code duplication and cruft cleanup
+- [ ] add demo logging infrastructure (otel?)
+- [ ] add unit tests for infrastructure utility library
 - [ ] add enough react code to make the demo look pretty
 - [ ] update readme with more documentation
   - [ ] how to run
     - [ ] (devbox and docker prereqs)
-    - [ ] workspaces setup
-    - [ ] workspace npm install
+    - [ ] npm workspaces setup
+    - [ ] npm workspace npm install (what happens when you run install)
     - [ ] what does npm run dev do
   - [ ] what the quality script does
   - [ ] unit testing vs acceptance testing
