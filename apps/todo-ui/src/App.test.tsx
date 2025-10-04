@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { type ReactElement } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
 import { App } from './App.tsx';
 
 const createTestQueryClient = () =>
@@ -12,18 +14,22 @@ const createTestQueryClient = () =>
     },
   });
 
+const renderWithProviders = (ui: ReactElement) => {
+  const queryClient = createTestQueryClient();
+  return render(
+    <ChakraProvider value={defaultSystem}>
+      <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+    </ChakraProvider>,
+  );
+};
+
 describe('App', () => {
   beforeEach(() => {
     localStorage.clear();
   });
 
   it('should render the todo app with login form when not authenticated', () => {
-    const queryClient = createTestQueryClient();
-    render(
-      <QueryClientProvider client={queryClient}>
-        <App />
-      </QueryClientProvider>,
-    );
+    renderWithProviders(<App />);
 
     expect(
       screen.getByRole('heading', { name: 'Todo App' }),
@@ -44,12 +50,7 @@ describe('App', () => {
     localStorage.setItem('auth_token', token);
     localStorage.setItem('auth_user', JSON.stringify(user));
 
-    const queryClient = createTestQueryClient();
-    render(
-      <QueryClientProvider client={queryClient}>
-        <App />
-      </QueryClientProvider>,
-    );
+    renderWithProviders(<App />);
 
     expect(screen.getByText('Welcome, testuser!')).toBeInTheDocument();
     expect(screen.getByText('testuser')).toBeInTheDocument();
@@ -67,12 +68,7 @@ describe('App', () => {
     localStorage.setItem('auth_token', token);
     localStorage.setItem('auth_user', JSON.stringify(user));
 
-    const queryClient = createTestQueryClient();
-    render(
-      <QueryClientProvider client={queryClient}>
-        <App />
-      </QueryClientProvider>,
-    );
+    renderWithProviders(<App />);
 
     expect(screen.getByText('Welcome, testuser!')).toBeInTheDocument();
 

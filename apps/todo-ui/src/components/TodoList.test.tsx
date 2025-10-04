@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
 import { TodoList } from './TodoList';
 import { tsr } from '../lib/api-client';
 
@@ -23,9 +24,11 @@ describe('TodoList', () => {
     });
 
     return render(
-      <QueryClientProvider client={queryClient}>
-        <TodoList />
-      </QueryClientProvider>,
+      <ChakraProvider value={defaultSystem}>
+        <QueryClientProvider client={queryClient}>
+          <TodoList />
+        </QueryClientProvider>
+      </ChakraProvider>,
     );
   };
 

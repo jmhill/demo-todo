@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
 import { UserProfile } from './UserProfile';
 
 vi.mock('./TodoList', () => ({
@@ -26,9 +27,11 @@ describe('UserProfile', () => {
     });
 
     return render(
-      <QueryClientProvider client={queryClient}>
-        <UserProfile user={user} onLogout={onLogout} />
-      </QueryClientProvider>,
+      <ChakraProvider value={defaultSystem}>
+        <QueryClientProvider client={queryClient}>
+          <UserProfile user={user} onLogout={onLogout} />
+        </QueryClientProvider>
+      </ChakraProvider>,
     );
   };
 

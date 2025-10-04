@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
 import { App } from './App.tsx';
 import { tsr } from './lib/api-client.ts';
 
@@ -14,10 +15,12 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <tsr.ReactQueryProvider>
-        <App />
-      </tsr.ReactQueryProvider>
-    </QueryClientProvider>
+    <ChakraProvider value={defaultSystem}>
+      <QueryClientProvider client={queryClient}>
+        <tsr.ReactQueryProvider>
+          <App />
+        </tsr.ReactQueryProvider>
+      </QueryClientProvider>
+    </ChakraProvider>
   </StrictMode>,
 );

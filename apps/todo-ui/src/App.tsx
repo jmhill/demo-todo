@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Box, Container, Heading } from '@chakra-ui/react';
 import { LoginForm } from './components/LoginForm';
 import { UserProfile } from './components/UserProfile';
 
@@ -48,13 +49,17 @@ export const App = () => {
   };
 
   return (
-    <div>
-      <h1>Todo App</h1>
+    <Container maxW="container.lg" py={8}>
+      <Box textAlign="center" mb={8}>
+        <Heading size="2xl" mb={2}>
+          Todo App
+        </Heading>
+      </Box>
       {user ? (
         <UserProfile user={user} onLogout={handleLogout} />
       ) : (
         <LoginForm onLoginSuccess={handleLoginSuccess} />
       )}
-    </div>
+    </Container>
   );
 };

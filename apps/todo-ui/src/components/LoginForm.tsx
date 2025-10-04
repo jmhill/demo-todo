@@ -1,4 +1,6 @@
 import { useState, type FormEvent } from 'react';
+import { Box, Button, Field, Heading, Input, Stack } from '@chakra-ui/react';
+import { Alert } from '@chakra-ui/react/alert';
 import { tsr } from '../lib/api-client';
 
 interface LoginFormProps {
@@ -45,34 +47,49 @@ export const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
   };
 
   return (
-    <div>
-      <h2>Login</h2>
+    <Box maxW="md" mx="auto">
+      <Heading size="lg" mb={6} textAlign="center">
+        Login
+      </Heading>
       <form onSubmit={handleSubmit}>
-        <div>
-          <label htmlFor="usernameOrEmail">Username or Email</label>
-          <input
-            id="usernameOrEmail"
-            type="text"
-            value={usernameOrEmail}
-            onChange={(e) => setUsernameOrEmail(e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-        {error && <div style={{ color: 'red' }}>{error}</div>}
-        <button type="submit" disabled={loginMutation.isPending}>
-          {loginMutation.isPending ? 'Logging in...' : 'Login'}
-        </button>
+        <Stack gap={4}>
+          <Field.Root required>
+            <Field.Label htmlFor="usernameOrEmail">
+              Username or Email
+            </Field.Label>
+            <Input
+              id="usernameOrEmail"
+              type="text"
+              value={usernameOrEmail}
+              onChange={(e) => setUsernameOrEmail(e.target.value)}
+            />
+          </Field.Root>
+          <Field.Root required>
+            <Field.Label htmlFor="password">Password</Field.Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </Field.Root>
+          {error && (
+            <Alert.Root status="error">
+              <Alert.Indicator />
+              <Alert.Title>{error}</Alert.Title>
+            </Alert.Root>
+          )}
+          <Button
+            type="submit"
+            colorScheme="blue"
+            width="full"
+            loading={loginMutation.isPending}
+            loadingText="Logging in..."
+          >
+            Login
+          </Button>
+        </Stack>
       </form>
-    </div>
+    </Box>
   );
 };
