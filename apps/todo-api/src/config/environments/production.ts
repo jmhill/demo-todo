@@ -9,6 +9,9 @@ export const getConfig = (
   getSecretFn: GetSecretFn,
 ): DeepPartial<AppConfig> => ({
   environment: 'production',
+  docSite: {
+    enabled: false,
+  },
   server: {
     port: 3000,
     host: '0.0.0.0',

@@ -25,3 +25,7 @@ export {
   type UpdateTodoRequest,
   type TodoResponse,
 } from './todo-schemas.js';
+
+export { rootContract } from './root-contract.js';
+export { openApiDocument } from './openapi.js';
+export { zod4Transformer } from './zod-transformer.js';

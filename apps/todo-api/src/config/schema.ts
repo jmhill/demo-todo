@@ -21,9 +21,27 @@ const requestLimitsSchema = z.object({
   urlencodedLimit: z.string(),
 });
 
+// Schema for Content Security Policy directives
+const cspDirectivesSchema = z.object({
+  defaultSrc: z.array(z.string()).optional(),
+  scriptSrc: z.array(z.string()).optional(),
+  styleSrc: z.array(z.string()).optional(),
+  imgSrc: z.array(z.string()).optional(),
+  connectSrc: z.array(z.string()).optional(),
+  fontSrc: z.array(z.string()).optional(),
+  objectSrc: z.array(z.string()).optional(),
+  mediaSrc: z.array(z.string()).optional(),
+  frameSrc: z.array(z.string()).optional(),
+});
+
 // Schema for secure headers configuration
 const secureHeadersSchema = z.object({
   enabled: z.boolean(),
+  contentSecurityPolicy: z
+    .object({
+      directives: cspDirectivesSchema.optional(),
+    })
+    .optional(),
 });
 
 // Schema for server configuration
@@ -47,6 +65,10 @@ const authSchema = z.object({
   jwtExpiresIn: z.string(),
 });
 
+const docsSchema = z.object({
+  enabled: z.boolean(),
+})
+
 // Main application configuration schema
 export const configSchema = z.object({
   environment: z.enum(['development', 'test', 'production']),
@@ -59,6 +81,7 @@ export const configSchema = z.object({
     requestLimits: requestLimitsSchema,
     secureHeaders: secureHeadersSchema,
   }),
+  docSite: docsSchema
 });
 
 // Type inference from schema

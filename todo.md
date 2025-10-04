@@ -58,10 +58,15 @@
 ## milestone 2: cleanup and authorization
 
 - [x] manual review of readme
-- [ ] openapi generation from ts-rest schema
+- [x] openapi generation from ts-rest schema
+- [x] add enough react code to make the demo look pretty (something batteries-included like ChakraUI)
 - [ ] review error response schemas and unions (see docs/CODE_CLEANUP_RECOMMENDATIONS.md)
 - [ ] add demo logging infrastructure (otel?)
 - [ ] show how to run one set of test against different implementations of an adapter
 - [ ] basic authorization demo
-- [ ] add enough react code to make the demo look pretty
 - [ ] existing JWT polish (e.g., invalidate all users on logout) or just integrate something like OpenAuth to show full OAuth implementation
+
+## milestone 3: more data adapter examples
+
+- [ ] event sourcing
+- [ ] hydrating backend state machine with xstate?

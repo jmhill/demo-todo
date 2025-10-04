@@ -11,13 +11,16 @@ export const app = await createApp(config);
 // Start server only if this module is run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   const server = app.listen(config.server.port, config.server.host, () => {
+    console.log(`Environment: ${config.environment}`);
     console.log(
       `Server running at http://${config.server.host}:${config.server.port}`,
     );
     console.log(
       `Health check available at http://${config.server.host}:${config.server.port}/health`,
     );
-    console.log(`Environment: ${config.environment}`);
+    config.docSite.enabled && console.log(
+      `Health check available at http://${config.server.host}:${config.server.port}/docs`,
+    );
 
     // Print effective configuration if requested
     if (process.env.PRINT_CONFIG === 'true') {

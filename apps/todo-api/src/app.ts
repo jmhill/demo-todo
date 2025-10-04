@@ -30,7 +30,9 @@ import {
   authContract,
   userContract,
   todoContract,
+  openApiDocument,
 } from '@demo-todo/api-contracts';
+import { apiReference } from '@scalar/express-api-reference';
 import {
   createSequelizeTodoStore,
   createTodoService,
@@ -105,6 +107,22 @@ export async function createApp(config: AppConfig): Promise<Express> {
   // Configure route handlers
   app.get('/health', healthCheckHandler);
   app.post('/health', healthCheckHandler);
+
+  // OpenAPI documentation (development only)
+  if (config.docSite.enabled) {
+    // Serve OpenAPI JSON document
+    app.get('/openapi.json', (req, res) => {
+      res.json(openApiDocument);
+    });
+
+    // Serve Scalar API documentation UI
+    app.use(
+      '/docs',
+      apiReference({
+        content: openApiDocument,
+      }),
+    );
+  }
 
   // Auth routes (using ts-rest)
   const authRouter = createAuthRouter(authService);

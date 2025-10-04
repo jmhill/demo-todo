@@ -9,6 +9,9 @@ export const getConfig = (
   getSecretFn: GetSecretFn,
 ): DeepPartial<AppConfig> => ({
   environment: 'test',
+  docSite: {
+    enabled:false
+  },
   database: {
     // TestContainers will provide these dynamically
     // These are defaults that can be overridden

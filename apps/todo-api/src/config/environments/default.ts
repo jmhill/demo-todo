@@ -18,6 +18,9 @@ export const getConfig = (getSecretFn: GetSecretFn): AppConfig => ({
     jwtSecret: getSecretFn('JWT_SECRET'),
     jwtExpiresIn: '24h',
   },
+  docSite: {
+    enabled: true,
+  },
   security: {
     cors: {
       enabled: true,
@@ -36,6 +39,15 @@ export const getConfig = (getSecretFn: GetSecretFn): AppConfig => ({
     },
     secureHeaders: {
       enabled: true,
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", 'https:', "'unsafe-inline'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", 'data:', 'validator.scalar.io'],
+          connectSrc: ["'self'"],
+        },
+      },
     },
   },
 });

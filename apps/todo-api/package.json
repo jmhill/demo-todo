@@ -33,6 +33,7 @@
   "type": "module",
   "dependencies": {
     "@demo-todo/api-contracts": "*",
+    "@scalar/express-api-reference": "^0.8.20",
     "@ts-rest/express": "3.53.0-rc.1",
     "@types/bcrypt": "^6.0.0",
     "@types/jsonwebtoken": "^9.0.10",
