@@ -249,6 +249,7 @@ demo-todo/
 - Domain services return `Result<T, E>`
 - Errors are explicit in type signatures
 - No hidden exceptions in business logic
+- See [Error Handling with neverthrow](#error-handling-with-neverthrow) for detailed patterns
 
 ### ✅ Dependency Inversion
 
@@ -456,7 +457,7 @@ This project uses two distinct testing approaches for different purposes:
 - Test pure business logic
 - Located in `*.test.ts` files alongside source code
 
-**Example:**
+**Example 1: Testing Utility Functions**
 
 ```typescript
 // libs/infrastructure/src/config.test.ts
@@ -469,6 +470,55 @@ describe('mergeConfigs', () => {
   });
 });
 ```
+
+**Example 2: Testing Domain Services with In-Memory Stores**
+
+Domain services can be tested quickly and thoroughly by using in-memory implementations of store interfaces:
+
+```typescript
+// apps/todo-api/src/todos/todo-service.test.ts
+describe('TodoService', () => {
+  it('should enforce business rules when creating todos', async () => {
+    // Use in-memory store for fast, isolated tests
+    const todoStore = new InMemoryTodoStore();
+    const service = new TodoService(todoStore);
+
+    const result = await service.createTodo({
+      userId: 'user-123',
+      title: '', // Invalid - violates business rule
+      description: 'Test',
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(result._unsafeUnwrapErr().message).toContain('Title required');
+  });
+
+  it('should successfully create valid todos', async () => {
+    const todoStore = new InMemoryTodoStore();
+    const service = new TodoService(todoStore);
+
+    const result = await service.createTodo({
+      userId: 'user-123',
+      title: 'Buy groceries',
+      description: 'Milk, eggs, bread',
+    });
+
+    expect(result.isOk()).toBe(true);
+    const todo = result._unsafeUnwrap();
+    expect(todo.title).toBe('Buy groceries');
+    expect(todo.userId).toBe('user-123');
+    expect(todo.completed).toBe(false);
+  });
+});
+```
+
+**Benefits of In-Memory Stores for Unit Testing:**
+
+- ✅ **Fast** - No database connection or I/O overhead
+- ✅ **Isolated** - Each test gets a fresh, independent store
+- ✅ **Deterministic** - No flakiness from database state or timing
+- ✅ **Focused** - Tests only business logic, not infrastructure
+- ✅ **Simple** - No setup/teardown of test databases
 
 **Run unit tests:**
 
@@ -782,65 +832,6 @@ async function createApp() {
 }
 ```
 
-### Testing Strategy with Hexagonal Architecture
-
-#### Unit Tests (Domain Logic)
-
-```typescript
-// apps/todo-api/src/todos/todo-service.test.ts
-describe('TodoService', () => {
-  it('should enforce business rules when creating todos', async () => {
-    // Use in-memory store for fast, isolated tests
-    const store = new InMemoryTodoStore();
-    const service = new TodoService(store);
-
-    const result = await service.createTodo({
-      userId: 'user-123',
-      title: '', // Invalid - empty title
-      description: 'Test',
-    });
-
-    expect(result.isErr()).toBe(true);
-    expect(result._unsafeUnwrapErr().message).toContain('Title required');
-  });
-});
-```
-
-#### Acceptance Tests (Full Stack)
-
-```typescript
-// apps/todo-api/tests/acceptance/todos/todo-crud.test.ts
-describe('Todo CRUD Operations', () => {
-  let container: StartedMySqlContainer;
-  let app: Express;
-
-  beforeAll(async () => {
-    // Use TestContainers for real database
-    container = await new MySqlContainer().start();
-
-    // Wire up real implementations
-    const todoStore = new SequelizeTodoStore(container.getConnectionUri());
-    const todoService = new TodoService(todoStore);
-    app = createApp(todoService);
-  });
-
-  it('should create and retrieve todos', async () => {
-    // Test through HTTP API with real database
-    const createResponse = await request(app)
-      .post('/todos')
-      .send({ title: 'Buy milk', description: 'From the store' });
-
-    expect(createResponse.status).toBe(201);
-
-    const getResponse = await request(app).get(
-      `/todos/${createResponse.body.id}`,
-    );
-
-    expect(getResponse.body.title).toBe('Buy milk');
-  });
-});
-```
-
 ### Benefits of This Architecture
 
 1. **Testability**: Domain logic tested in isolation with in-memory stores
@@ -1127,32 +1118,6 @@ const result = await userService.createUser(testUser);
 
 **Location**: See `apps/todo-api/src/scripts/seed-test-users.ts` and `apps/todo-api/seed-data/test-users.json`
 
-### Type Safety
+---
 
-- ✅ End-to-end types from database to UI
-- ✅ Refactor with confidence - breaking changes caught at compile time
-- ✅ Autocomplete everywhere in the stack
-- ✅ Zero manual type duplication between frontend and backend
-- ✅ API contracts enforce consistency across teams
-
-### Error Handling
-
-- ✅ Errors are values, not exceptions
-- ✅ All error cases explicit in types
-- ✅ Compiler enforces error handling
-
-### Maintainability
-
-- ✅ Business logic pure and testable
-- ✅ Infrastructure easily swappable
-- ✅ Clear boundaries between layers
-- ✅ Self-documenting code via schemas and types
-- ✅ Seed data evolves with domain logic
-
-### Developer Experience
-
-- ✅ Fast feedback loop (TypeScript catches issues immediately)
-- ✅ IntelliSense guides development
-- ✅ Minimal boilerplate
-- ✅ Single source of truth for schemas and contracts
-- ✅ Test data setup mirrors production code paths
+**Note:** For detailed information on error handling patterns, see [Error Handling with neverthrow](#error-handling-with-neverthrow). For testing strategies, see [Testing](#testing).

@@ -57,7 +57,8 @@
 
 ## milestone 2: cleanup and authorization
 
-- [ ] manual review of readme
+- [x] manual review of readme
+- [ ] openapi generation from ts-rest schema
 - [ ] review error response schemas and unions (see docs/CODE_CLEANUP_RECOMMENDATIONS.md)
 - [ ] add demo logging infrastructure (otel?)
 - [ ] show how to run one set of test against different implementations of an adapter
