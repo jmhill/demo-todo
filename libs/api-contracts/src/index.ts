@@ -1,3 +1,5 @@
+export { ErrorResponseSchema, type ErrorResponse } from './common-schemas.js';
+
 export { authContract } from './auth-contract.js';
 export {
   LoginRequestSchema,

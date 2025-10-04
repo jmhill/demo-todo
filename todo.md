@@ -55,18 +55,26 @@
     - [x] multiple drivers (http api vs dev seeders)
     - [x] multiple implementations of external systems
 
-## milestone 2: cleanup and authorization
+## milestone 2: cleanup and full observability
 
 - [x] manual review of readme
 - [x] openapi generation from ts-rest schema
 - [x] add enough react code to make the demo look pretty (something batteries-included like ChakraUI)
-- [ ] review error response schemas and unions (see docs/CODE_CLEANUP_RECOMMENDATIONS.md)
+- [-] review error response schemas and unions (see docs/CODE_CLEANUP_RECOMMENDATIONS.md)
+  - [x] get rid of error over-abstraction and just use inline for now
+  - [ ] change our error response schema to include "error" as well as message?
+- [-] add UI acceptance testing
 - [ ] add demo logging infrastructure (otel?)
+- [ ] add 'mark complete' todo story (end to end)
 - [ ] show how to run one set of test against different implementations of an adapter
+
+## milestone 3: more data adapter and complex service examples
+
 - [ ] basic authorization demo
-- [ ] existing JWT polish (e.g., invalidate all users on logout) or just integrate something like OpenAuth to show full OAuth implementation
-
-## milestone 3: more data adapter examples
-
-- [ ] event sourcing
+- [ ] more complex service (todo completion goals and streaks?)
+- [ ] event sourcing?
 - [ ] hydrating backend state machine with xstate?
+
+## milestone 4: more production-grade infra
+
+- [ ] existing JWT polish (e.g., invalidate all users on logout) or just integrate something like OpenAuth to show full OAuth implementation

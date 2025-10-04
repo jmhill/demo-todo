@@ -6,15 +6,10 @@ import {
   type UserWithHashedPassword,
   type CreateUserCommand,
 } from './user-schemas.js';
-import {
-  type UserError,
-  emailAlreadyExists,
-  usernameAlreadyExists,
-  userNotFound,
-  invalidUserId,
-  invalidEmailFormat,
-  invalidCredentials,
-  unexpectedError,
+import type {
+  CreateUserError,
+  GetUserByIdError,
+  AuthenticateUserError,
 } from './user-errors.js';
 
 // Domain-owned ports - infrastructure implements these
@@ -37,14 +32,14 @@ export interface PasswordHasher {
 }
 
 export interface UserService {
-  createUser(command: CreateUserCommand): ResultAsync<User, UserError>;
-  getById(id: string): ResultAsync<User, UserError>;
-  getByEmail(email: string): ResultAsync<User, UserError>;
-  getByUsername(username: string): ResultAsync<User, UserError>;
+  createUser(command: CreateUserCommand): ResultAsync<User, CreateUserError>;
+  getById(id: string): ResultAsync<User, GetUserByIdError>;
+  getByEmail(email: string): ResultAsync<User, AuthenticateUserError>;
+  getByUsername(username: string): ResultAsync<User, AuthenticateUserError>;
   authenticateUser(
     usernameOrEmail: string,
     password: string,
-  ): ResultAsync<User, UserError>;
+  ): ResultAsync<User, AuthenticateUserError>;
 }
 
 export function createUserService(
@@ -54,34 +49,52 @@ export function createUserService(
   clock: Clock,
 ): UserService {
   return {
-    createUser(command: CreateUserCommand): ResultAsync<User, UserError> {
+    createUser(command: CreateUserCommand): ResultAsync<User, CreateUserError> {
       // Check if email exists
       const emailCheck = ResultAsync.fromPromise(
         userStore.findByEmail(command.email),
-        (error) => unexpectedError('Database error checking email', error),
+        (error): CreateUserError => ({
+          code: 'UNEXPECTED_ERROR',
+          message: 'Database error checking email',
+          cause: error,
+        }),
       );
 
       // Check if username exists
       const usernameCheck = ResultAsync.fromPromise(
         userStore.findByUsername(command.username),
-        (error) => unexpectedError('Database error checking username', error),
+        (error): CreateUserError => ({
+          code: 'UNEXPECTED_ERROR',
+          message: 'Database error checking username',
+          cause: error,
+        }),
       );
 
       // Chain all operations without throws
       return ResultAsync.combine([emailCheck, usernameCheck])
         .andThen(([existingUserByEmail, existingUserByUsername]) => {
           if (existingUserByEmail) {
-            return errAsync(emailAlreadyExists(command.email));
+            return errAsync({
+              code: 'EMAIL_ALREADY_EXISTS',
+              email: command.email,
+            } satisfies CreateUserError);
           }
           if (existingUserByUsername) {
-            return errAsync(usernameAlreadyExists(command.username));
+            return errAsync({
+              code: 'USERNAME_ALREADY_EXISTS',
+              username: command.username,
+            } as const);
           }
           return okAsync(undefined);
         })
         .andThen(() =>
           ResultAsync.fromPromise(
             passwordHasher.hash(command.password),
-            (error) => unexpectedError('Password hashing failed', error),
+            (error): CreateUserError => ({
+              code: 'UNEXPECTED_ERROR',
+              message: 'Password hashing failed',
+              cause: error,
+            }),
           ),
         )
         .andThen((passwordHash) => {
@@ -97,7 +110,11 @@ export function createUserService(
 
           return ResultAsync.fromPromise(
             userStore.save(userWithPassword),
-            (error) => unexpectedError('Database error saving user', error),
+            (error): CreateUserError => ({
+              code: 'UNEXPECTED_ERROR',
+              message: 'Database error saving user',
+              cause: error,
+            }),
           ).map(() => ({
             id: userWithPassword.id,
             email: userWithPassword.email,
@@ -108,47 +125,67 @@ export function createUserService(
         });
     },
 
-    getById(id: string): ResultAsync<User, UserError> {
-      // Validate ID format first
+    getById(id: string): ResultAsync<User, GetUserByIdError> {
+      // Validate ID format - domain responsibility for user identity invariants
       if (!idGenerator.validate(id)) {
-        return errAsync(invalidUserId(id));
+        return errAsync({ code: 'INVALID_USER_ID', id } as const);
       }
 
-      // Find user in store
-      return ResultAsync.fromPromise(userStore.findById(id), (error) =>
-        unexpectedError('Database error fetching user by ID', error),
-      ).andThen((user) => (user ? okAsync(user) : errAsync(userNotFound(id))));
-    },
-
-    getByEmail(email: string): ResultAsync<User, UserError> {
-      // Validate email format first
-      const emailValidation = z.string().email().safeParse(email);
-      if (!emailValidation.success) {
-        return errAsync(invalidEmailFormat(email));
-      }
-
-      // Find user in store
-      return ResultAsync.fromPromise(userStore.findByEmail(email), (error) =>
-        unexpectedError('Database error fetching user by email', error),
+      return ResultAsync.fromPromise(
+        userStore.findById(id),
+        (error): GetUserByIdError => ({
+          code: 'UNEXPECTED_ERROR',
+          message: 'Database error fetching user by ID',
+          cause: error,
+        }),
       ).andThen((user) =>
-        user ? okAsync(user) : errAsync(userNotFound(email)),
+        user
+          ? okAsync(user)
+          : errAsync({ code: 'USER_NOT_FOUND', identifier: id } as const),
       );
     },
 
-    getByUsername(username: string): ResultAsync<User, UserError> {
+    getByEmail(email: string): ResultAsync<User, AuthenticateUserError> {
+      // Validate email format first
+      const emailValidation = z.email().safeParse(email);
+      if (!emailValidation.success) {
+        return errAsync({ code: 'INVALID_EMAIL_FORMAT', email } as const);
+      }
+
+      // Find user in store
+      return ResultAsync.fromPromise(
+        userStore.findByEmail(email),
+        (error): AuthenticateUserError => ({
+          code: 'UNEXPECTED_ERROR',
+          message: 'Database error fetching user by email',
+          cause: error,
+        }),
+      ).andThen((user) =>
+        user
+          ? okAsync(user)
+          : errAsync({ code: 'USER_NOT_FOUND', identifier: email } as const),
+      );
+    },
+
+    getByUsername(username: string): ResultAsync<User, AuthenticateUserError> {
       return ResultAsync.fromPromise(
         userStore.findByUsername(username),
-        (error) =>
-          unexpectedError('Database error fetching user by username', error),
+        (error): AuthenticateUserError => ({
+          code: 'UNEXPECTED_ERROR',
+          message: 'Database error fetching user by username',
+          cause: error,
+        }),
       ).andThen((user) =>
-        user ? okAsync(user) : errAsync(userNotFound(username)),
+        user
+          ? okAsync(user)
+          : errAsync({ code: 'USER_NOT_FOUND', identifier: username } as const),
       );
     },
 
     authenticateUser(
       usernameOrEmail: string,
       password: string,
-    ): ResultAsync<User, UserError> {
+    ): ResultAsync<User, AuthenticateUserError> {
       // Check if input looks like an email
       const isEmail = usernameOrEmail.includes('@');
 
@@ -157,24 +194,39 @@ export function createUserService(
         ? userStore.findByEmailWithPassword(usernameOrEmail)
         : userStore.findByUsernameWithPassword(usernameOrEmail);
 
-      return ResultAsync.fromPromise(userPromise, (error) =>
-        unexpectedError('Database error during authentication', error),
+      return ResultAsync.fromPromise(
+        userPromise,
+        (error): AuthenticateUserError => ({
+          code: 'UNEXPECTED_ERROR',
+          message: 'Database error during authentication',
+          cause: error,
+        }),
       )
         .andThen((userWithPassword) => {
           if (!userWithPassword) {
-            return errAsync(invalidCredentials());
+            return errAsync({
+              code: 'INVALID_CREDENTIALS',
+              message: 'Invalid credentials',
+            } as const);
           }
           return okAsync(userWithPassword);
         })
         .andThen((userWithPassword) =>
           ResultAsync.fromPromise(
             passwordHasher.compare(password, userWithPassword.passwordHash),
-            (error) => unexpectedError('Password comparison failed', error),
+            (error): AuthenticateUserError => ({
+              code: 'UNEXPECTED_ERROR',
+              message: 'Password comparison failed',
+              cause: error,
+            }),
           ).map((isMatch) => ({ userWithPassword, isMatch })),
         )
         .andThen(({ userWithPassword, isMatch }) => {
           if (!isMatch) {
-            return errAsync(invalidCredentials());
+            return errAsync({
+              code: 'INVALID_CREDENTIALS',
+              message: 'Invalid credentials',
+            } as const);
           }
           // Return user without password hash
           return okAsync({

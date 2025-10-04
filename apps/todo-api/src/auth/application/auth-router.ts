@@ -13,25 +13,26 @@ export const createAuthRouter = (authService: AuthService) => {
         body.password,
       );
 
-      return result.match(
-        (data) => ({
-          status: 200,
-          body: data,
-        }),
-        (error) => {
-          // Map auth errors to HTTP status codes
-          if (error.code === 'INVALID_CREDENTIALS') {
+      if (result.isErr()) {
+        const error = result.error;
+        switch (error.code) {
+          case 'INVALID_CREDENTIALS':
             return {
               status: 401,
               body: { message: error.message },
             };
-          }
-          return {
-            status: 500,
-            body: { message: error.message },
-          };
-        },
-      );
+          case 'UNEXPECTED_ERROR':
+            return {
+              status: 500,
+              body: { message: 'Internal server error' },
+            };
+        }
+      }
+
+      return {
+        status: 200,
+        body: result.value,
+      };
     },
 
     logout: async ({ req }) => {
@@ -47,16 +48,26 @@ export const createAuthRouter = (authService: AuthService) => {
       const token = authHeader.substring(7);
       const result = await authService.logout(token);
 
-      return result.match(
-        () => ({
-          status: 204,
-          body: undefined,
-        }),
-        (error) => ({
-          status: 500,
-          body: { message: error.message },
-        }),
-      );
+      if (result.isErr()) {
+        const error = result.error;
+        switch (error.code) {
+          case 'INVALID_TOKEN':
+            return {
+              status: 401,
+              body: { message: 'Invalid token' },
+            };
+          case 'UNEXPECTED_ERROR':
+            return {
+              status: 500,
+              body: { message: 'Internal server error' },
+            };
+        }
+      }
+
+      return {
+        status: 204,
+        body: undefined,
+      };
     },
   });
 };

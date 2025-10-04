@@ -1,13 +1,11 @@
 import { ResultAsync, errAsync, okAsync } from 'neverthrow';
 import type { Clock, IdGenerator } from '@demo-todo/infrastructure';
 import { type Todo, type CreateTodoCommand } from './todo-schemas.js';
-import {
-  type TodoError,
-  todoNotFound,
-  invalidTodoId,
-  todoAlreadyCompleted,
-  unauthorizedAccess,
-  unexpectedError,
+import type {
+  CreateTodoError,
+  ListTodosError,
+  GetTodoByIdError,
+  CompleteTodoError,
 } from './todo-errors.js';
 
 // Domain-owned port - infrastructure implements this
@@ -19,16 +17,16 @@ export interface TodoStore {
 }
 
 export interface TodoService {
-  createTodo(command: CreateTodoCommand): ResultAsync<Todo, TodoError>;
-  listTodos(userId: string): ResultAsync<Todo[], TodoError>;
+  createTodo(command: CreateTodoCommand): ResultAsync<Todo, CreateTodoError>;
+  listTodos(userId: string): ResultAsync<Todo[], ListTodosError>;
   getTodoById(options: {
     todoId: string;
     userId: string;
-  }): ResultAsync<Todo, TodoError>;
+  }): ResultAsync<Todo, GetTodoByIdError>;
   completeTodo(options: {
     todoId: string;
     userId: string;
-  }): ResultAsync<Todo, TodoError>;
+  }): ResultAsync<Todo, CompleteTodoError>;
 }
 
 export function createTodoService(
@@ -37,7 +35,7 @@ export function createTodoService(
   clock: Clock,
 ): TodoService {
   return {
-    createTodo(command: CreateTodoCommand): ResultAsync<Todo, TodoError> {
+    createTodo(command: CreateTodoCommand): ResultAsync<Todo, CreateTodoError> {
       const now = clock.now();
       const todo: Todo = {
         id: idGenerator.generate(),
@@ -49,37 +47,59 @@ export function createTodoService(
         updatedAt: now,
       };
 
-      return ResultAsync.fromPromise(todoStore.save(todo), (error) =>
-        unexpectedError('Database error saving todo', error),
+      return ResultAsync.fromPromise(
+        todoStore.save(todo),
+        (error): CreateTodoError => ({
+          code: 'UNEXPECTED_ERROR',
+          message: 'Database error saving todo',
+          cause: error,
+        }),
       ).map(() => todo);
     },
 
-    listTodos(userId: string): ResultAsync<Todo[], TodoError> {
-      return ResultAsync.fromPromise(todoStore.findByUserId(userId), (error) =>
-        unexpectedError('Database error fetching todos', error),
+    listTodos(userId: string): ResultAsync<Todo[], ListTodosError> {
+      return ResultAsync.fromPromise(
+        todoStore.findByUserId(userId),
+        (error): ListTodosError => ({
+          code: 'UNEXPECTED_ERROR',
+          message: 'Database error fetching todos',
+          cause: error,
+        }),
       );
     },
 
     getTodoById(options: {
       todoId: string;
       userId: string;
-    }): ResultAsync<Todo, TodoError> {
+    }): ResultAsync<Todo, GetTodoByIdError> {
       const { todoId, userId } = options;
 
-      // Validate ID format first
+      // Validate ID format - domain responsibility for todo identity invariants
       if (!idGenerator.validate(todoId)) {
-        return errAsync(invalidTodoId(todoId));
+        return errAsync({ code: 'INVALID_TODO_ID', id: todoId } as const);
       }
 
-      return ResultAsync.fromPromise(todoStore.findById(todoId), (error) =>
-        unexpectedError('Database error fetching todo by ID', error),
+      return ResultAsync.fromPromise(
+        todoStore.findById(todoId),
+        (error): GetTodoByIdError => ({
+          code: 'UNEXPECTED_ERROR',
+          message: 'Database error fetching todo by ID',
+          cause: error,
+        }),
       ).andThen((todo) => {
         if (!todo) {
-          return errAsync(todoNotFound(todoId));
+          return errAsync({
+            code: 'TODO_NOT_FOUND',
+            identifier: todoId,
+          } as const);
         }
         // Check if the todo belongs to the user
         if (todo.userId !== userId) {
-          return errAsync(unauthorizedAccess(todoId, userId));
+          return errAsync({
+            code: 'UNAUTHORIZED_ACCESS',
+            todoId,
+            userId,
+          } as const);
         }
         return okAsync(todo);
       });
@@ -88,30 +108,45 @@ export function createTodoService(
     completeTodo(options: {
       todoId: string;
       userId: string;
-    }): ResultAsync<Todo, TodoError> {
+    }): ResultAsync<Todo, CompleteTodoError> {
       const { todoId, userId } = options;
 
-      // Validate ID format first
+      // Validate ID format - domain responsibility for todo identity invariants
       if (!idGenerator.validate(todoId)) {
-        return errAsync(invalidTodoId(todoId));
+        return errAsync({ code: 'INVALID_TODO_ID', id: todoId } as const);
       }
 
-      return ResultAsync.fromPromise(todoStore.findById(todoId), (error) =>
-        unexpectedError('Database error fetching todo', error),
+      return ResultAsync.fromPromise(
+        todoStore.findById(todoId),
+        (error): CompleteTodoError => ({
+          code: 'UNEXPECTED_ERROR',
+          message: 'Database error fetching todo',
+          cause: error,
+        }),
       )
         .andThen((todo) => {
           if (!todo) {
-            return errAsync(todoNotFound(todoId));
+            return errAsync({
+              code: 'TODO_NOT_FOUND',
+              identifier: todoId,
+            } as const);
           }
           // Check if the todo belongs to the user
           if (todo.userId !== userId) {
-            return errAsync(unauthorizedAccess(todoId, userId));
+            return errAsync({
+              code: 'UNAUTHORIZED_ACCESS',
+              todoId,
+              userId,
+            } as const);
           }
           return okAsync(todo);
         })
         .andThen((todo) => {
           if (todo.completed) {
-            return errAsync(todoAlreadyCompleted(todoId));
+            return errAsync({
+              code: 'TODO_ALREADY_COMPLETED',
+              todoId,
+            } as const);
           }
 
           const now = clock.now();
@@ -124,7 +159,11 @@ export function createTodoService(
 
           return ResultAsync.fromPromise(
             todoStore.update(updatedTodo),
-            (error) => unexpectedError('Database error updating todo', error),
+            (error): CompleteTodoError => ({
+              code: 'UNEXPECTED_ERROR',
+              message: 'Database error updating todo',
+              cause: error,
+            }),
           ).map(() => updatedTodo);
         });
     },

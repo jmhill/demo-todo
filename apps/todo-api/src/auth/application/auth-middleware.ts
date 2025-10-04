@@ -1,15 +1,9 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { AuthService } from '../domain/auth-service.js';
-import {
-  toErrorResponse as authErrorToResponse,
-  type AuthError,
-} from '../domain/auth-errors.js';
+import type { VerifyTokenError } from '../domain/auth-errors.js';
 import type { UserService } from '../../users/domain/user-service.js';
 import type { User } from '../../users/domain/user-schemas.js';
-import {
-  toErrorResponse as userErrorToResponse,
-  type UserError,
-} from '../../users/domain/user-errors.js';
+import type { GetUserByIdError } from '../../users/domain/user-errors.js';
 
 // Extend Express Request type to include auth context
 declare global {
@@ -24,18 +18,29 @@ declare global {
   }
 }
 
-// Helper to convert either AuthError or UserError to ErrorResponse
-const toErrorResponse = (error: AuthError | UserError) => {
-  // Check if it's an AuthError by checking for AuthError-specific codes
-  if (
-    error.code === 'INVALID_TOKEN' ||
-    error.code === 'TOKEN_EXPIRED' ||
-    error.code === 'MISSING_TOKEN'
-  ) {
-    return authErrorToResponse(error as AuthError);
+// Helper to map errors to HTTP responses (middleware-local)
+const errorToHttpResponse = (error: VerifyTokenError | GetUserByIdError) => {
+  // Token errors
+  if (error.code === 'INVALID_TOKEN') {
+    return {
+      statusCode: 401,
+      body: { message: 'Invalid token' },
+    };
   }
-  // Otherwise assume it's a UserError
-  return userErrorToResponse(error as UserError);
+
+  // User errors
+  if (error.code === 'USER_NOT_FOUND' || error.code === 'INVALID_USER_ID') {
+    return {
+      statusCode: 401,
+      body: { message: 'Unauthorized' },
+    };
+  }
+
+  // Unexpected errors
+  return {
+    statusCode: 500,
+    body: { message: 'Internal server error' },
+  };
 };
 
 // Helper: Extract Bearer token from Authorization header
@@ -65,11 +70,7 @@ export function createAuthMiddleware(
     const token = extractBearerToken(req.headers.authorization);
 
     if (!token) {
-      const errorResponse = toErrorResponse({
-        code: 'MISSING_TOKEN',
-        message: 'Missing authorization token',
-      });
-      res.status(errorResponse.statusCode).json(errorResponse.body);
+      res.status(401).json({ message: 'Missing authorization token' });
       return;
     }
 
@@ -82,7 +83,7 @@ export function createAuthMiddleware(
           next();
         },
         (error) => {
-          const errorResponse = toErrorResponse(error);
+          const errorResponse = errorToHttpResponse(error);
           res.status(errorResponse.statusCode).json(errorResponse.body);
         },
       );

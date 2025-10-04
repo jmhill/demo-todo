@@ -5,8 +5,6 @@ import { createAuthMiddleware } from './auth-middleware.js';
 import type { AuthService } from '../domain/auth-service.js';
 import type { UserService } from '../../users/domain/user-service.js';
 import type { User } from '../../users/domain/user-schemas.js';
-import { invalidToken } from '../domain/auth-errors.js';
-import { userNotFound } from '../../users/domain/user-errors.js';
 
 // Mock user helper
 const createMockUser = (id = 'user-123'): User => ({
@@ -116,7 +114,9 @@ describe('createAuthMiddleware', () => {
     const mockAuthService: Partial<AuthService> = {
       verifyToken: vi
         .fn()
-        .mockReturnValue(errAsync(invalidToken('Token is invalid'))),
+        .mockReturnValue(
+          errAsync({ code: 'INVALID_TOKEN', message: 'Token is invalid' }),
+        ),
     };
     const mockUserService: Partial<UserService> = {
       getById: vi.fn(),
@@ -171,7 +171,11 @@ describe('createAuthMiddleware', () => {
       verifyToken: vi.fn().mockReturnValue(okAsync({ userId: 'user-123' })),
     };
     const mockUserService: Partial<UserService> = {
-      getById: vi.fn().mockReturnValue(errAsync(userNotFound('user-123'))),
+      getById: vi
+        .fn()
+        .mockReturnValue(
+          errAsync({ code: 'USER_NOT_FOUND', identifier: 'user-123' }),
+        ),
     };
 
     const middleware = createAuthMiddleware(
@@ -186,8 +190,9 @@ describe('createAuthMiddleware', () => {
 
     expect(mockAuthService.verifyToken).toHaveBeenCalledWith('valid-token');
     expect(mockUserService.getById).toHaveBeenCalledWith('user-123');
-    expect(res.status).toHaveBeenCalledWith(404);
-    expect(res.json).toHaveBeenCalledWith({ message: 'User not found' });
+    // User not found during auth verification should return 401 (unauthorized)
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ message: 'Unauthorized' });
     expect(next).not.toHaveBeenCalled();
   });
 });

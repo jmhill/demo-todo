@@ -6,7 +6,7 @@ import { filterSecrets } from './config/display.js';
 const config = loadConfig();
 
 // Create app - all wiring happens inside createApp
-export const app = await createApp(config);
+export const app = createApp(config);
 
 // Start server only if this module is run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
@@ -18,9 +18,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.log(
       `Health check available at http://${config.server.host}:${config.server.port}/health`,
     );
-    config.docSite.enabled && console.log(
-      `Health check available at http://${config.server.host}:${config.server.port}/docs`,
-    );
+    if (config.docSite.enabled) {
+      console.log(
+        `API docs available at http://${config.server.host}:${config.server.port}/docs`,
+      );
+    }
 
     // Print effective configuration if requested
     if (process.env.PRINT_CONFIG === 'true') {

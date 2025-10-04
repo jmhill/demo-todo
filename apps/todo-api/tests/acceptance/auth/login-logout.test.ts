@@ -126,7 +126,7 @@ describe('Auth API - Login and Logout', () => {
         .post('/auth/logout')
         .set('Authorization', 'Bearer invalid.token.here');
 
-      expect(response.status).toBe(500);
+      expect(response.status).toBe(401);
       expect(response.body.message).toBeDefined();
     });
 

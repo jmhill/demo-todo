@@ -10,7 +10,7 @@ export const getConfig = (
 ): DeepPartial<AppConfig> => ({
   environment: 'test',
   docSite: {
-    enabled:false
+    enabled: false,
   },
   database: {
     // TestContainers will provide these dynamically

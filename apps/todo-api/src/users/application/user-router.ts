@@ -1,101 +1,91 @@
 import { initServer } from '@ts-rest/express';
-import { userContract } from '@demo-todo/api-contracts';
+import { userContract, type UserResponse } from '@demo-todo/api-contracts';
 import type { UserService } from '../domain/user-service.js';
 import { CreateUserCommandSchema } from '../domain/user-schemas.js';
+import type { User } from '../domain/user-schemas.js';
 
 const s = initServer();
+
+// Helper to convert domain User to API response
+const toUserResponse = (user: User): UserResponse => ({
+  id: user.id,
+  email: user.email,
+  username: user.username,
+  createdAt: user.createdAt.toISOString(),
+  updatedAt: user.updatedAt.toISOString(),
+});
 
 // Factory to create user router with dependencies
 export const createUserRouter = (userService: UserService) => {
   return s.router(userContract, {
     createUser: async ({ body }) => {
-      // Validate and transform request to domain command
-      const commandResult = CreateUserCommandSchema.safeParse(body);
-
-      if (!commandResult.success) {
+      // Validate input
+      const parsed = CreateUserCommandSchema.safeParse(body);
+      if (!parsed.success) {
         return {
           status: 400,
-          body: {
-            message: `Validation failed: ${commandResult.error.message}`,
-          },
+          body: { message: `Validation failed: ${parsed.error.message}` },
         };
       }
 
-      const result = await userService.createUser(commandResult.data);
+      // Call service with validated data
+      const result = await userService.createUser(parsed.data);
 
-      return result.match(
-        (user) => ({
-          status: 201,
-          body: {
-            id: user.id,
-            email: user.email,
-            username: user.username,
-            createdAt: user.createdAt.toISOString(),
-            updatedAt: user.updatedAt.toISOString(),
-          },
-        }),
-        (error) => {
-          // Map domain errors to HTTP status codes
-          if (error.code === 'EMAIL_ALREADY_EXISTS') {
+      if (result.isErr()) {
+        const error = result.error;
+        switch (error.code) {
+          case 'EMAIL_ALREADY_EXISTS':
             return {
               status: 409,
               body: { message: 'Unable to create account' },
             };
-          }
-          if (error.code === 'USERNAME_ALREADY_EXISTS') {
+          case 'USERNAME_ALREADY_EXISTS':
             return {
               status: 409,
               body: { message: 'Username already taken' },
             };
-          }
-          if (error.code === 'VALIDATION_ERROR') {
+          case 'UNEXPECTED_ERROR':
             return {
-              status: 400,
-              body: { message: error.message },
+              status: 500,
+              body: { message: 'Internal server error' },
             };
-          }
-          return {
-            status: 500,
-            body: { message: 'Internal server error' },
-          };
-        },
-      );
+        }
+      }
+
+      return {
+        status: 201,
+        body: toUserResponse(result.value),
+      };
     },
 
     getUserById: async ({ params }) => {
       const result = await userService.getById(params.id);
 
-      return result.match(
-        (user) => ({
-          status: 200,
-          body: {
-            id: user.id,
-            email: user.email,
-            username: user.username,
-            createdAt: user.createdAt.toISOString(),
-            updatedAt: user.updatedAt.toISOString(),
-          },
-        }),
-        (error) => {
-          // Map domain errors to HTTP status codes
-          if (error.code === 'USER_NOT_FOUND') {
-            return {
-              status: 404,
-              body: { message: 'User not found' },
-            };
-          }
-          if (error.code === 'INVALID_USER_ID') {
+      if (result.isErr()) {
+        const error = result.error;
+        switch (error.code) {
+          case 'INVALID_USER_ID':
             return {
               status: 400,
               body: { message: 'Invalid user ID format' },
             };
-          }
-          return {
-            status: 500,
-            body: { message: 'Internal server error' },
-          };
-        },
-      );
+          case 'USER_NOT_FOUND':
+            return {
+              status: 404,
+              body: { message: 'User not found' },
+            };
+          case 'UNEXPECTED_ERROR':
+            return {
+              status: 500,
+              body: { message: 'Internal server error' },
+            };
+        }
+      }
+
+      return {
+        status: 200,
+        body: toUserResponse(result.value),
+      };
     },
   });
 };

@@ -67,7 +67,7 @@ const authSchema = z.object({
 
 const docsSchema = z.object({
   enabled: z.boolean(),
-})
+});
 
 // Main application configuration schema
 export const configSchema = z.object({
@@ -81,7 +81,7 @@ export const configSchema = z.object({
     requestLimits: requestLimitsSchema,
     secureHeaders: secureHeadersSchema,
   }),
-  docSite: docsSchema
+  docSite: docsSchema,
 });
 
 // Type inference from schema

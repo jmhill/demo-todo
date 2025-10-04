@@ -15,8 +15,6 @@ import {
   createSequelizeUserStore,
   createUserService,
   createBcryptPasswordHasher,
-  createUuidIdGenerator,
-  createSystemClock,
   createUserRouter,
 } from './users/index.js';
 import {
@@ -36,22 +34,25 @@ import { apiReference } from '@scalar/express-api-reference';
 import {
   createSequelizeTodoStore,
   createTodoService,
-  createUuidIdGenerator as createTodoUuidIdGenerator,
-  createSystemClock as createTodoSystemClock,
   createTodoRouter,
 } from './todos/index.js';
+import {
+  createSystemClock,
+  createUuidIdGenerator,
+} from '@demo-todo/infrastructure';
 
-export async function createApp(config: AppConfig): Promise<Express> {
+export function createApp(config: AppConfig): Express {
   // Wire all dependencies based on config
   // Create Sequelize instance (connection pool)
   const sequelize = createSequelize(config.database);
 
   // Create stores and services
   const userStore = createSequelizeUserStore(sequelize);
+  const userIdGenerator = createUuidIdGenerator();
   const userService = createUserService(
     userStore,
     createBcryptPasswordHasher(),
-    createUuidIdGenerator(),
+    userIdGenerator,
     createSystemClock(),
   );
 
@@ -66,10 +67,11 @@ export async function createApp(config: AppConfig): Promise<Express> {
 
   // Create todo dependencies
   const todoStore = createSequelizeTodoStore(sequelize);
+  const todoIdGenerator = createUuidIdGenerator();
   const todoService = createTodoService(
     todoStore,
-    createTodoUuidIdGenerator(),
-    createTodoSystemClock(),
+    todoIdGenerator,
+    createSystemClock(),
   );
 
   const app = express();
@@ -111,7 +113,7 @@ export async function createApp(config: AppConfig): Promise<Express> {
   // OpenAPI documentation (development only)
   if (config.docSite.enabled) {
     // Serve OpenAPI JSON document
-    app.get('/openapi.json', (req, res) => {
+    app.get('/openapi.json', (_req, res) => {
       res.json(openApiDocument);
     });
 
@@ -146,7 +148,7 @@ export async function createApp(config: AppConfig): Promise<Express> {
 
   // Global error handler - must be last middleware
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     // Determine status code - check for common HTTP error properties
     const errorWithStatus = err as Error & {
       status?: number;
