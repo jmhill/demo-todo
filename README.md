@@ -80,10 +80,10 @@ const authRouter = s.router(authContract, {
 });
 
 // Frontend (apps/todo-ui)
-const apiClient = initQueryClient(authContract, { baseUrl: '...' });
+const tsr = initTsrReactQuery(authContract, { baseUrl: '...' });
 
 // Fully typed mutation with React Query
-const loginMutation = apiClient.login.useMutation();
+const loginMutation = tsr.auth.login.useMutation();
 loginMutation.mutate({ body: { usernameOrEmail, password } });
 ```
 
@@ -214,20 +214,29 @@ demo-todo/
 ├── apps/
 │   ├── todo-api/          # Express API with hexagonal architecture
 │   │   ├── src/
-│   │   │   ├── auth/      # Auth domain + adapters
-│   │   │   ├── users/     # User domain + adapters
-│   │   │   ├── todos/     # Todo domain + adapters
-│   │   │   └── security/  # Cross-cutting concerns
+│   │   │   ├── auth/      # Auth domain (application + domain layers)
+│   │   │   ├── users/     # User domain (application + domain + infrastructure)
+│   │   │   ├── todos/     # Todo domain (application + domain + infrastructure)
+│   │   │   ├── security/  # Cross-cutting concerns
+│   │   │   ├── config/    # Configuration management
+│   │   │   └── database/  # Database models and migrations
 │   │   └── tests/
+│   │       └── acceptance/
 │   └── todo-ui/           # React + Vite frontend
-│       └── src/
-│           ├── components/
-│           └── lib/
+│       ├── src/
+│       │   ├── components/
+│       │   └── lib/
+│       └── tests/
+│           └── acceptance/
 └── libs/
-    └── api-contracts/     # Shared ts-rest contracts (no build step!)
+    ├── api-contracts/     # Shared ts-rest contracts (no build step!)
+    │   └── src/
+    │       ├── auth-contract.ts
+    │       ├── auth-schemas.ts
+    │       ├── todo-contract.ts
+    │       └── todo-schemas.ts
+    └── infrastructure/    # Shared utilities (Clock, IdGenerator, etc.)
         └── src/
-            ├── auth-contract.ts
-            └── auth-schemas.ts
 ```
 
 ## Key Architectural Decisions
@@ -619,25 +628,28 @@ This project demonstrates hexagonal architecture (Ports & Adapters) with concret
 The domain model is defined using Zod schemas, providing both runtime validation and compile-time types:
 
 ```typescript
-// libs/api-contracts/src/todos/todo-schemas.ts
+// apps/todo-api/src/todos/domain/todo-schemas.ts
 export const TodoSchema = z.object({
   id: z.string().uuid(),
   userId: z.string().uuid(),
-  title: z.string().min(1).max(200),
-  description: z.string().optional(),
+  title: z.string().min(1).max(500),
+  description: z.string().max(2000).optional(),
   completed: z.boolean(),
   createdAt: z.date(),
   updatedAt: z.date(),
+  completedAt: z.date().optional(),
 });
 
 export type Todo = z.infer<typeof TodoSchema>;
 
-// Domain-specific validation rules
-export const CreateTodoSchema = TodoSchema.omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
+// Domain command - used by TodoService
+export const CreateTodoCommandSchema = z.object({
+  userId: z.string().uuid(),
+  title: z.string().min(1).max(500),
+  description: z.string().max(2000).optional(),
 });
+
+export type CreateTodoCommand = z.infer<typeof CreateTodoCommandSchema>;
 ```
 
 **Benefits of Schema-First:**
@@ -652,25 +664,59 @@ export const CreateTodoSchema = TodoSchema.omit({
 Services encapsulate business logic and define the core operations:
 
 ```typescript
-// apps/todo-api/src/todos/todo-service.ts
-export class TodoService {
-  constructor(private todoStore: TodoStore) {}
+// apps/todo-api/src/todos/domain/todo-service.ts
+export interface TodoService {
+  createTodo(command: CreateTodoCommand): ResultAsync<Todo, CreateTodoError>;
+  listTodos(userId: string): ResultAsync<Todo[], ListTodosError>;
+  getTodoById(options: {
+    todoId: string;
+    userId: string;
+  }): ResultAsync<Todo, GetTodoByIdError>;
+  completeTodo(options: {
+    todoId: string;
+    userId: string;
+  }): ResultAsync<Todo, CompleteTodoError>;
+}
 
-  createTodo(data: CreateTodoRequest): ResultAsync<Todo, TodoError> {
-    // Business logic: validate, transform, persist
-    return this.validateTodoData(data)
-      .andThen((validData) => this.todoStore.create(validData))
-      .andThen((todo) => this.enrichTodoWithMetadata(todo))
-      .map((todo) => this.toTodoDto(todo));
-  }
+export function createTodoService(
+  todoStore: TodoStore,
+  idGenerator: IdGenerator,
+  clock: Clock,
+): TodoService {
+  return {
+    createTodo(command: CreateTodoCommand): ResultAsync<Todo, CreateTodoError> {
+      const now = clock.now();
+      const todo: Todo = {
+        id: idGenerator.generate(),
+        userId: command.userId,
+        title: command.title,
+        description: command.description,
+        completed: false,
+        createdAt: now,
+        updatedAt: now,
+      };
 
-  listTodosForUser(userId: string): ResultAsync<Todo[], TodoError> {
-    // Business logic: authorization, filtering, sorting
-    return this.todoStore
-      .findByUserId(userId)
-      .map((todos) => this.applyBusinessRules(todos))
-      .map((todos) => todos.map(this.toTodoDto));
-  }
+      return ResultAsync.fromPromise(
+        todoStore.save(todo),
+        (error): CreateTodoError => ({
+          code: 'UNEXPECTED_ERROR',
+          message: 'Database error saving todo',
+          cause: error,
+        }),
+      ).map(() => todo);
+    },
+
+    listTodos(userId: string): ResultAsync<Todo[], ListTodosError> {
+      return ResultAsync.fromPromise(
+        todoStore.findByUserId(userId),
+        (error): ListTodosError => ({
+          code: 'UNEXPECTED_ERROR',
+          message: 'Database error fetching todos',
+          cause: error,
+        }),
+      );
+    },
+  };
 }
 ```
 
@@ -688,18 +734,35 @@ The same domain logic is exposed through multiple entry points:
 ##### HTTP API Driver
 
 ```typescript
-// apps/todo-api/src/todos/todo-router.ts
-export const todoRouter = s.router(todoContract, {
-  createTodo: async ({ body, headers }) => {
-    const userId = getUserIdFromToken(headers.authorization);
-    const result = await todoService.createTodo({ ...body, userId });
+// apps/todo-api/src/todos/application/todo-router.ts
+const s = initServer();
 
-    return result.match(
-      (todo) => ({ status: 201, body: todo }),
-      (error) => ({ status: 400, body: { message: error.message } }),
-    );
-  },
-});
+export const createTodoRouter = (todoService: TodoService) => {
+  return s.router(todoContract, {
+    createTodo: async ({ body, req }) => {
+      // req.auth is set by auth middleware
+      const userId = req.auth!.user.id;
+
+      const result = await todoService.createTodo({
+        userId,
+        title: body.title,
+        description: body.description,
+      });
+
+      if (result.isErr()) {
+        return {
+          status: 500,
+          body: { message: 'Internal server error', code: 'UNEXPECTED_ERROR' },
+        };
+      }
+
+      return {
+        status: 201,
+        body: toTodoResponse(result.value),
+      };
+    },
+  });
+};
 ```
 
 ##### Development Seeder Driver
@@ -734,77 +797,137 @@ The domain defines interfaces (ports) that can have multiple implementations:
 ##### Port Definition
 
 ```typescript
-// apps/todo-api/src/todos/todo-store.ts
+// apps/todo-api/src/todos/domain/todo-service.ts
 export interface TodoStore {
-  create(data: CreateTodoData): ResultAsync<Todo, StoreError>;
-  findById(id: string): ResultAsync<Todo | null, StoreError>;
-  findByUserId(userId: string): ResultAsync<Todo[], StoreError>;
-  update(id: string, data: UpdateTodoData): ResultAsync<Todo, StoreError>;
-  delete(id: string): ResultAsync<void, StoreError>;
+  save(todo: Todo): Promise<void>;
+  findById(id: string): Promise<Todo | null>;
+  findByUserId(userId: string): Promise<Todo[]>;
+  update(todo: Todo): Promise<void>;
 }
 ```
 
 ##### MySQL Implementation (Production)
 
 ```typescript
-// apps/todo-api/src/todos/adapters/sequelize-todo-store.ts
-export class SequelizeTodoStore implements TodoStore {
-  create(data: CreateTodoData): ResultAsync<Todo, StoreError> {
-    return ResultAsync.fromPromise(
-      TodoModel.create({
-        id: uuid(),
-        ...data,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }),
-      (error) => new StoreError('Failed to create todo', error),
-    ).map((model) => model.toJSON() as Todo);
-  }
+// apps/todo-api/src/todos/infrastructure/todo-store-sequelize.ts
+export function createSequelizeTodoStore(sequelize: Sequelize): TodoStore {
+  const TodoModel = defineTodoModel(sequelize);
 
-  // ... other methods
+  const toTodo = (model: Model): Todo => {
+    const data = model.get({ plain: true }) as Todo & {
+      description: string | null;
+      completedAt: Date | null;
+    };
+    return {
+      id: data.id,
+      userId: data.userId,
+      title: data.title,
+      description: data.description ?? undefined,
+      completed: data.completed,
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt,
+      completedAt: data.completedAt ?? undefined,
+    };
+  };
+
+  return {
+    async save(todo: Todo): Promise<void> {
+      await TodoModel.create({
+        id: todo.id,
+        userId: todo.userId,
+        title: todo.title,
+        description: todo.description,
+        completed: todo.completed,
+        createdAt: todo.createdAt,
+        updatedAt: todo.updatedAt,
+        completedAt: todo.completedAt,
+      });
+    },
+
+    async findById(id: string): Promise<Todo | null> {
+      const model = await TodoModel.findByPk(id);
+      return model ? toTodo(model) : null;
+    },
+
+    // ... other methods
+  };
 }
 ```
 
 ##### In-Memory Implementation (Testing)
 
 ```typescript
-// apps/todo-api/src/todos/adapters/in-memory-todo-store.ts
-export class InMemoryTodoStore implements TodoStore {
-  private todos: Map<string, Todo> = new Map();
+// apps/todo-api/src/todos/domain/todo-store.ts
+export function createInMemoryTodoStore(): TodoStore {
+  const todos = new Map<string, Todo>();
+  const userIdIndex = new Map<string, Set<string>>();
 
-  create(data: CreateTodoData): ResultAsync<Todo, StoreError> {
-    const todo: Todo = {
-      id: uuid(),
-      ...data,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+  return {
+    async save(todo: Todo): Promise<void> {
+      todos.set(todo.id, todo);
 
-    this.todos.set(todo.id, todo);
-    return okAsync(todo);
-  }
+      // Update user index
+      if (!userIdIndex.has(todo.userId)) {
+        userIdIndex.set(todo.userId, new Set());
+      }
+      userIdIndex.get(todo.userId)?.add(todo.id);
+    },
 
-  // ... other methods
+    async findById(id: string): Promise<Todo | null> {
+      return todos.get(id) ?? null;
+    },
+
+    async findByUserId(userId: string): Promise<Todo[]> {
+      const todoIds = userIdIndex.get(userId);
+      if (!todoIds) return [];
+
+      const userTodos: Todo[] = [];
+      for (const todoId of todoIds) {
+        const todo = todos.get(todoId);
+        if (todo) {
+          userTodos.push(todo);
+        }
+      }
+      return userTodos;
+    },
+
+    async update(todo: Todo): Promise<void> {
+      todos.set(todo.id, todo);
+    },
+  };
 }
 ```
 
 ##### Redis Implementation (Caching - Example)
 
 ```typescript
-// Could easily add a Redis implementation
-export class RedisTodoStore implements TodoStore {
-  constructor(
-    private redisClient: RedisClient,
-    private fallbackStore: TodoStore,
-  ) {}
+// Could easily add a Redis implementation with caching
+export function createRedisTodoStore(
+  redisClient: RedisClient,
+  fallbackStore: TodoStore,
+): TodoStore {
+  return {
+    async save(todo: Todo): Promise<void> {
+      await fallbackStore.save(todo);
+      // Cache the saved todo
+      await redisClient.set(`todo:${todo.id}`, JSON.stringify(todo));
+    },
 
-  create(data: CreateTodoData): ResultAsync<Todo, StoreError> {
-    return this.fallbackStore
-      .create(data)
-      .andThen((todo) => this.cacheInRedis(todo).map(() => todo));
-  }
+    async findById(id: string): Promise<Todo | null> {
+      // Try cache first
+      const cached = await redisClient.get(`todo:${id}`);
+      if (cached) return JSON.parse(cached);
 
-  // ... implement caching strategies
+      // Fall back to database
+      const todo = await fallbackStore.findById(id);
+      if (todo) {
+        await redisClient.set(`todo:${id}`, JSON.stringify(todo));
+      }
+      return todo;
+    },
+
+    // ... implement other methods with caching strategies
+  };
 }
 ```
 
@@ -813,20 +936,37 @@ export class RedisTodoStore implements TodoStore {
 The application wires everything together at startup:
 
 ```typescript
-// apps/todo-api/src/main.ts
-async function createApp() {
-  // Choose implementation based on environment
-  const todoStore =
-    process.env.NODE_ENV === 'test'
-      ? new InMemoryTodoStore()
-      : new SequelizeTodoStore();
+// apps/todo-api/src/app.ts
+export function createApp(config: AppConfig): Express {
+  // Create Sequelize instance (connection pool)
+  const sequelize = createSequelize(config.database);
 
-  // Inject dependencies into service
-  const todoService = new TodoService(todoStore);
+  // Create stores and services
+  const userStore = createSequelizeUserStore(sequelize);
+  const userService = createUserService(
+    userStore,
+    createBcryptPasswordHasher(),
+    createUuidIdGenerator(),
+    createSystemClock(),
+  );
+
+  // Create todo dependencies
+  const todoStore = createSequelizeTodoStore(sequelize);
+  const todoIdGenerator = createUuidIdGenerator();
+  const todoService = createTodoService(
+    todoStore,
+    todoIdGenerator,
+    createSystemClock(),
+  );
+
+  const app = express();
 
   // Wire service to HTTP router
-  const app = express();
-  createExpressEndpoints(todoContract, todoRouter(todoService), app);
+  const todoRouter = createTodoRouter(todoService);
+  createExpressEndpoints(todoContract, todoRouter, app, {
+    logInitialization: false,
+    globalMiddleware: [requireAuth],
+  });
 
   return app;
 }
