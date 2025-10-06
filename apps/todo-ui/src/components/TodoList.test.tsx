@@ -1,5 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import { userEvent } from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
 import { TodoList } from './TodoList';
@@ -11,11 +12,35 @@ vi.mock('../lib/api-client', () => ({
       listTodos: {
         useQuery: vi.fn(),
       },
+      completeTodo: {
+        useMutation: vi.fn(),
+      },
     },
   },
 }));
 
 describe('TodoList', () => {
+  beforeEach(() => {
+    // Set default mock for completeTodo mutation
+    vi.mocked(tsr.todos.completeTodo.useMutation).mockReturnValue({
+      mutate: vi.fn(),
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isIdle: true,
+      isError: false,
+      isSuccess: false,
+      data: undefined,
+      error: null,
+      variables: undefined,
+      status: 'idle',
+      reset: vi.fn(),
+      context: undefined,
+      failureCount: 0,
+      failureReason: null,
+      submittedAt: 0,
+    } as unknown as ReturnType<typeof tsr.todos.completeTodo.useMutation>);
+  });
+
   const renderTodoList = () => {
     const queryClient = new QueryClient({
       defaultOptions: {
@@ -23,13 +48,18 @@ describe('TodoList', () => {
       },
     });
 
-    return render(
-      <ChakraProvider value={defaultSystem}>
-        <QueryClientProvider client={queryClient}>
-          <TodoList />
-        </QueryClientProvider>
-      </ChakraProvider>,
-    );
+    const user = userEvent.setup();
+
+    return {
+      user,
+      ...render(
+        <ChakraProvider value={defaultSystem}>
+          <QueryClientProvider client={queryClient}>
+            <TodoList />
+          </QueryClientProvider>
+        </ChakraProvider>,
+      ),
+    };
   };
 
   it('should display loading state while fetching todos', () => {
@@ -87,11 +117,11 @@ describe('TodoList', () => {
       {
         id: '2',
         userId: 'user-123',
-        title: 'Finish report',
-        completed: true,
+        title: 'Write tests',
+        description: 'Add unit tests',
+        completed: false,
         createdAt: '2025-01-01T11:00:00Z',
         updatedAt: '2025-01-01T12:00:00Z',
-        completedAt: '2025-01-01T12:00:00Z',
       },
     ];
 
@@ -107,7 +137,8 @@ describe('TodoList', () => {
     await waitFor(() => {
       expect(screen.getByText('Buy groceries')).toBeInTheDocument();
       expect(screen.getByText('Get milk and eggs')).toBeInTheDocument();
-      expect(screen.getByText('Finish report')).toBeInTheDocument();
+      expect(screen.getByText('Write tests')).toBeInTheDocument();
+      expect(screen.getByText('Add unit tests')).toBeInTheDocument();
     });
   });
 
@@ -138,16 +169,24 @@ describe('TodoList', () => {
     });
   });
 
-  it('should indicate completed todos visually', async () => {
+  it('should only display incomplete todos', async () => {
     const mockTodos = [
       {
         id: '1',
         userId: 'user-123',
+        title: 'Incomplete task',
+        completed: false,
+        createdAt: '2025-01-01T10:00:00Z',
+        updatedAt: '2025-01-01T10:00:00Z',
+      },
+      {
+        id: '2',
+        userId: 'user-123',
         title: 'Completed task',
         completed: true,
-        createdAt: '2025-01-01T10:00:00Z',
-        updatedAt: '2025-01-01T11:00:00Z',
-        completedAt: '2025-01-01T11:00:00Z',
+        createdAt: '2025-01-01T11:00:00Z',
+        updatedAt: '2025-01-01T12:00:00Z',
+        completedAt: '2025-01-01T12:00:00Z',
       },
     ];
 
@@ -161,8 +200,85 @@ describe('TodoList', () => {
     renderTodoList();
 
     await waitFor(() => {
-      const todoElement = screen.getByText('Completed task').closest('li');
-      expect(todoElement).toHaveStyle({ textDecoration: 'line-through' });
+      expect(screen.getByText('Incomplete task')).toBeInTheDocument();
+      expect(screen.queryByText('Completed task')).not.toBeInTheDocument();
+    });
+  });
+
+  it('should display checkbox for each incomplete todo', async () => {
+    const mockTodos = [
+      {
+        id: '1',
+        userId: 'user-123',
+        title: 'Task to complete',
+        completed: false,
+        createdAt: '2025-01-01T10:00:00Z',
+        updatedAt: '2025-01-01T10:00:00Z',
+      },
+    ];
+
+    vi.mocked(tsr.todos.listTodos.useQuery).mockReturnValue({
+      data: { status: 200, body: mockTodos },
+      isLoading: false,
+      error: null,
+      isError: false,
+    } as ReturnType<typeof tsr.todos.listTodos.useQuery>);
+
+    renderTodoList();
+
+    await waitFor(() => {
+      const checkbox = screen.getByRole('checkbox');
+      expect(checkbox).toBeInTheDocument();
+      expect(checkbox).not.toBeChecked();
+    });
+  });
+
+  it('should call completeTodo mutation when checkbox is clicked', async () => {
+    const mockMutate = vi.fn();
+    const mockTodos = [
+      {
+        id: '1',
+        userId: 'user-123',
+        title: 'Task to complete',
+        completed: false,
+        createdAt: '2025-01-01T10:00:00Z',
+        updatedAt: '2025-01-01T10:00:00Z',
+      },
+    ];
+
+    vi.mocked(tsr.todos.listTodos.useQuery).mockReturnValue({
+      data: { status: 200, body: mockTodos },
+      isLoading: false,
+      error: null,
+      isError: false,
+    } as ReturnType<typeof tsr.todos.listTodos.useQuery>);
+
+    vi.mocked(tsr.todos.completeTodo.useMutation).mockReturnValue({
+      mutate: mockMutate,
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isIdle: true,
+      isError: false,
+      isSuccess: false,
+      data: undefined,
+      error: null,
+      variables: undefined,
+      status: 'idle',
+      reset: vi.fn(),
+      context: undefined,
+      failureCount: 0,
+      failureReason: null,
+      submittedAt: 0,
+    } as unknown as ReturnType<typeof tsr.todos.completeTodo.useMutation>);
+
+    const { user } = renderTodoList();
+
+    const checkbox = await screen.findByRole('checkbox');
+    await user.click(checkbox);
+
+    expect(mockMutate).toHaveBeenCalledWith({
+      params: { id: '1' },
+      body: undefined,
     });
   });
 });

@@ -60,14 +60,16 @@
 - [x] manual review of readme
 - [x] openapi generation from ts-rest schema
 - [x] add enough react code to make the demo look pretty (something batteries-included like ChakraUI)
-- [-] review error response schemas and unions (see docs/CODE_CLEANUP_RECOMMENDATIONS.md)
+- [x] review error response schemas and unions (see docs/CODE_CLEANUP_RECOMMENDATIONS.md)
   - [x] get rid of error over-abstraction and just use inline for now
   - [x] change our error response schema to include "error" as well as message?
-  - [ ] update docs to ensure code examples up to date
+  - [x] update docs to ensure code examples up to date
 - [-] add UI acceptance testing
   - [x] initial MSW setup
-  - [ ] review test setup code and failures to clean up
-- [ ] add 'mark complete' todo story (end to end)
+  - [-] review test setup code and failures to clean up (see docs/FRONTEND_ACCEPTANCE_TESTING_MSW_ISSUE.md)
+- [x] add 'mark complete' todo story (end to end)
+- [ ] add 'create todo' story
+- [ ] add 'view completed' story
 - [ ] add demo logging infrastructure (otel?)
 - [ ] show how to run one set of test against different implementations of an adapter
 
