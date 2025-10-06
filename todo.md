@@ -69,7 +69,7 @@
   - [-] review test setup code and failures to clean up (see docs/FRONTEND_ACCEPTANCE_TESTING_MSW_ISSUE.md)
 - [x] add 'mark complete' todo story (end to end)
 - [x] add 'create todo' story
-- [-] add 'view completed' story
+- [x] add 'view completed' story
 - [ ] add demo logging infrastructure (otel?)
 - [ ] show how to run one set of test against different implementations of an adapter
 
@@ -82,4 +82,4 @@
 
 ## milestone 4: more production-grade infra
 
-- [ ] existing JWT polish (e.g., invalidate all users on logout) or just integrate something like OpenAuth to show full OAuth implementation
+- [ ] existing JWT polish (e.g., invalidate all users on logout) or just integrate something like OpenAuth to show full OAuth implementation (see https://github.com/sst/openauth)

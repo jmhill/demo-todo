@@ -19,6 +19,7 @@ export const TodoList = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   const { data, isLoading, isError, refetch } = tsr.todos.listTodos.useQuery({
     queryKey: ['todos'],
@@ -60,7 +61,10 @@ export const TodoList = () => {
     );
   };
 
-  const incompleteTodos = data?.body.filter((todo) => !todo.completed) || [];
+  const allTodos = data?.body || [];
+  const incompleteTodos = allTodos.filter((todo) => !todo.completed);
+  const completedTodos = allTodos.filter((todo) => todo.completed);
+  const todosToDisplay = showCompleted ? allTodos : incompleteTodos;
 
   const handleCheckboxChange = (todoId: string) => {
     completeTodo({
@@ -127,42 +131,69 @@ export const TodoList = () => {
             <Alert.Indicator />
             <Alert.Title>Failed to load todos</Alert.Title>
           </Alert.Root>
-        ) : incompleteTodos.length === 0 ? (
+        ) : todosToDisplay.length === 0 ? (
           <Alert.Root status="info">
             <Alert.Indicator />
             <Alert.Title>No todos yet</Alert.Title>
           </Alert.Root>
         ) : (
-          <List.Root gap={3}>
-            {incompleteTodos.map((todo) => (
-              <List.Item
-                key={todo.id}
-                p={3}
-                borderWidth="1px"
-                borderRadius="md"
-                display="flex"
-                alignItems="flex-start"
-                gap={3}
-              >
-                <Checkbox.Root
-                  checked={false}
-                  onCheckedChange={() => handleCheckboxChange(todo.id)}
-                  mt={1}
+          <>
+            {completedTodos.length > 0 && (
+              <Box mb={4}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowCompleted(!showCompleted)}
                 >
-                  <Checkbox.HiddenInput />
-                  <Checkbox.Control />
-                </Checkbox.Root>
-                <Box flex={1}>
-                  <Text fontWeight="bold">{todo.title}</Text>
-                  {todo.description && (
-                    <Text fontSize="sm" color="gray.600" mt={1}>
-                      {todo.description}
+                  {showCompleted
+                    ? 'Hide completed'
+                    : `Show completed (${completedTodos.length})`}
+                </Button>
+              </Box>
+            )}
+            <List.Root gap={3}>
+              {todosToDisplay.map((todo) => (
+                <List.Item
+                  key={todo.id}
+                  p={3}
+                  borderWidth="1px"
+                  borderRadius="md"
+                  display="flex"
+                  alignItems="flex-start"
+                  gap={3}
+                >
+                  <Checkbox.Root
+                    checked={todo.completed}
+                    onCheckedChange={() => handleCheckboxChange(todo.id)}
+                    mt={1}
+                  >
+                    <Checkbox.HiddenInput />
+                    <Checkbox.Control />
+                  </Checkbox.Root>
+                  <Box flex={1}>
+                    <Text
+                      fontWeight="bold"
+                      textDecoration={todo.completed ? 'line-through' : 'none'}
+                    >
+                      {todo.title}
                     </Text>
-                  )}
-                </Box>
-              </List.Item>
-            ))}
-          </List.Root>
+                    {todo.description && (
+                      <Text
+                        fontSize="sm"
+                        color="gray.600"
+                        mt={1}
+                        textDecoration={
+                          todo.completed ? 'line-through' : 'none'
+                        }
+                      >
+                        {todo.description}
+                      </Text>
+                    )}
+                  </Box>
+                </List.Item>
+              ))}
+            </List.Root>
+          </>
         )}
       </Box>
     </Stack>

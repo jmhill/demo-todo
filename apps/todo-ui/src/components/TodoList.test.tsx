@@ -546,4 +546,261 @@ describe('TodoList', () => {
       });
     });
   });
+
+  describe('Completed Todos Visibility', () => {
+    it('should display link to show completed todos when they exist', async () => {
+      const mockTodos = [
+        {
+          id: '1',
+          userId: 'user-123',
+          title: 'Incomplete task',
+          completed: false,
+          createdAt: '2025-01-01T10:00:00Z',
+          updatedAt: '2025-01-01T10:00:00Z',
+        },
+        {
+          id: '2',
+          userId: 'user-123',
+          title: 'Completed task',
+          completed: true,
+          createdAt: '2025-01-01T11:00:00Z',
+          updatedAt: '2025-01-01T12:00:00Z',
+          completedAt: '2025-01-01T12:00:00Z',
+        },
+      ];
+
+      vi.mocked(tsr.todos.listTodos.useQuery).mockReturnValue({
+        data: { status: 200, body: mockTodos },
+        isLoading: false,
+        error: null,
+        isError: false,
+      } as unknown as ReturnType<typeof tsr.todos.listTodos.useQuery>);
+
+      renderTodoList();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('button', { name: /show completed/i }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('should show count of completed todos in the link text', async () => {
+      const mockTodos = [
+        {
+          id: '1',
+          userId: 'user-123',
+          title: 'Incomplete task',
+          completed: false,
+          createdAt: '2025-01-01T10:00:00Z',
+          updatedAt: '2025-01-01T10:00:00Z',
+        },
+        {
+          id: '2',
+          userId: 'user-123',
+          title: 'Completed task 1',
+          completed: true,
+          createdAt: '2025-01-01T11:00:00Z',
+          updatedAt: '2025-01-01T12:00:00Z',
+          completedAt: '2025-01-01T12:00:00Z',
+        },
+        {
+          id: '3',
+          userId: 'user-123',
+          title: 'Completed task 2',
+          completed: true,
+          createdAt: '2025-01-01T11:00:00Z',
+          updatedAt: '2025-01-01T12:00:00Z',
+          completedAt: '2025-01-01T12:00:00Z',
+        },
+      ];
+
+      vi.mocked(tsr.todos.listTodos.useQuery).mockReturnValue({
+        data: { status: 200, body: mockTodos },
+        isLoading: false,
+        error: null,
+        isError: false,
+      } as unknown as ReturnType<typeof tsr.todos.listTodos.useQuery>);
+
+      renderTodoList();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('button', { name: 'Show completed (2)' }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('should display completed todos with strikethrough styling when link is clicked', async () => {
+      const mockTodos = [
+        {
+          id: '1',
+          userId: 'user-123',
+          title: 'Incomplete task',
+          description: 'Still working on this',
+          completed: false,
+          createdAt: '2025-01-01T10:00:00Z',
+          updatedAt: '2025-01-01T10:00:00Z',
+        },
+        {
+          id: '2',
+          userId: 'user-123',
+          title: 'Completed task',
+          description: 'This is done',
+          completed: true,
+          createdAt: '2025-01-01T11:00:00Z',
+          updatedAt: '2025-01-01T12:00:00Z',
+          completedAt: '2025-01-01T12:00:00Z',
+        },
+      ];
+
+      vi.mocked(tsr.todos.listTodos.useQuery).mockReturnValue({
+        data: { status: 200, body: mockTodos },
+        isLoading: false,
+        error: null,
+        isError: false,
+      } as unknown as ReturnType<typeof tsr.todos.listTodos.useQuery>);
+
+      const { user } = renderTodoList();
+
+      // Click the show completed link
+      await user.click(screen.getByRole('button', { name: /show completed/i }));
+
+      // Completed todo should be visible
+      expect(await screen.findByText('Completed task')).toBeInTheDocument();
+      expect(screen.getByText('This is done')).toBeInTheDocument();
+
+      // Check for strikethrough styling on completed todo
+      const completedTitle = screen.getByText('Completed task');
+      expect(completedTitle).toHaveStyle({ textDecoration: 'line-through' });
+
+      const completedDescription = screen.getByText('This is done');
+      expect(completedDescription).toHaveStyle({
+        textDecoration: 'line-through',
+      });
+
+      // Incomplete todo should NOT have strikethrough
+      const incompleteTitle = screen.getByText('Incomplete task');
+      expect(incompleteTitle).not.toHaveStyle({
+        textDecoration: 'line-through',
+      });
+    });
+
+    it('should hide completed todos when hide completed link is clicked', async () => {
+      const mockTodos = [
+        {
+          id: '1',
+          userId: 'user-123',
+          title: 'Incomplete task',
+          completed: false,
+          createdAt: '2025-01-01T10:00:00Z',
+          updatedAt: '2025-01-01T10:00:00Z',
+        },
+        {
+          id: '2',
+          userId: 'user-123',
+          title: 'Completed task',
+          completed: true,
+          createdAt: '2025-01-01T11:00:00Z',
+          updatedAt: '2025-01-01T12:00:00Z',
+          completedAt: '2025-01-01T12:00:00Z',
+        },
+      ];
+
+      vi.mocked(tsr.todos.listTodos.useQuery).mockReturnValue({
+        data: { status: 200, body: mockTodos },
+        isLoading: false,
+        error: null,
+        isError: false,
+      } as unknown as ReturnType<typeof tsr.todos.listTodos.useQuery>);
+
+      const { user } = renderTodoList();
+
+      // Show completed todos
+      await user.click(screen.getByRole('button', { name: /show completed/i }));
+
+      expect(await screen.findByText('Completed task')).toBeInTheDocument();
+
+      // Hide completed todos
+      await user.click(screen.getByRole('button', { name: /hide completed/i }));
+
+      await waitFor(() => {
+        expect(screen.queryByText('Completed task')).not.toBeInTheDocument();
+      });
+      expect(screen.getByText('Incomplete task')).toBeInTheDocument();
+    });
+
+    it('should show checked checkbox for completed todos', async () => {
+      const mockTodos = [
+        {
+          id: '1',
+          userId: 'user-123',
+          title: 'Incomplete task',
+          completed: false,
+          createdAt: '2025-01-01T10:00:00Z',
+          updatedAt: '2025-01-01T10:00:00Z',
+        },
+        {
+          id: '2',
+          userId: 'user-123',
+          title: 'Completed task',
+          completed: true,
+          createdAt: '2025-01-01T11:00:00Z',
+          updatedAt: '2025-01-01T12:00:00Z',
+          completedAt: '2025-01-01T12:00:00Z',
+        },
+      ];
+
+      vi.mocked(tsr.todos.listTodos.useQuery).mockReturnValue({
+        data: { status: 200, body: mockTodos },
+        isLoading: false,
+        error: null,
+        isError: false,
+      } as unknown as ReturnType<typeof tsr.todos.listTodos.useQuery>);
+
+      const { user } = renderTodoList();
+
+      // Show completed todos
+      await user.click(screen.getByRole('button', { name: /show completed/i }));
+
+      await waitFor(() => {
+        const checkboxes = screen.getAllByRole('checkbox');
+        expect(checkboxes).toHaveLength(2);
+        // First checkbox (incomplete) should be unchecked
+        expect(checkboxes[0]).not.toBeChecked();
+        // Second checkbox (completed) should be checked
+        expect(checkboxes[1]).toBeChecked();
+      });
+    });
+
+    it('should not show toggle link when no completed todos exist', async () => {
+      const mockTodos = [
+        {
+          id: '1',
+          userId: 'user-123',
+          title: 'Incomplete task',
+          completed: false,
+          createdAt: '2025-01-01T10:00:00Z',
+          updatedAt: '2025-01-01T10:00:00Z',
+        },
+      ];
+
+      vi.mocked(tsr.todos.listTodos.useQuery).mockReturnValue({
+        data: { status: 200, body: mockTodos },
+        isLoading: false,
+        error: null,
+        isError: false,
+      } as unknown as ReturnType<typeof tsr.todos.listTodos.useQuery>);
+
+      renderTodoList();
+
+      await waitFor(() => {
+        expect(screen.getByText('Incomplete task')).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByRole('button', { name: /show completed/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
 });
