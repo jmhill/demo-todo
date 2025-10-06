@@ -15,6 +15,9 @@ vi.mock('../lib/api-client', () => ({
       completeTodo: {
         useMutation: vi.fn(),
       },
+      createTodo: {
+        useMutation: vi.fn(),
+      },
     },
   },
 }));
@@ -39,6 +42,25 @@ describe('TodoList', () => {
       failureReason: null,
       submittedAt: 0,
     } as unknown as ReturnType<typeof tsr.todos.completeTodo.useMutation>);
+
+    // Set default mock for createTodo mutation
+    vi.mocked(tsr.todos.createTodo.useMutation).mockReturnValue({
+      mutate: vi.fn(),
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isIdle: true,
+      isError: false,
+      isSuccess: false,
+      data: undefined,
+      error: null,
+      variables: undefined,
+      status: 'idle',
+      reset: vi.fn(),
+      context: undefined,
+      failureCount: 0,
+      failureReason: null,
+      submittedAt: 0,
+    } as unknown as ReturnType<typeof tsr.todos.createTodo.useMutation>);
   });
 
   const renderTodoList = () => {
@@ -279,6 +301,249 @@ describe('TodoList', () => {
     expect(mockMutate).toHaveBeenCalledWith({
       params: { id: '1' },
       body: undefined,
+    });
+  });
+
+  describe('Creating Todos', () => {
+    it('should display form fields for creating a new todo', async () => {
+      vi.mocked(tsr.todos.listTodos.useQuery).mockReturnValue({
+        data: { status: 200, body: [] },
+        isLoading: false,
+        error: null,
+        isError: false,
+      } as ReturnType<typeof tsr.todos.listTodos.useQuery>);
+
+      renderTodoList();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Title')).toBeInTheDocument();
+        expect(screen.getByLabelText('Description')).toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: 'Add Todo' }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('should call createTodo mutation when form is submitted', async () => {
+      const mockMutate = vi.fn();
+
+      vi.mocked(tsr.todos.listTodos.useQuery).mockReturnValue({
+        data: { status: 200, body: [] },
+        isLoading: false,
+        error: null,
+        isError: false,
+      } as ReturnType<typeof tsr.todos.listTodos.useQuery>);
+
+      vi.mocked(tsr.todos.createTodo.useMutation).mockReturnValue({
+        mutate: mockMutate,
+        mutateAsync: vi.fn(),
+        isPending: false,
+        isIdle: true,
+        isError: false,
+        isSuccess: false,
+        data: undefined,
+        error: null,
+        variables: undefined,
+        status: 'idle',
+        reset: vi.fn(),
+        context: undefined,
+        failureCount: 0,
+        failureReason: null,
+        submittedAt: 0,
+      } as unknown as ReturnType<typeof tsr.todos.createTodo.useMutation>);
+
+      const { user } = renderTodoList();
+
+      await user.type(screen.getByLabelText('Title'), 'New Todo');
+      await user.type(screen.getByLabelText('Description'), 'Todo description');
+      await user.click(screen.getByRole('button', { name: 'Add Todo' }));
+
+      expect(mockMutate).toHaveBeenCalledWith(
+        {
+          body: {
+            title: 'New Todo',
+            description: 'Todo description',
+          },
+        },
+        expect.any(Object),
+      );
+    });
+
+    it('should create todo without description', async () => {
+      const mockMutate = vi.fn();
+
+      vi.mocked(tsr.todos.listTodos.useQuery).mockReturnValue({
+        data: { status: 200, body: [] },
+        isLoading: false,
+        error: null,
+        isError: false,
+      } as ReturnType<typeof tsr.todos.listTodos.useQuery>);
+
+      vi.mocked(tsr.todos.createTodo.useMutation).mockReturnValue({
+        mutate: mockMutate,
+        mutateAsync: vi.fn(),
+        isPending: false,
+        isIdle: true,
+        isError: false,
+        isSuccess: false,
+        data: undefined,
+        error: null,
+        variables: undefined,
+        status: 'idle',
+        reset: vi.fn(),
+        context: undefined,
+        failureCount: 0,
+        failureReason: null,
+        submittedAt: 0,
+      } as unknown as ReturnType<typeof tsr.todos.createTodo.useMutation>);
+
+      const { user } = renderTodoList();
+
+      await user.type(screen.getByLabelText('Title'), 'Simple Todo');
+      await user.click(screen.getByRole('button', { name: 'Add Todo' }));
+
+      expect(mockMutate).toHaveBeenCalledWith(
+        {
+          body: {
+            title: 'Simple Todo',
+            description: '',
+          },
+        },
+        expect.any(Object),
+      );
+    });
+
+    it('should clear form after successful creation', async () => {
+      const mockRefetch = vi.fn();
+
+      vi.mocked(tsr.todos.listTodos.useQuery).mockReturnValue({
+        data: { status: 200, body: [] },
+        isLoading: false,
+        error: null,
+        isError: false,
+        refetch: mockRefetch,
+      } as unknown as ReturnType<typeof tsr.todos.listTodos.useQuery>);
+
+      vi.mocked(tsr.todos.createTodo.useMutation).mockImplementation(
+        () =>
+          ({
+            mutate: (
+              variables: { body: { title: string; description: string } },
+              options?: {
+                onSuccess?: (response: {
+                  status: number;
+                  body: {
+                    id: string;
+                    userId: string;
+                    title: string;
+                    description?: string;
+                    completed: boolean;
+                    createdAt: string;
+                    updatedAt: string;
+                  };
+                }) => void;
+              },
+            ) => {
+              // Simulate successful creation
+              options?.onSuccess?.({
+                status: 201,
+                body: {
+                  id: 'new-todo-id',
+                  userId: 'user-123',
+                  title: variables.body.title,
+                  description: variables.body.description,
+                  completed: false,
+                  createdAt: '2025-01-01T10:00:00Z',
+                  updatedAt: '2025-01-01T10:00:00Z',
+                },
+              });
+            },
+            mutateAsync: vi.fn(),
+            isPending: false,
+            isIdle: true,
+            isError: false,
+            isSuccess: false,
+            data: undefined,
+            error: null,
+            variables: undefined,
+            status: 'idle',
+            reset: vi.fn(),
+            context: undefined,
+            failureCount: 0,
+            failureReason: null,
+            submittedAt: 0,
+          }) as unknown as ReturnType<typeof tsr.todos.createTodo.useMutation>,
+      );
+
+      const { user } = renderTodoList();
+
+      const titleInput = screen.getByLabelText('Title');
+      const descriptionInput = screen.getByLabelText('Description');
+
+      await user.type(titleInput, 'Test Todo');
+      await user.type(descriptionInput, 'Test Description');
+      await user.click(screen.getByRole('button', { name: 'Add Todo' }));
+
+      await waitFor(() => {
+        expect(titleInput).toHaveValue('');
+        expect(descriptionInput).toHaveValue('');
+      });
+    });
+
+    it('should display error message when creation fails', async () => {
+      vi.mocked(tsr.todos.listTodos.useQuery).mockReturnValue({
+        data: { status: 200, body: [] },
+        isLoading: false,
+        error: null,
+        isError: false,
+      } as unknown as ReturnType<typeof tsr.todos.listTodos.useQuery>);
+
+      vi.mocked(tsr.todos.createTodo.useMutation).mockImplementation(
+        () =>
+          ({
+            mutate: (
+              _variables: { body: { title: string; description: string } },
+              options?: {
+                onSuccess?: (response: {
+                  status: number;
+                  body: { message: string; code: string };
+                }) => void;
+              },
+            ) => {
+              // Simulate error response
+              options?.onSuccess?.({
+                status: 500,
+                body: {
+                  message: 'Failed to create todo',
+                  code: 'UNEXPECTED_ERROR',
+                },
+              });
+            },
+            mutateAsync: vi.fn(),
+            isPending: false,
+            isIdle: true,
+            isError: false,
+            isSuccess: false,
+            data: undefined,
+            error: null,
+            variables: undefined,
+            status: 'idle',
+            reset: vi.fn(),
+            context: undefined,
+            failureCount: 0,
+            failureReason: null,
+            submittedAt: 0,
+          }) as unknown as ReturnType<typeof tsr.todos.createTodo.useMutation>,
+      );
+
+      const { user } = renderTodoList();
+
+      await user.type(screen.getByLabelText('Title'), 'Test Todo');
+      await user.click(screen.getByRole('button', { name: 'Add Todo' }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Failed to create todo')).toBeInTheDocument();
+      });
     });
   });
 });

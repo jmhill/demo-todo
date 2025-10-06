@@ -270,3 +270,10 @@ export const addMockTodos = (
     todos.set(todo.id, todo);
   });
 };
+
+/**
+ * Clear todos from the mock state
+ */
+export const clearMockTodos = () => {
+  todos.clear();
+};

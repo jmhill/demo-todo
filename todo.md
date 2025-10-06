@@ -68,8 +68,8 @@
   - [x] initial MSW setup
   - [-] review test setup code and failures to clean up (see docs/FRONTEND_ACCEPTANCE_TESTING_MSW_ISSUE.md)
 - [x] add 'mark complete' todo story (end to end)
-- [ ] add 'create todo' story
-- [ ] add 'view completed' story
+- [x] add 'create todo' story
+- [-] add 'view completed' story
 - [ ] add demo logging infrastructure (otel?)
 - [ ] show how to run one set of test against different implementations of an adapter
 

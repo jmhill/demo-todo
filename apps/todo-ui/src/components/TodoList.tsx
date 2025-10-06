@@ -1,10 +1,25 @@
-import { Box, Heading, Spinner, Text } from '@chakra-ui/react';
+import { useState, type FormEvent } from 'react';
+import {
+  Box,
+  Button,
+  Field,
+  Heading,
+  Input,
+  Spinner,
+  Stack,
+  Text,
+  Textarea,
+} from '@chakra-ui/react';
 import { Alert } from '@chakra-ui/react/alert';
 import { List } from '@chakra-ui/react/list';
 import { Checkbox } from '@chakra-ui/react';
 import { tsr } from '../lib/api-client';
 
 export const TodoList = () => {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
   const { data, isLoading, isError, refetch } = tsr.todos.listTodos.useQuery({
     queryKey: ['todos'],
   });
@@ -15,34 +30,37 @@ export const TodoList = () => {
     },
   });
 
-  if (isLoading) {
-    return (
-      <Box textAlign="center" py={8}>
-        <Spinner size="xl" color="blue.500" />
-        <Text mt={4}>Loading todos...</Text>
-      </Box>
-    );
-  }
+  const createTodoMutation = tsr.todos.createTodo.useMutation();
 
-  if (isError) {
-    return (
-      <Alert.Root status="error">
-        <Alert.Indicator />
-        <Alert.Title>Failed to load todos</Alert.Title>
-      </Alert.Root>
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+
+    createTodoMutation.mutate(
+      {
+        body: {
+          title,
+          description,
+        },
+      },
+      {
+        onSuccess: (response) => {
+          if (response.status === 201) {
+            setTitle('');
+            setDescription('');
+            refetch();
+          } else {
+            setError((response.body as unknown as { message: string }).message);
+          }
+        },
+        onError: () => {
+          setError('Network error occurred');
+        },
+      },
     );
-  }
+  };
 
   const incompleteTodos = data?.body.filter((todo) => !todo.completed) || [];
-
-  if (!data || data.status !== 200 || incompleteTodos.length === 0) {
-    return (
-      <Alert.Root status="info">
-        <Alert.Indicator />
-        <Alert.Title>No todos yet</Alert.Title>
-      </Alert.Root>
-    );
-  }
 
   const handleCheckboxChange = (todoId: string) => {
     completeTodo({
@@ -52,40 +70,101 @@ export const TodoList = () => {
   };
 
   return (
-    <Box borderWidth="1px" borderRadius="lg" p={6}>
-      <Heading size="md" mb={4}>
-        My Todos
-      </Heading>
-      <List.Root gap={3}>
-        {incompleteTodos.map((todo) => (
-          <List.Item
-            key={todo.id}
-            p={3}
-            borderWidth="1px"
-            borderRadius="md"
-            display="flex"
-            alignItems="flex-start"
-            gap={3}
-          >
-            <Checkbox.Root
-              checked={false}
-              onCheckedChange={() => handleCheckboxChange(todo.id)}
-              mt={1}
+    <Stack gap={6}>
+      <Box borderWidth="1px" borderRadius="lg" p={6}>
+        <Heading size="md" mb={4}>
+          Add New Todo
+        </Heading>
+        <form onSubmit={handleSubmit}>
+          <Stack gap={4}>
+            <Field.Root required>
+              <Field.Label htmlFor="title">Title</Field.Label>
+              <Input
+                id="title"
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </Field.Root>
+            <Field.Root>
+              <Field.Label htmlFor="description">Description</Field.Label>
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </Field.Root>
+            {error && (
+              <Alert.Root status="error">
+                <Alert.Indicator />
+                <Alert.Title>{error}</Alert.Title>
+              </Alert.Root>
+            )}
+            <Button
+              type="submit"
+              colorScheme="blue"
+              width="full"
+              loading={createTodoMutation.isPending}
+              loadingText="Creating..."
             >
-              <Checkbox.HiddenInput />
-              <Checkbox.Control />
-            </Checkbox.Root>
-            <Box flex={1}>
-              <Text fontWeight="bold">{todo.title}</Text>
-              {todo.description && (
-                <Text fontSize="sm" color="gray.600" mt={1}>
-                  {todo.description}
-                </Text>
-              )}
-            </Box>
-          </List.Item>
-        ))}
-      </List.Root>
-    </Box>
+              Add Todo
+            </Button>
+          </Stack>
+        </form>
+      </Box>
+
+      <Box borderWidth="1px" borderRadius="lg" p={6}>
+        <Heading size="md" mb={4}>
+          My Todos
+        </Heading>
+        {isLoading ? (
+          <Box textAlign="center" py={8}>
+            <Spinner size="xl" color="blue.500" />
+            <Text mt={4}>Loading todos...</Text>
+          </Box>
+        ) : isError ? (
+          <Alert.Root status="error">
+            <Alert.Indicator />
+            <Alert.Title>Failed to load todos</Alert.Title>
+          </Alert.Root>
+        ) : incompleteTodos.length === 0 ? (
+          <Alert.Root status="info">
+            <Alert.Indicator />
+            <Alert.Title>No todos yet</Alert.Title>
+          </Alert.Root>
+        ) : (
+          <List.Root gap={3}>
+            {incompleteTodos.map((todo) => (
+              <List.Item
+                key={todo.id}
+                p={3}
+                borderWidth="1px"
+                borderRadius="md"
+                display="flex"
+                alignItems="flex-start"
+                gap={3}
+              >
+                <Checkbox.Root
+                  checked={false}
+                  onCheckedChange={() => handleCheckboxChange(todo.id)}
+                  mt={1}
+                >
+                  <Checkbox.HiddenInput />
+                  <Checkbox.Control />
+                </Checkbox.Root>
+                <Box flex={1}>
+                  <Text fontWeight="bold">{todo.title}</Text>
+                  {todo.description && (
+                    <Text fontSize="sm" color="gray.600" mt={1}>
+                      {todo.description}
+                    </Text>
+                  )}
+                </Box>
+              </List.Item>
+            ))}
+          </List.Root>
+        )}
+      </Box>
+    </Stack>
   );
 };
