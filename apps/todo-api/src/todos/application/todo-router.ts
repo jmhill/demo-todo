@@ -36,7 +36,7 @@ export const createTodoRouter = (todoService: TodoService) => {
         // createTodo can only return UNEXPECTED_ERROR
         return {
           status: 500,
-          body: { message: 'Internal server error' },
+          body: { message: 'Internal server error', code: 'UNEXPECTED_ERROR' },
         };
       }
 
@@ -55,7 +55,7 @@ export const createTodoRouter = (todoService: TodoService) => {
         // listTodos can only return UNEXPECTED_ERROR
         return {
           status: 500,
-          body: { message: 'Internal server error' },
+          body: { message: 'Internal server error', code: 'UNEXPECTED_ERROR' },
         };
       }
 
@@ -79,22 +79,31 @@ export const createTodoRouter = (todoService: TodoService) => {
           case 'INVALID_TODO_ID':
             return {
               status: 400,
-              body: { message: 'Invalid todo ID format' },
+              body: {
+                message: 'Invalid todo ID format',
+                code: 'INVALID_TODO_ID',
+              },
             };
           case 'TODO_NOT_FOUND':
             return {
               status: 404,
-              body: { message: 'Todo not found' },
+              body: { message: 'Todo not found', code: 'TODO_NOT_FOUND' },
             };
           case 'UNAUTHORIZED_ACCESS':
             return {
               status: 403,
-              body: { message: 'Unauthorized access' },
+              body: {
+                message: 'Unauthorized access',
+                code: 'UNAUTHORIZED_ACCESS',
+              },
             };
           case 'UNEXPECTED_ERROR':
             return {
               status: 500,
-              body: { message: 'Internal server error' },
+              body: {
+                message: 'Internal server error',
+                code: 'UNEXPECTED_ERROR',
+              },
             };
         }
       }
@@ -119,27 +128,39 @@ export const createTodoRouter = (todoService: TodoService) => {
           case 'INVALID_TODO_ID':
             return {
               status: 400,
-              body: { message: 'Invalid todo ID format' },
+              body: {
+                message: 'Invalid todo ID format',
+                code: 'INVALID_TODO_ID',
+              },
             };
           case 'TODO_NOT_FOUND':
             return {
               status: 404,
-              body: { message: 'Todo not found' },
+              body: { message: 'Todo not found', code: 'TODO_NOT_FOUND' },
             };
           case 'UNAUTHORIZED_ACCESS':
             return {
               status: 403,
-              body: { message: 'Unauthorized access' },
+              body: {
+                message: 'Unauthorized access',
+                code: 'UNAUTHORIZED_ACCESS',
+              },
             };
           case 'TODO_ALREADY_COMPLETED':
             return {
               status: 400,
-              body: { message: 'Todo already completed' },
+              body: {
+                message: 'Todo already completed',
+                code: 'TODO_ALREADY_COMPLETED',
+              },
             };
           case 'UNEXPECTED_ERROR':
             return {
               status: 500,
-              body: { message: 'Internal server error' },
+              body: {
+                message: 'Internal server error',
+                code: 'UNEXPECTED_ERROR',
+              },
             };
         }
       }

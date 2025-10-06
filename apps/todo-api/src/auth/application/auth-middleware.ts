@@ -24,7 +24,7 @@ const errorToHttpResponse = (error: VerifyTokenError | GetUserByIdError) => {
   if (error.code === 'INVALID_TOKEN') {
     return {
       statusCode: 401,
-      body: { message: 'Invalid token' },
+      body: { message: 'Invalid token', code: 'INVALID_TOKEN' },
     };
   }
 
@@ -32,14 +32,14 @@ const errorToHttpResponse = (error: VerifyTokenError | GetUserByIdError) => {
   if (error.code === 'USER_NOT_FOUND' || error.code === 'INVALID_USER_ID') {
     return {
       statusCode: 401,
-      body: { message: 'Unauthorized' },
+      body: { message: 'Unauthorized', code: 'INVALID_TOKEN' },
     };
   }
 
   // Unexpected errors
   return {
     statusCode: 500,
-    body: { message: 'Internal server error' },
+    body: { message: 'Internal server error', code: 'UNEXPECTED_ERROR' },
   };
 };
 
@@ -70,7 +70,10 @@ export function createAuthMiddleware(
     const token = extractBearerToken(req.headers.authorization);
 
     if (!token) {
-      res.status(401).json({ message: 'Missing authorization token' });
+      res.status(401).json({
+        message: 'Missing authorization token',
+        code: 'INVALID_TOKEN',
+      });
       return;
     }
 

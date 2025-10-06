@@ -37,17 +37,26 @@ export const createUserRouter = (userService: UserService) => {
           case 'EMAIL_ALREADY_EXISTS':
             return {
               status: 409,
-              body: { message: 'Unable to create account' },
+              body: {
+                message: 'Unable to create account',
+                code: 'EMAIL_ALREADY_EXISTS',
+              },
             };
           case 'USERNAME_ALREADY_EXISTS':
             return {
               status: 409,
-              body: { message: 'Username already taken' },
+              body: {
+                message: 'Username already taken',
+                code: 'USERNAME_ALREADY_EXISTS',
+              },
             };
           case 'UNEXPECTED_ERROR':
             return {
               status: 500,
-              body: { message: 'Internal server error' },
+              body: {
+                message: 'Internal server error',
+                code: 'UNEXPECTED_ERROR',
+              },
             };
         }
       }
@@ -67,17 +76,23 @@ export const createUserRouter = (userService: UserService) => {
           case 'INVALID_USER_ID':
             return {
               status: 400,
-              body: { message: 'Invalid user ID format' },
+              body: {
+                message: 'Invalid user ID format',
+                code: 'INVALID_USER_ID',
+              },
             };
           case 'USER_NOT_FOUND':
             return {
               status: 404,
-              body: { message: 'User not found' },
+              body: { message: 'User not found', code: 'USER_NOT_FOUND' },
             };
           case 'UNEXPECTED_ERROR':
             return {
               status: 500,
-              body: { message: 'Internal server error' },
+              body: {
+                message: 'Internal server error',
+                code: 'UNEXPECTED_ERROR',
+              },
             };
         }
       }

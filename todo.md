@@ -62,10 +62,13 @@
 - [x] add enough react code to make the demo look pretty (something batteries-included like ChakraUI)
 - [-] review error response schemas and unions (see docs/CODE_CLEANUP_RECOMMENDATIONS.md)
   - [x] get rid of error over-abstraction and just use inline for now
-  - [ ] change our error response schema to include "error" as well as message?
+  - [x] change our error response schema to include "error" as well as message?
+  - [ ] update docs to ensure code examples up to date
 - [-] add UI acceptance testing
-- [ ] add demo logging infrastructure (otel?)
+  - [x] initial MSW setup
+  - [ ] review test setup code and failures to clean up
 - [ ] add 'mark complete' todo story (end to end)
+- [ ] add demo logging infrastructure (otel?)
 - [ ] show how to run one set of test against different implementations of an adapter
 
 ## milestone 3: more data adapter and complex service examples

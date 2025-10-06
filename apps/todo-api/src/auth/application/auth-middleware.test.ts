@@ -79,6 +79,7 @@ describe('createAuthMiddleware', () => {
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith({
       message: 'Missing authorization token',
+      code: 'INVALID_TOKEN',
     });
     expect(next).not.toHaveBeenCalled();
   });
@@ -106,6 +107,7 @@ describe('createAuthMiddleware', () => {
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith({
       message: 'Missing authorization token',
+      code: 'INVALID_TOKEN',
     });
     expect(next).not.toHaveBeenCalled();
   });
@@ -135,7 +137,10 @@ describe('createAuthMiddleware', () => {
     expect(mockAuthService.verifyToken).toHaveBeenCalledWith('invalid-token');
     expect(mockUserService.getById).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ message: 'Invalid token' });
+    expect(res.json).toHaveBeenCalledWith({
+      message: 'Invalid token',
+      code: 'INVALID_TOKEN',
+    });
     expect(next).not.toHaveBeenCalled();
   });
 
@@ -162,6 +167,7 @@ describe('createAuthMiddleware', () => {
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith({
       message: 'Missing authorization token',
+      code: 'INVALID_TOKEN',
     });
     expect(next).not.toHaveBeenCalled();
   });
@@ -192,7 +198,10 @@ describe('createAuthMiddleware', () => {
     expect(mockUserService.getById).toHaveBeenCalledWith('user-123');
     // User not found during auth verification should return 401 (unauthorized)
     expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ message: 'Unauthorized' });
+    expect(res.json).toHaveBeenCalledWith({
+      message: 'Unauthorized',
+      code: 'INVALID_TOKEN',
+    });
     expect(next).not.toHaveBeenCalled();
   });
 });

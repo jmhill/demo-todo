@@ -19,12 +19,15 @@ export const createAuthRouter = (authService: AuthService) => {
           case 'INVALID_CREDENTIALS':
             return {
               status: 401,
-              body: { message: error.message },
+              body: { message: error.message, code: 'INVALID_CREDENTIALS' },
             };
           case 'UNEXPECTED_ERROR':
             return {
               status: 500,
-              body: { message: 'Internal server error' },
+              body: {
+                message: 'Internal server error',
+                code: 'UNEXPECTED_ERROR',
+              },
             };
         }
       }
@@ -41,7 +44,7 @@ export const createAuthRouter = (authService: AuthService) => {
       if (!authHeader?.startsWith('Bearer ')) {
         return {
           status: 401,
-          body: { message: 'Unauthorized' },
+          body: { message: 'Unauthorized', code: 'INVALID_TOKEN' },
         };
       }
 
@@ -54,12 +57,15 @@ export const createAuthRouter = (authService: AuthService) => {
           case 'INVALID_TOKEN':
             return {
               status: 401,
-              body: { message: 'Invalid token' },
+              body: { message: 'Invalid token', code: 'INVALID_TOKEN' },
             };
           case 'UNEXPECTED_ERROR':
             return {
               status: 500,
-              body: { message: 'Internal server error' },
+              body: {
+                message: 'Internal server error',
+                code: 'UNEXPECTED_ERROR',
+              },
             };
         }
       }
