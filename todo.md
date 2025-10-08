@@ -75,6 +75,7 @@
 
 ## milestone 3: more data adapter and complex service examples
 
+- [ ] groups/workspaces/organizations
 - [ ] basic authorization demo
 - [ ] more complex service (todo completion goals and streaks?)
 - [ ] event sourcing?
@@ -83,3 +84,4 @@
 ## milestone 4: more production-grade infra
 
 - [ ] existing JWT polish (e.g., invalidate all users on logout) or just integrate something like OpenAuth to show full OAuth implementation (see https://github.com/sst/openauth)
+- [ ] revise quality/test scripts to run in parallel with clearer reporting of problems
