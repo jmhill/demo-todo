@@ -74,6 +74,32 @@ async function seedTestUsers(): Promise<void> {
             `✓ Created user: ${user.username} (${user.email}) [ID: ${user.id}]`,
           );
 
+          // Create a personal organization for this user (matches migration backfill behavior)
+          const organizationId = user.id;
+          const slug = user.username.toLowerCase().replace(/[^a-z0-9]/g, '-');
+
+          await sequelize.query(
+            'INSERT INTO organizations (id, name, slug, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())',
+            {
+              replacements: [
+                organizationId,
+                `${user.username}'s Organization`,
+                slug,
+              ],
+            },
+          );
+
+          // Create organization membership
+          const membershipId = createUuidIdGenerator().generate();
+          await sequelize.query(
+            "INSERT INTO organization_memberships (id, user_id, organization_id, role, created_at, updated_at) VALUES (?, ?, ?, 'owner', NOW(), NOW())",
+            {
+              replacements: [membershipId, user.id, organizationId],
+            },
+          );
+
+          console.log(`  ✓ Created organization: ${slug}`);
+
           // Seed todos for this user if present
           if (testUser.todos && testUser.todos.length > 0) {
             console.log(
@@ -82,7 +108,8 @@ async function seedTestUsers(): Promise<void> {
 
             for (const testTodo of testUser.todos) {
               const todoResult = await todoService.createTodo({
-                userId: user.id,
+                organizationId: organizationId,
+                createdBy: user.id,
                 title: testTodo.title,
                 description: testTodo.description,
               });

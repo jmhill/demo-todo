@@ -18,7 +18,8 @@ export type UpdateTodoRequest = z.infer<typeof UpdateTodoRequestSchema>;
 // Response schemas - Dates transformed to ISO strings
 export const TodoResponseSchema = z.object({
   id: z.string().uuid(),
-  userId: z.string().uuid(),
+  organizationId: z.string().uuid(),
+  createdBy: z.string().uuid(),
   title: z.string(),
   description: z.string().optional(),
   completed: z.boolean(),

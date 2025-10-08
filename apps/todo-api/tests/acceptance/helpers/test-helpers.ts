@@ -57,6 +57,9 @@ export async function cleanDatabase(): Promise<void> {
 
   try {
     await connection.execute('SET FOREIGN_KEY_CHECKS = 0');
+    await connection.execute('TRUNCATE TABLE todos');
+    await connection.execute('TRUNCATE TABLE organization_memberships');
+    await connection.execute('TRUNCATE TABLE organizations');
     await connection.execute('TRUNCATE TABLE users');
     await connection.execute('SET FOREIGN_KEY_CHECKS = 1');
   } catch (error) {
@@ -208,6 +211,21 @@ export async function createAuthenticatedUser(
   await pool.execute(
     'INSERT INTO users (id, email, username, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())',
     [userId, email, username, passwordHash],
+  );
+
+  // Create a personal organization for the user (matches migration backfill behavior)
+  const organizationId = userId;
+  const slug = username.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  await pool.execute(
+    'INSERT INTO organizations (id, name, slug, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())',
+    [organizationId, `${username}'s Organization`, slug],
+  );
+
+  // Create organization membership
+  const membershipId = uuidv4();
+  await pool.execute(
+    "INSERT INTO organization_memberships (id, user_id, organization_id, role, created_at, updated_at) VALUES (?, ?, ?, 'owner', NOW(), NOW())",
+    [membershipId, userId, organizationId],
   );
 
   // Login to get token

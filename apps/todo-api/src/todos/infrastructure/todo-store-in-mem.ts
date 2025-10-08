@@ -3,35 +3,35 @@ import type { TodoStore } from '../domain/todo-service.js';
 
 export function createInMemoryTodoStore(): TodoStore {
   const todos = new Map<string, Todo>();
-  const userIdIndex = new Map<string, Set<string>>();
+  const organizationIdIndex = new Map<string, Set<string>>();
 
   return {
     async save(todo: Todo): Promise<void> {
       todos.set(todo.id, todo);
 
-      // Update user index
-      if (!userIdIndex.has(todo.userId)) {
-        userIdIndex.set(todo.userId, new Set());
+      // Update organization index
+      if (!organizationIdIndex.has(todo.organizationId)) {
+        organizationIdIndex.set(todo.organizationId, new Set());
       }
-      userIdIndex.get(todo.userId)?.add(todo.id);
+      organizationIdIndex.get(todo.organizationId)?.add(todo.id);
     },
 
     async findById(id: string): Promise<Todo | null> {
       return todos.get(id) ?? null;
     },
 
-    async findByUserId(userId: string): Promise<Todo[]> {
-      const todoIds = userIdIndex.get(userId);
+    async findByOrganizationId(organizationId: string): Promise<Todo[]> {
+      const todoIds = organizationIdIndex.get(organizationId);
       if (!todoIds) return [];
 
-      const userTodos: Todo[] = [];
+      const orgTodos: Todo[] = [];
       for (const todoId of todoIds) {
         const todo = todos.get(todoId);
         if (todo) {
-          userTodos.push(todo);
+          orgTodos.push(todo);
         }
       }
-      return userTodos;
+      return orgTodos;
     },
 
     async update(todo: Todo): Promise<void> {

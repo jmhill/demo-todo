@@ -23,7 +23,8 @@ describe('TodoService', () => {
   describe('createTodo', () => {
     it('should create a new todo with valid data', async () => {
       const command: CreateTodoCommand = {
-        userId: '550e8400-e29b-41d4-a716-446655440000',
+        organizationId: '550e8400-e29b-41d4-a716-446655440000',
+        createdBy: '550e8400-e29b-41d4-a716-446655440001',
         title: 'Buy groceries',
         description: 'Milk, eggs, bread',
       };
@@ -32,7 +33,8 @@ describe('TodoService', () => {
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
-        expect(result.value.userId).toBe(command.userId);
+        expect(result.value.organizationId).toBe(command.organizationId);
+        expect(result.value.createdBy).toBe(command.createdBy);
         expect(result.value.title).toBe(command.title);
         expect(result.value.description).toBe(command.description);
         expect(result.value.completed).toBe(false);
@@ -45,7 +47,8 @@ describe('TodoService', () => {
 
     it('should create a new todo without description', async () => {
       const command: CreateTodoCommand = {
-        userId: '550e8400-e29b-41d4-a716-446655440000',
+        organizationId: '550e8400-e29b-41d4-a716-446655440000',
+        createdBy: '550e8400-e29b-41d4-a716-446655440001',
         title: 'Complete project',
       };
 
@@ -53,7 +56,8 @@ describe('TodoService', () => {
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
-        expect(result.value.userId).toBe(command.userId);
+        expect(result.value.organizationId).toBe(command.organizationId);
+        expect(result.value.createdBy).toBe(command.createdBy);
         expect(result.value.title).toBe(command.title);
         expect(result.value.description).toBeUndefined();
         expect(result.value.completed).toBe(false);
@@ -62,23 +66,30 @@ describe('TodoService', () => {
   });
 
   describe('listTodos', () => {
-    it('should return all todos for a user', async () => {
-      const userId = '550e8400-e29b-41d4-a716-446655440000';
+    it('should return all todos for an organization', async () => {
+      const organizationId = '550e8400-e29b-41d4-a716-446655440000';
+      const createdBy = '550e8400-e29b-41d4-a716-446655440001';
 
-      // Create multiple todos for the user
+      // Create multiple todos for the organization
       await todoService.createTodo({
-        userId,
+        organizationId,
+        createdBy,
         title: 'First todo',
         description: 'Description 1',
       });
-      await todoService.createTodo({ userId, title: 'Second todo' });
       await todoService.createTodo({
-        userId,
+        organizationId,
+        createdBy,
+        title: 'Second todo',
+      });
+      await todoService.createTodo({
+        organizationId,
+        createdBy,
         title: 'Third todo',
         description: 'Description 3',
       });
 
-      const result = await todoService.listTodos(userId);
+      const result = await todoService.listTodos(organizationId);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -89,10 +100,10 @@ describe('TodoService', () => {
       }
     });
 
-    it('should return empty array when user has no todos', async () => {
-      const userId = '550e8400-e29b-41d4-a716-446655440000';
+    it('should return empty array when organization has no todos', async () => {
+      const organizationId = '550e8400-e29b-41d4-a716-446655440000';
 
-      const result = await todoService.listTodos(userId);
+      const result = await todoService.listTodos(organizationId);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -100,31 +111,46 @@ describe('TodoService', () => {
       }
     });
 
-    it('should only return todos for the specified user', async () => {
-      const user1Id = '550e8400-e29b-41d4-a716-446655440000';
-      const user2Id = '550e8400-e29b-41d4-a716-446655440001';
+    it('should only return todos for the specified organization', async () => {
+      const org1Id = '550e8400-e29b-41d4-a716-446655440000';
+      const org2Id = '550e8400-e29b-41d4-a716-446655440001';
+      const createdBy = '550e8400-e29b-41d4-a716-446655440002';
 
-      // Create todos for different users
-      await todoService.createTodo({ userId: user1Id, title: 'User 1 Todo 1' });
-      await todoService.createTodo({ userId: user2Id, title: 'User 2 Todo 1' });
-      await todoService.createTodo({ userId: user1Id, title: 'User 1 Todo 2' });
+      // Create todos for different organizations
+      await todoService.createTodo({
+        organizationId: org1Id,
+        createdBy,
+        title: 'Org 1 Todo 1',
+      });
+      await todoService.createTodo({
+        organizationId: org2Id,
+        createdBy,
+        title: 'Org 2 Todo 1',
+      });
+      await todoService.createTodo({
+        organizationId: org1Id,
+        createdBy,
+        title: 'Org 1 Todo 2',
+      });
 
-      const result = await todoService.listTodos(user1Id);
+      const result = await todoService.listTodos(org1Id);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
         expect(result.value).toHaveLength(2);
-        expect(result.value[0]?.title).toBe('User 1 Todo 1');
-        expect(result.value[1]?.title).toBe('User 1 Todo 2');
+        expect(result.value[0]?.title).toBe('Org 1 Todo 1');
+        expect(result.value[1]?.title).toBe('Org 1 Todo 2');
       }
     });
   });
 
   describe('getTodoById', () => {
-    it('should return todo when found and user is authorized', async () => {
-      const userId = '550e8400-e29b-41d4-a716-446655440000';
+    it('should return todo when found', async () => {
+      const organizationId = '550e8400-e29b-41d4-a716-446655440000';
+      const createdBy = '550e8400-e29b-41d4-a716-446655440001';
       const command: CreateTodoCommand = {
-        userId,
+        organizationId,
+        createdBy,
         title: 'Test todo',
         description: 'Test description',
       };
@@ -133,10 +159,7 @@ describe('TodoService', () => {
       expect(createResult.isOk()).toBe(true);
       if (!createResult.isOk()) return;
 
-      const result = await todoService.getTodoById({
-        todoId: createResult.value.id,
-        userId,
-      });
+      const result = await todoService.getTodoById(createResult.value.id);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -147,13 +170,9 @@ describe('TodoService', () => {
     });
 
     it('should return error when todo not found', async () => {
-      const userId = '550e8400-e29b-41d4-a716-446655440000';
       const nonExistentId = '550e8400-e29b-41d4-a716-446655440099';
 
-      const result = await todoService.getTodoById({
-        todoId: nonExistentId,
-        userId,
-      });
+      const result = await todoService.getTodoById(nonExistentId);
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -162,58 +181,31 @@ describe('TodoService', () => {
     });
 
     it('should return error when todo ID format is invalid', async () => {
-      const userId = '550e8400-e29b-41d4-a716-446655440000';
       const invalidId = 'not-a-uuid';
 
-      const result = await todoService.getTodoById({
-        todoId: invalidId,
-        userId,
-      });
+      const result = await todoService.getTodoById(invalidId);
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
         expect(result.error.code).toBe('INVALID_TODO_ID');
       }
     });
-
-    it('should return error when user is not authorized to access todo', async () => {
-      const ownerId = '550e8400-e29b-41d4-a716-446655440000';
-      const otherUserId = '550e8400-e29b-41d4-a716-446655440001';
-
-      const createResult = await todoService.createTodo({
-        userId: ownerId,
-        title: 'Owner todo',
-      });
-      expect(createResult.isOk()).toBe(true);
-      if (!createResult.isOk()) return;
-
-      const result = await todoService.getTodoById({
-        todoId: createResult.value.id,
-        userId: otherUserId,
-      });
-
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error.code).toBe('UNAUTHORIZED_ACCESS');
-      }
-    });
   });
 
   describe('completeTodo', () => {
     it('should mark todo as completed', async () => {
-      const userId = '550e8400-e29b-41d4-a716-446655440000';
+      const organizationId = '550e8400-e29b-41d4-a716-446655440000';
+      const createdBy = '550e8400-e29b-41d4-a716-446655440001';
 
       const createResult = await todoService.createTodo({
-        userId,
+        organizationId,
+        createdBy,
         title: 'Todo to complete',
       });
       expect(createResult.isOk()).toBe(true);
       if (!createResult.isOk()) return;
 
-      const result = await todoService.completeTodo({
-        todoId: createResult.value.id,
-        userId,
-      });
+      const result = await todoService.completeTodo(createResult.value.id);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -224,13 +216,9 @@ describe('TodoService', () => {
     });
 
     it('should return error when todo not found', async () => {
-      const userId = '550e8400-e29b-41d4-a716-446655440000';
       const nonExistentId = '550e8400-e29b-41d4-a716-446655440099';
 
-      const result = await todoService.completeTodo({
-        todoId: nonExistentId,
-        userId,
-      });
+      const result = await todoService.completeTodo(nonExistentId);
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -239,13 +227,9 @@ describe('TodoService', () => {
     });
 
     it('should return error when todo ID format is invalid', async () => {
-      const userId = '550e8400-e29b-41d4-a716-446655440000';
       const invalidId = 'not-a-uuid';
 
-      const result = await todoService.completeTodo({
-        todoId: invalidId,
-        userId,
-      });
+      const result = await todoService.completeTodo(invalidId);
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -253,50 +237,26 @@ describe('TodoService', () => {
       }
     });
 
-    it('should return error when user is not authorized', async () => {
-      const ownerId = '550e8400-e29b-41d4-a716-446655440000';
-      const otherUserId = '550e8400-e29b-41d4-a716-446655440001';
-
-      const createResult = await todoService.createTodo({
-        userId: ownerId,
-        title: 'Owner todo',
-      });
-      expect(createResult.isOk()).toBe(true);
-      if (!createResult.isOk()) return;
-
-      const result = await todoService.completeTodo({
-        todoId: createResult.value.id,
-        userId: otherUserId,
-      });
-
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error.code).toBe('UNAUTHORIZED_ACCESS');
-      }
-    });
-
     it('should return error when todo is already completed', async () => {
-      const userId = '550e8400-e29b-41d4-a716-446655440000';
+      const organizationId = '550e8400-e29b-41d4-a716-446655440000';
+      const createdBy = '550e8400-e29b-41d4-a716-446655440001';
 
       const createResult = await todoService.createTodo({
-        userId,
+        organizationId,
+        createdBy,
         title: 'Todo to complete twice',
       });
       expect(createResult.isOk()).toBe(true);
       if (!createResult.isOk()) return;
 
       // Complete the todo first time
-      const firstComplete = await todoService.completeTodo({
-        todoId: createResult.value.id,
-        userId,
-      });
+      const firstComplete = await todoService.completeTodo(
+        createResult.value.id,
+      );
       expect(firstComplete.isOk()).toBe(true);
 
       // Try to complete again
-      const result = await todoService.completeTodo({
-        todoId: createResult.value.id,
-        userId,
-      });
+      const result = await todoService.completeTodo(createResult.value.id);
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {

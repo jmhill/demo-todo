@@ -13,7 +13,8 @@ export function createSequelizeTodoStore(sequelize: Sequelize): TodoStore {
     };
     return {
       id: data.id,
-      userId: data.userId,
+      organizationId: data.organizationId,
+      createdBy: data.createdBy,
       title: data.title,
       description: data.description ?? undefined,
       completed: data.completed,
@@ -27,7 +28,8 @@ export function createSequelizeTodoStore(sequelize: Sequelize): TodoStore {
     async save(todo: Todo): Promise<void> {
       await TodoModel.create({
         id: todo.id,
-        userId: todo.userId,
+        organizationId: todo.organizationId,
+        createdBy: todo.createdBy,
         title: todo.title,
         description: todo.description,
         completed: todo.completed,
@@ -42,10 +44,10 @@ export function createSequelizeTodoStore(sequelize: Sequelize): TodoStore {
       return model ? toTodo(model) : null;
     },
 
-    async findByUserId(userId: string): Promise<Todo[]> {
+    async findByOrganizationId(organizationId: string): Promise<Todo[]> {
       const models = await TodoModel.findAll({
         where: {
-          userId,
+          organizationId,
         },
         order: [['createdAt', 'ASC']],
       });

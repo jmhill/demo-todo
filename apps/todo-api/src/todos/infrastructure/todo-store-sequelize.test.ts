@@ -22,6 +22,19 @@ describe('SequelizeTodoStore', () => {
     ]);
   };
 
+  // Helper to create test organizations
+  const createTestOrganization = async (orgId: string, name: string) => {
+    await sequelize.getQueryInterface().bulkInsert('organizations', [
+      {
+        id: orgId,
+        name: name,
+        slug: name.toLowerCase().replace(/\s+/g, '-'),
+        created_at: new Date(),
+        updated_at: new Date(),
+      },
+    ]);
+  };
+
   beforeAll(async () => {
     // Connect to MySQL testcontainer (started by global setup)
     const host = process.env.TEST_DB_HOST;
@@ -51,8 +64,12 @@ describe('SequelizeTodoStore', () => {
   });
 
   beforeEach(async () => {
-    // Clean database before each test
+    // Clean database before each test (order matters for foreign keys)
     await sequelize.getQueryInterface().bulkDelete('todos', {});
+    await sequelize
+      .getQueryInterface()
+      .bulkDelete('organization_memberships', {});
+    await sequelize.getQueryInterface().bulkDelete('organizations', {});
     await sequelize.getQueryInterface().bulkDelete('users', {});
 
     // Recreate store instance
@@ -61,13 +78,16 @@ describe('SequelizeTodoStore', () => {
 
   describe('save', () => {
     it('should save a todo', async () => {
+      const organizationId = '550e8400-e29b-41d4-a716-446655440098';
       const userId = '550e8400-e29b-41d4-a716-446655440099';
+      await createTestOrganization(organizationId, 'Test Org');
       await createTestUser(userId);
 
       const now = new Date();
       const todo: Todo = {
         id: '550e8400-e29b-41d4-a716-446655440000',
-        userId,
+        organizationId,
+        createdBy: userId,
         title: 'Test todo',
         description: 'Test description',
         completed: false,
@@ -80,20 +100,24 @@ describe('SequelizeTodoStore', () => {
       const found = await todoStore.findById(todo.id);
       expect(found).not.toBeNull();
       expect(found?.id).toBe(todo.id);
-      expect(found?.userId).toBe(todo.userId);
+      expect(found?.organizationId).toBe(todo.organizationId);
+      expect(found?.createdBy).toBe(todo.createdBy);
       expect(found?.title).toBe(todo.title);
       expect(found?.description).toBe(todo.description);
       expect(found?.completed).toBe(false);
     });
 
     it('should save a todo without description', async () => {
+      const organizationId = '550e8400-e29b-41d4-a716-446655440098';
       const userId = '550e8400-e29b-41d4-a716-446655440099';
+      await createTestOrganization(organizationId, 'Test Org');
       await createTestUser(userId);
 
       const now = new Date();
       const todo: Todo = {
         id: '550e8400-e29b-41d4-a716-446655440001',
-        userId,
+        organizationId,
+        createdBy: userId,
         title: 'Todo without description',
         completed: false,
         createdAt: now,
@@ -110,13 +134,16 @@ describe('SequelizeTodoStore', () => {
 
   describe('findById', () => {
     it('should return todo when found', async () => {
+      const organizationId = '550e8400-e29b-41d4-a716-446655440098';
       const userId = '550e8400-e29b-41d4-a716-446655440099';
+      await createTestOrganization(organizationId, 'Test Org');
       await createTestUser(userId);
 
       const now = new Date();
       const todo: Todo = {
         id: '550e8400-e29b-41d4-a716-446655440002',
-        userId,
+        organizationId,
+        createdBy: userId,
         title: 'Find by ID',
         completed: false,
         createdAt: now,
@@ -139,16 +166,19 @@ describe('SequelizeTodoStore', () => {
     });
   });
 
-  describe('findByUserId', () => {
-    it('should return all todos for a user', async () => {
+  describe('findByOrganizationId', () => {
+    it('should return all todos for an organization', async () => {
+      const organizationId = '550e8400-e29b-41d4-a716-446655440098';
       const userId = '550e8400-e29b-41d4-a716-446655440099';
+      await createTestOrganization(organizationId, 'Test Org');
       await createTestUser(userId);
 
       const now = new Date();
 
       const todo1: Todo = {
         id: '550e8400-e29b-41d4-a716-446655440003',
-        userId,
+        organizationId,
+        createdBy: userId,
         title: 'First todo',
         completed: false,
         createdAt: now,
@@ -157,7 +187,8 @@ describe('SequelizeTodoStore', () => {
 
       const todo2: Todo = {
         id: '550e8400-e29b-41d4-a716-446655440004',
-        userId,
+        organizationId,
+        createdBy: userId,
         title: 'Second todo',
         completed: false,
         createdAt: new Date(now.getTime() + 1000),
@@ -167,31 +198,34 @@ describe('SequelizeTodoStore', () => {
       await todoStore.save(todo1);
       await todoStore.save(todo2);
 
-      const todos = await todoStore.findByUserId(userId);
+      const todos = await todoStore.findByOrganizationId(organizationId);
       expect(todos).toHaveLength(2);
       expect(todos[0]?.title).toBe('First todo');
       expect(todos[1]?.title).toBe('Second todo');
     });
 
-    it('should return empty array when user has no todos', async () => {
-      const todos = await todoStore.findByUserId(
+    it('should return empty array when organization has no todos', async () => {
+      const todos = await todoStore.findByOrganizationId(
         '550e8400-e29b-41d4-a716-446655440099',
       );
       expect(todos).toHaveLength(0);
     });
 
-    it('should only return todos for the specified user', async () => {
-      const user1Id = '550e8400-e29b-41d4-a716-446655440098';
-      const user2Id = '550e8400-e29b-41d4-a716-446655440099';
-      await createTestUser(user1Id);
-      await createTestUser(user2Id);
+    it('should only return todos for the specified organization', async () => {
+      const org1Id = '550e8400-e29b-41d4-a716-446655440097';
+      const org2Id = '550e8400-e29b-41d4-a716-446655440098';
+      const userId = '550e8400-e29b-41d4-a716-446655440099';
+      await createTestOrganization(org1Id, 'Org 1');
+      await createTestOrganization(org2Id, 'Org 2');
+      await createTestUser(userId);
 
       const now = new Date();
 
       await todoStore.save({
         id: '550e8400-e29b-41d4-a716-446655440005',
-        userId: user1Id,
-        title: 'User 1 todo',
+        organizationId: org1Id,
+        createdBy: userId,
+        title: 'Org 1 todo',
         completed: false,
         createdAt: now,
         updatedAt: now,
@@ -199,28 +233,32 @@ describe('SequelizeTodoStore', () => {
 
       await todoStore.save({
         id: '550e8400-e29b-41d4-a716-446655440006',
-        userId: user2Id,
-        title: 'User 2 todo',
+        organizationId: org2Id,
+        createdBy: userId,
+        title: 'Org 2 todo',
         completed: false,
         createdAt: now,
         updatedAt: now,
       });
 
-      const user1Todos = await todoStore.findByUserId(user1Id);
-      expect(user1Todos).toHaveLength(1);
-      expect(user1Todos[0]?.title).toBe('User 1 todo');
+      const org1Todos = await todoStore.findByOrganizationId(org1Id);
+      expect(org1Todos).toHaveLength(1);
+      expect(org1Todos[0]?.title).toBe('Org 1 todo');
     });
   });
 
   describe('update', () => {
     it('should update a todo', async () => {
+      const organizationId = '550e8400-e29b-41d4-a716-446655440098';
       const userId = '550e8400-e29b-41d4-a716-446655440099';
+      await createTestOrganization(organizationId, 'Test Org');
       await createTestUser(userId);
 
       const now = new Date();
       const todo: Todo = {
         id: '550e8400-e29b-41d4-a716-446655440007',
-        userId,
+        organizationId,
+        createdBy: userId,
         title: 'Original title',
         completed: false,
         createdAt: now,

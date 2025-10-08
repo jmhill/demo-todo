@@ -52,7 +52,8 @@ export const createTestTodo = (
 ): TodoResponse => {
   const todo = {
     id: '650e8400-e29b-41d4-a716-446655440001',
-    userId: '550e8400-e29b-41d4-a716-446655440000',
+    organizationId: '550e8400-e29b-41d4-a716-446655440000',
+    createdBy: '550e8400-e29b-41d4-a716-446655440000',
     title: 'Buy groceries',
     description: 'Milk, eggs, bread',
     completed: false,

@@ -12,21 +12,15 @@ import type {
 export interface TodoStore {
   save(todo: Todo): Promise<void>;
   findById(id: string): Promise<Todo | null>;
-  findByUserId(userId: string): Promise<Todo[]>;
+  findByOrganizationId(organizationId: string): Promise<Todo[]>;
   update(todo: Todo): Promise<void>;
 }
 
 export interface TodoService {
   createTodo(command: CreateTodoCommand): ResultAsync<Todo, CreateTodoError>;
-  listTodos(userId: string): ResultAsync<Todo[], ListTodosError>;
-  getTodoById(options: {
-    todoId: string;
-    userId: string;
-  }): ResultAsync<Todo, GetTodoByIdError>;
-  completeTodo(options: {
-    todoId: string;
-    userId: string;
-  }): ResultAsync<Todo, CompleteTodoError>;
+  listTodos(organizationId: string): ResultAsync<Todo[], ListTodosError>;
+  getTodoById(todoId: string): ResultAsync<Todo, GetTodoByIdError>;
+  completeTodo(todoId: string): ResultAsync<Todo, CompleteTodoError>;
 }
 
 export function createTodoService(
@@ -39,7 +33,8 @@ export function createTodoService(
       const now = clock.now();
       const todo: Todo = {
         id: idGenerator.generate(),
-        userId: command.userId,
+        organizationId: command.organizationId,
+        createdBy: command.createdBy,
         title: command.title,
         description: command.description,
         completed: false,
@@ -57,9 +52,9 @@ export function createTodoService(
       ).map(() => todo);
     },
 
-    listTodos(userId: string): ResultAsync<Todo[], ListTodosError> {
+    listTodos(organizationId: string): ResultAsync<Todo[], ListTodosError> {
       return ResultAsync.fromPromise(
-        todoStore.findByUserId(userId),
+        todoStore.findByOrganizationId(organizationId),
         (error): ListTodosError => ({
           code: 'UNEXPECTED_ERROR',
           message: 'Database error fetching todos',
@@ -68,12 +63,7 @@ export function createTodoService(
       );
     },
 
-    getTodoById(options: {
-      todoId: string;
-      userId: string;
-    }): ResultAsync<Todo, GetTodoByIdError> {
-      const { todoId, userId } = options;
-
+    getTodoById(todoId: string): ResultAsync<Todo, GetTodoByIdError> {
       // Validate ID format - domain responsibility for todo identity invariants
       if (!idGenerator.validate(todoId)) {
         return errAsync({ code: 'INVALID_TODO_ID', id: todoId } as const);
@@ -93,24 +83,11 @@ export function createTodoService(
             identifier: todoId,
           } as const);
         }
-        // Check if the todo belongs to the user
-        if (todo.userId !== userId) {
-          return errAsync({
-            code: 'UNAUTHORIZED_ACCESS',
-            todoId,
-            userId,
-          } as const);
-        }
         return okAsync(todo);
       });
     },
 
-    completeTodo(options: {
-      todoId: string;
-      userId: string;
-    }): ResultAsync<Todo, CompleteTodoError> {
-      const { todoId, userId } = options;
-
+    completeTodo(todoId: string): ResultAsync<Todo, CompleteTodoError> {
       // Validate ID format - domain responsibility for todo identity invariants
       if (!idGenerator.validate(todoId)) {
         return errAsync({ code: 'INVALID_TODO_ID', id: todoId } as const);
@@ -129,14 +106,6 @@ export function createTodoService(
             return errAsync({
               code: 'TODO_NOT_FOUND',
               identifier: todoId,
-            } as const);
-          }
-          // Check if the todo belongs to the user
-          if (todo.userId !== userId) {
-            return errAsync({
-              code: 'UNAUTHORIZED_ACCESS',
-              todoId,
-              userId,
             } as const);
           }
           return okAsync(todo);

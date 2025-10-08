@@ -72,7 +72,8 @@ describe('MSW Contract Compliance', () => {
 
       // Verify required fields
       expect(todo).toHaveProperty('id');
-      expect(todo).toHaveProperty('userId');
+      expect(todo).toHaveProperty('organizationId');
+      expect(todo).toHaveProperty('createdBy');
       expect(todo).toHaveProperty('title');
       expect(todo).toHaveProperty('completed');
       expect(todo).toHaveProperty('createdAt');

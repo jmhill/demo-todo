@@ -8,7 +8,8 @@ const s = initServer();
 // Helper to convert domain Todo to API response
 const toTodoResponse = (todo: Todo): TodoResponse => ({
   id: todo.id,
-  userId: todo.userId,
+  organizationId: todo.organizationId,
+  createdBy: todo.createdBy,
   title: todo.title,
   description: todo.description,
   completed: todo.completed,
@@ -26,8 +27,14 @@ export const createTodoRouter = (todoService: TodoService) => {
       // Exploring better ways to injext this context into ts-rest
       const userId = req.auth!.user.id;
 
+      // TODO: Phase 2 - Implement organization selection logic
+      // For now, using userId as organizationId (matches migration backfill behavior)
+      // In Phase 2, this should be selected based on user's active workspace/org
+      const organizationId = userId;
+
       const result = await todoService.createTodo({
-        userId,
+        organizationId,
+        createdBy: userId,
         title: body.title,
         description: body.description,
       });
@@ -49,7 +56,11 @@ export const createTodoRouter = (todoService: TodoService) => {
     listTodos: async ({ req }) => {
       const userId = req.auth!.user.id;
 
-      const result = await todoService.listTodos(userId);
+      // TODO: Phase 2 - Implement organization selection logic
+      // For now, using userId as organizationId (matches migration backfill behavior)
+      const organizationId = userId;
+
+      const result = await todoService.listTodos(organizationId);
 
       if (result.isErr()) {
         // listTodos can only return UNEXPECTED_ERROR
@@ -65,13 +76,11 @@ export const createTodoRouter = (todoService: TodoService) => {
       };
     },
 
-    getTodoById: async ({ params, req }) => {
-      const userId = req.auth!.user.id;
+    getTodoById: async ({ params }) => {
+      // TODO: Phase 2 - Add authorization check here at application layer
+      // Should verify user has access to this todo's organization
 
-      const result = await todoService.getTodoById({
-        todoId: params.id,
-        userId,
-      });
+      const result = await todoService.getTodoById(params.id);
 
       if (result.isErr()) {
         const error = result.error;
@@ -88,14 +97,6 @@ export const createTodoRouter = (todoService: TodoService) => {
             return {
               status: 404,
               body: { message: 'Todo not found', code: 'TODO_NOT_FOUND' },
-            };
-          case 'UNAUTHORIZED_ACCESS':
-            return {
-              status: 403,
-              body: {
-                message: 'Unauthorized access',
-                code: 'UNAUTHORIZED_ACCESS',
-              },
             };
           case 'UNEXPECTED_ERROR':
             return {
@@ -114,13 +115,11 @@ export const createTodoRouter = (todoService: TodoService) => {
       };
     },
 
-    completeTodo: async ({ params, req }) => {
-      const userId = req.auth!.user.id;
+    completeTodo: async ({ params }) => {
+      // TODO: Phase 2 - Add authorization check here at application layer
+      // Should verify user has access to this todo's organization
 
-      const result = await todoService.completeTodo({
-        todoId: params.id,
-        userId,
-      });
+      const result = await todoService.completeTodo(params.id);
 
       if (result.isErr()) {
         const error = result.error;
@@ -137,14 +136,6 @@ export const createTodoRouter = (todoService: TodoService) => {
             return {
               status: 404,
               body: { message: 'Todo not found', code: 'TODO_NOT_FOUND' },
-            };
-          case 'UNAUTHORIZED_ACCESS':
-            return {
-              status: 403,
-              body: {
-                message: 'Unauthorized access',
-                code: 'UNAUTHORIZED_ACCESS',
-              },
             };
           case 'TODO_ALREADY_COMPLETED':
             return {

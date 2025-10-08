@@ -19,10 +19,15 @@ export function defineTodoModel(sequelize: Sequelize): ModelCtor<TodoModel> {
         primaryKey: true,
         allowNull: false,
       },
-      userId: {
+      organizationId: {
         type: DataTypes.UUID,
         allowNull: false,
-        field: 'user_id',
+        field: 'organization_id',
+      },
+      createdBy: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        field: 'created_by',
       },
       title: {
         type: DataTypes.STRING(500),
@@ -59,13 +64,13 @@ export function defineTodoModel(sequelize: Sequelize): ModelCtor<TodoModel> {
       underscored: true,
       indexes: [
         {
-          fields: ['user_id'],
+          fields: ['organization_id'],
         },
         {
           fields: ['completed'],
         },
         {
-          fields: ['user_id', 'completed'],
+          fields: ['organization_id', 'completed'],
         },
       ],
     },
