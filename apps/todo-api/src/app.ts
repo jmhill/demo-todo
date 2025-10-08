@@ -28,6 +28,7 @@ import {
   authContract,
   userContract,
   todoContract,
+  organizationContract,
   openApiDocument,
 } from '@demo-todo/api-contracts';
 import { apiReference } from '@scalar/express-api-reference';
@@ -36,6 +37,12 @@ import {
   createTodoService,
   createTodoRouter,
 } from './todos/index.js';
+import {
+  createSequelizeOrganizationStore,
+  createSequelizeMembershipStore,
+  createOrganizationService,
+  createOrganizationRouter,
+} from './organizations/index.js';
 import {
   createSystemClock,
   createUuidIdGenerator,
@@ -71,6 +78,17 @@ export function createApp(config: AppConfig): Express {
   const todoService = createTodoService(
     todoStore,
     todoIdGenerator,
+    createSystemClock(),
+  );
+
+  // Create organization dependencies
+  const organizationStore = createSequelizeOrganizationStore(sequelize);
+  const membershipStore = createSequelizeMembershipStore(sequelize);
+  const organizationIdGenerator = createUuidIdGenerator();
+  const organizationService = createOrganizationService(
+    organizationStore,
+    membershipStore,
+    organizationIdGenerator,
     createSystemClock(),
   );
 
@@ -142,6 +160,13 @@ export function createApp(config: AppConfig): Express {
   // Todo routes (using ts-rest, all protected)
   const todoRouter = createTodoRouter(todoService);
   createExpressEndpoints(todoContract, todoRouter, app, {
+    logInitialization: false,
+    globalMiddleware: [requireAuth],
+  });
+
+  // Organization routes (using ts-rest, all protected)
+  const organizationRouter = createOrganizationRouter(organizationService);
+  createExpressEndpoints(organizationContract, organizationRouter, app, {
     logInitialization: false,
     globalMiddleware: [requireAuth],
   });

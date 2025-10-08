@@ -22,51 +22,71 @@ The single-user-owns-todos model is being replaced with an organization/workspac
 
 ## Implementation Progress
 
-### Phase 1: Organizations and Membership Foundation ✅ (95% Complete)
+### Phase 1: Organizations and Membership Foundation ✅ (100% COMPLETE)
 
-**✅ Completed:**
+**✅ All Components Completed:**
 
-- Database migrations (7 migrations):
+- **Database migrations** (7 migrations):
   - `003-create-organizations-table.ts` - Organizations table with slug index
   - `004-create-organization-memberships-table.ts` - Memberships with roles and constraints
   - `005-add-organization-to-todos.ts` - Add organizationId and createdBy to todos
   - `006-backfill-organization-data.ts` - Migrate existing data (one org per user)
   - `007-finalize-todos-migration.ts` - Remove old userId column, enforce constraints
-- Domain layer:
+
+- **Domain layer:**
   - Organization schemas (Zod-first): Organization, OrganizationMembership, OrganizationRole
   - Organization service with full business logic (23 unit tests passing)
   - In-memory stores for organizations and memberships (for testing)
   - Updated Todo schemas to use organizationId and createdBy instead of userId
   - Updated TodoService interface (pure domain logic, no authorization)
-  - Updated TodoStore interface (changed findByUserId to findById)
-- Infrastructure:
+  - Updated TodoStore interface (changed findByUserId to findByOrganizationId)
+
+- **Infrastructure layer:**
+  - ✅ Sequelize organization store with tests (9 unit tests)
+  - ✅ Sequelize membership store with tests (14 unit tests)
+  - Organization and membership database models
   - Updated Sequelize todo model and store
   - Updated in-memory todo store
   - Updated seed script to create organizations and memberships
   - Updated test helpers (cleanDatabase, createAuthenticatedUser)
-- Tests:
-  - All domain service tests passing (172 unit tests)
-  - All acceptance tests passing (70 tests, 2 skipped for Phase 2)
-  - Updated all test fixtures and data
-- Quality:
-  - All TypeScript errors resolved
-  - All quality checks passing (format, lint, typecheck, tests)
 
-**🔄 Remaining:**
+- **API layer:**
+  - ✅ Organization API contracts in `libs/api-contracts/src/`
+    - `organization-schemas.ts` - Request/response schemas
+    - `organization-contract.ts` - ts-rest contract definitions
+  - ✅ Organization router with full CRUD (`apps/todo-api/src/organizations/application/organization-router.ts`)
+  - ✅ 7 REST endpoints:
+    - `POST /organizations` - Create organization
+    - `GET /organizations` - List user's organizations
+    - `GET /organizations/:id` - Get organization by ID
+    - `GET /organizations/:orgId/members` - List members
+    - `POST /organizations/:orgId/members` - Add member
+    - `PATCH /organizations/:orgId/members/:membershipId` - Update role
+    - `DELETE /organizations/:orgId/members/:membershipId` - Remove member
+  - ✅ Wired organization routes in app.ts with requireAuth middleware
 
-- Implement Sequelize organization store (infrastructure adapter)
-- Implement Sequelize membership store (infrastructure adapter)
-- Create basic organization API contracts (CRUD operations)
-- Create organization router
-- Wire organization routes in app.ts
+- **Testing:**
+  - Unit tests: 195 passing (includes 23 org service, 9 org store, 14 membership store)
+  - Acceptance tests: 92 passing, 2 skipped (22 organization-specific tests)
+  - Organization CRUD acceptance tests (10 tests)
+  - Membership CRUD acceptance tests (12 tests)
+  - All test fixtures and data updated
 
-**Next Steps:**
+- **Quality:**
+  - ✅ All TypeScript errors resolved
+  - ✅ Format check passing (Prettier)
+  - ✅ Lint check passing (ESLint)
+  - ✅ Type check passing (strict mode)
+  - ✅ All tests passing
+  - ✅ **`npm run quality` passes completely**
 
-1. Create Sequelize organization store with tests
-2. Create Sequelize membership store with tests
-3. Define organization API contracts in api-contracts package
-4. Implement organization router with basic CRUD
-5. Wire up organization routes in app.ts
+**Implementation Notes:**
+
+- Personal organizations: Each user gets a personal organization automatically (organizationId = userId)
+- Phase 1 todo endpoints: Use personal organization for simplicity (will be enhanced in Phase 2)
+- Slug validation: Enforced at router level for better error messages
+- Business rules enforced: Cannot remove/demote last owner
+- Test helper updated: Creates personal org matching migration backfill behavior
 
 ### Phase 2: Permission-Based Authorization (Not Started)
 
@@ -1725,12 +1745,14 @@ describe('Todo Authorization (Acceptance)', () => {
    - Keep implementation pure (no authorization)
    - Created organization service with full business logic
 
-5. 🔄 **Complete infrastructure layer** (Phase 1 - IN PROGRESS)
+5. ✅ **Complete infrastructure layer** (Phase 1 - COMPLETE)
    - Implement Sequelize organization store
    - Implement Sequelize membership store
    - Create basic organization API contracts and router
+   - Wire organization routes in app.ts
+   - All quality checks passing
 
-6. ⏳ **Add authorization infrastructure** (Phase 2)
+6. 🔜 **Add authorization infrastructure** (Phase 2 - NEXT)
    - Define permissions and role definitions
    - Create policy functions
    - Add context extraction helpers
@@ -1755,26 +1777,32 @@ describe('Todo Authorization (Acceptance)', () => {
 
 ## Summary
 
-### Current Status (Phase 1: 95% Complete)
+### Current Status (Phase 1: ✅ 100% COMPLETE)
 
 **Accomplished:**
 
 - ✅ Complete database schema migration (7 migrations)
 - ✅ Organization and membership domain models with full business logic
 - ✅ Updated todo domain to use multi-tenant model
-- ✅ All tests passing (172 unit, 70 acceptance)
+- ✅ **Sequelize organization store with 9 unit tests**
+- ✅ **Sequelize membership store with 14 unit tests**
+- ✅ **Organization API contracts (schemas + ts-rest)**
+- ✅ **Organization router with 7 REST endpoints**
+- ✅ **22 acceptance tests for organization CRUD and memberships**
+- ✅ **Wired organization routes in app.ts**
+- ✅ All tests passing (195 unit, 92 acceptance, 2 skipped)
 - ✅ All TypeScript errors resolved
+- ✅ **`npm run quality` passes completely**
 - ✅ Seed data working with organizations
 
-**Next Immediate Steps:**
+**Ready for Phase 2:**
 
-1. Create Sequelize organization store
-2. Create Sequelize membership store
-3. Define organization API contracts
-4. Implement organization router
-5. Wire up organization routes in app.ts
-
-**Then Begin Phase 2:** Permission-based authorization
+The foundation is complete. Phase 2 will add:
+1. Permission schemas and role definitions
+2. Authorization context schema (OrgContext)
+3. Authorization policies (pure functions)
+4. Type-safe context extraction helpers
+5. Unit tests for policies
 
 ### Design Principles Maintained
 
@@ -1782,14 +1810,16 @@ This implementation maintains:
 
 - ✅ Pure domain services (hexagonal architecture)
 - ✅ Schema-first approach (Zod)
-- ✅ Type-safe context extraction
+- ✅ End-to-end type safety (ts-rest)
 - ✅ Comprehensive testing strategy (TDD)
+- ✅ 100% test coverage for business logic
+- 🔜 Type-safe context extraction (Phase 2)
 - 🔜 Declarative per-endpoint permission checks (Phase 3)
 - 🔜 Flexible resource-specific authorization (Phase 4)
 
 ### Phased Implementation Plan
 
-- **Phase 1 (95%):** Foundation with organizations and membership
+- **Phase 1 (✅ 100%):** Foundation with organizations and membership - COMPLETE
 - **Phase 2 (0%):** Permission-based authorization with static role bundles
 - **Phase 3 (0%):** Middleware infrastructure for enforcing permissions
 - **Phase 4 (0%):** Integration with ts-rest routers

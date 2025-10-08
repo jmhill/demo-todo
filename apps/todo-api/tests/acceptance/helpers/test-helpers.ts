@@ -195,7 +195,11 @@ export async function createAuthenticatedUser(
     username?: string;
     password?: string;
   },
-): Promise<{ token: string; userId: string }> {
+): Promise<{
+  token: string;
+  userId: string;
+  user: { id: string; email: string; username: string };
+}> {
   const email = userData?.email || 'authuser@example.com';
   const username = userData?.username || 'authuser';
   const password = userData?.password || 'AuthPass123!';
@@ -213,7 +217,8 @@ export async function createAuthenticatedUser(
     [userId, email, username, passwordHash],
   );
 
-  // Create a personal organization for the user (matches migration backfill behavior)
+  // Create a personal organization for the user
+  // Using userId as organizationId for Phase 1 simplicity (todos use this in router)
   const organizationId = userId;
   const slug = username.toLowerCase().replace(/[^a-z0-9]/g, '-');
   await pool.execute(
@@ -243,6 +248,11 @@ export async function createAuthenticatedUser(
   return {
     token: loginResponse.body.token,
     userId,
+    user: {
+      id: userId,
+      email,
+      username,
+    },
   };
 }
 

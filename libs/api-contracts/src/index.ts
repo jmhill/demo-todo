@@ -28,6 +28,22 @@ export {
   type TodoResponse,
 } from './todo-schemas.js';
 
+export { organizationContract } from './organization-contract.js';
+export {
+  CreateOrganizationRequestSchema,
+  AddMemberRequestSchema,
+  UpdateMemberRoleRequestSchema,
+  OrganizationResponseSchema,
+  MembershipResponseSchema,
+  OrganizationRoleSchema,
+  type CreateOrganizationRequest,
+  type AddMemberRequest,
+  type UpdateMemberRoleRequest,
+  type OrganizationResponse,
+  type MembershipResponse,
+  type OrganizationRole,
+} from './organization-schemas.js';
+
 export { rootContract } from './root-contract.js';
 export { openApiDocument } from './openapi.js';
 export { zod4Transformer } from './zod-transformer.js';
