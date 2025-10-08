@@ -4,8 +4,8 @@ import {
   createSystemClock,
 } from '@demo-todo/infrastructure';
 import { createUserService } from './user-service.js';
-import { createInMemoryUserStore } from './user-store.js';
-import { createMockPasswordHasher } from './password-hasher.js';
+import { createInMemoryUserStore } from '../infrastructure/user-store-in-mem.js';
+import { createMockPasswordHasher } from '../infrastructure/password-hasher-fake.js';
 import type { CreateUserCommand } from './user-schemas.js';
 
 describe('UserService', () => {

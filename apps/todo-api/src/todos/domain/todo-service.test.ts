@@ -4,7 +4,7 @@ import {
   createUuidIdGenerator,
 } from '@demo-todo/infrastructure';
 import { createTodoService } from './todo-service.js';
-import { createInMemoryTodoStore } from './todo-store.js';
+import { createInMemoryTodoStore } from '../infrastructure/todo-store-in-mem.js';
 import type { CreateTodoCommand } from './todo-schemas.js';
 
 describe('TodoService', () => {

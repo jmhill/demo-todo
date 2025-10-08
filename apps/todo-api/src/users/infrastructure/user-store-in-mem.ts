@@ -1,5 +1,5 @@
-import type { User, UserWithHashedPassword } from './user-schemas.js';
-import type { UserStore } from './user-service.js';
+import type { User, UserWithHashedPassword } from '../domain/user-schemas.js';
+import type { UserStore } from '../domain/user-service.js';
 
 export function createInMemoryUserStore(): UserStore {
   const users = new Map<string, UserWithHashedPassword>();

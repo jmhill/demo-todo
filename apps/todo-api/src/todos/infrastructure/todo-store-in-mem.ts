@@ -1,5 +1,5 @@
-import type { Todo } from './todo-schemas.js';
-import type { TodoStore } from './todo-service.js';
+import type { Todo } from '../domain/todo-schemas.js';
+import type { TodoStore } from '../domain/todo-service.js';
 
 export function createInMemoryTodoStore(): TodoStore {
   const todos = new Map<string, Todo>();
