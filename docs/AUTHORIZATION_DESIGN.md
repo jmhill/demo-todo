@@ -88,15 +88,60 @@ The single-user-owns-todos model is being replaced with an organization/workspac
 - Business rules enforced: Cannot remove/demote last owner
 - Test helper updated: Creates personal org matching migration backfill behavior
 
-### Phase 2: Permission-Based Authorization (Not Started)
+### Phase 2: Permission-Based Authorization ✅ (100% COMPLETE)
 
-**Planned:**
+**✅ All Components Completed:**
 
-- Define permission schema and role definitions
-- Create authorization context schema (OrgContext)
-- Implement authorization policies (pure functions)
-- Create type-safe context extraction helpers
-- Unit tests for policies
+- **Authorization Schemas** (`apps/todo-api/src/auth/domain/authorization-schemas.ts`):
+  - `PermissionSchema` - 12 granular permissions (todos:_, org:_)
+  - `RoleDefinitions` - Static permission bundles for owner/admin/member/viewer
+  - `OrgContextSchema` - Organization context with resolved permissions
+  - `AuthorizationErrorSchema` - Discriminated union error types (NOT_MEMBER, MISSING_PERMISSION, FORBIDDEN)
+  - `getPermissionsForRole()` - Helper to resolve permissions from role
+  - 13 unit tests passing
+
+- **Type-Safe Context Extraction** (`apps/todo-api/src/auth/domain/auth-types.ts`):
+  - Extended Express.Request to include optional `orgContext`
+  - `extractAuthContext()` - Returns Result<{user, token}, AuthExtractionError>
+  - `extractOrgContext()` - Returns Result<OrgContext, AuthExtractionError>
+  - `extractAuthAndOrgContext()` - Returns Result with both (most common pattern)
+  - 8 unit tests passing
+
+- **Authorization Policies** (`apps/todo-api/src/auth/domain/policies.ts`):
+  - `requirePermission()` - Single permission check
+  - `requireAnyPermission()` - OR logic (at least one required)
+  - `requireAllPermissions()` - AND logic (all required)
+  - `requireCreatorOrPermission()` - Resource-specific (creator OR permission)
+  - `custom()` - Custom evaluator with error message
+  - All policies are pure functions returning Result<void, AuthorizationError>
+  - 17 unit tests passing
+
+- **Integration:**
+  - Updated `auth-middleware.ts` to remove duplicate type declarations
+  - Updated `auth/index.ts` to export all authorization APIs
+  - All exports properly typed and documented
+
+- **Testing:**
+  - Unit tests: 233 passing (38 new authorization tests)
+  - Acceptance tests: 92 passing, 2 skipped
+  - 100% coverage for all authorization code
+  - All tests follow TDD (test-first) approach
+
+- **Quality:**
+  - ✅ All TypeScript errors resolved (strict mode)
+  - ✅ Format check passing (Prettier)
+  - ✅ Lint check passing (ESLint, no unused vars, no explicit any)
+  - ✅ Type check passing with full type inference
+  - ✅ **`npm run quality` passes completely**
+
+**Implementation Notes:**
+
+- All functions are pure (no side effects)
+- Using neverthrow Result types for type-safe error handling
+- Schema-first approach - all types derived from Zod schemas
+- No manual type assertions - type guards and discriminated unions
+- Policies are composable and easily testable
+- Ready for Phase 3 middleware integration
 
 ### Phase 3: Authorization Middleware (Not Started)
 
@@ -1752,12 +1797,13 @@ describe('Todo Authorization (Acceptance)', () => {
    - Wire organization routes in app.ts
    - All quality checks passing
 
-6. 🔜 **Add authorization infrastructure** (Phase 2 - NEXT)
+6. ✅ **Add authorization infrastructure** (Phase 2 - COMPLETED)
    - Define permissions and role definitions
    - Create policy functions
    - Add context extraction helpers
+   - 38 unit tests passing
 
-7. ⏳ **Create middleware** (Phase 3)
+7. 🔜 **Create middleware** (Phase 3 - NEXT)
    - Implement org membership middleware
    - Implement permission checking middleware
 
@@ -1777,32 +1823,46 @@ describe('Todo Authorization (Acceptance)', () => {
 
 ## Summary
 
-### Current Status (Phase 1: ✅ 100% COMPLETE)
+### Current Status (Phase 1 & 2: ✅ 100% COMPLETE)
 
-**Accomplished:**
+**Phase 1 Accomplished:**
 
 - ✅ Complete database schema migration (7 migrations)
 - ✅ Organization and membership domain models with full business logic
 - ✅ Updated todo domain to use multi-tenant model
-- ✅ **Sequelize organization store with 9 unit tests**
-- ✅ **Sequelize membership store with 14 unit tests**
-- ✅ **Organization API contracts (schemas + ts-rest)**
-- ✅ **Organization router with 7 REST endpoints**
-- ✅ **22 acceptance tests for organization CRUD and memberships**
-- ✅ **Wired organization routes in app.ts**
-- ✅ All tests passing (195 unit, 92 acceptance, 2 skipped)
-- ✅ All TypeScript errors resolved
-- ✅ **`npm run quality` passes completely**
+- ✅ Sequelize organization store with 9 unit tests
+- ✅ Sequelize membership store with 14 unit tests
+- ✅ Organization API contracts (schemas + ts-rest)
+- ✅ Organization router with 7 REST endpoints
+- ✅ 22 acceptance tests for organization CRUD and memberships
+- ✅ Wired organization routes in app.ts
 - ✅ Seed data working with organizations
 
-**Ready for Phase 2:**
+**Phase 2 Accomplished:**
 
-The foundation is complete. Phase 2 will add:
-1. Permission schemas and role definitions
-2. Authorization context schema (OrgContext)
-3. Authorization policies (pure functions)
-4. Type-safe context extraction helpers
-5. Unit tests for policies
+- ✅ Authorization schemas with 12 granular permissions
+- ✅ Role definitions (owner/admin/member/viewer) with static permission bundles
+- ✅ OrgContext schema with resolved permissions
+- ✅ Type-safe context extraction helpers (extractAuthContext, extractOrgContext, extractAuthAndOrgContext)
+- ✅ Authorization policies (requirePermission, requireAnyPermission, requireAllPermissions, requireCreatorOrPermission, custom)
+- ✅ 38 unit tests for authorization (13 schemas + 8 context + 17 policies)
+- ✅ All authorization code is pure functions using Result types
+- ✅ Full TypeScript type safety with no manual assertions
+
+**Combined Test Results:**
+
+- ✅ All tests passing (233 unit, 92 acceptance, 2 skipped)
+- ✅ All TypeScript errors resolved (strict mode)
+- ✅ **`npm run quality` passes completely**
+
+**Ready for Phase 3:**
+
+The authorization foundation is complete. Phase 3 will add:
+
+1. `requireOrgMembership` middleware - Fetch membership and attach orgContext
+2. `requirePermissions` middleware factory - Declarative per-endpoint permission checks
+3. Integration tests for middleware
+4. Wire middleware into application flow
 
 ### Design Principles Maintained
 
@@ -1813,13 +1873,14 @@ This implementation maintains:
 - ✅ End-to-end type safety (ts-rest)
 - ✅ Comprehensive testing strategy (TDD)
 - ✅ 100% test coverage for business logic
-- 🔜 Type-safe context extraction (Phase 2)
+- ✅ Type-safe context extraction (Phase 2) - COMPLETE
+- ✅ Pure authorization policies (Phase 2) - COMPLETE
 - 🔜 Declarative per-endpoint permission checks (Phase 3)
 - 🔜 Flexible resource-specific authorization (Phase 4)
 
 ### Phased Implementation Plan
 
 - **Phase 1 (✅ 100%):** Foundation with organizations and membership - COMPLETE
-- **Phase 2 (0%):** Permission-based authorization with static role bundles
+- **Phase 2 (✅ 100%):** Permission-based authorization with static role bundles - COMPLETE
 - **Phase 3 (0%):** Middleware infrastructure for enforcing permissions
 - **Phase 4 (0%):** Integration with ts-rest routers

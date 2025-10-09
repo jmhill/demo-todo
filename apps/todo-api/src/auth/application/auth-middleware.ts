@@ -2,21 +2,9 @@ import type { Request, Response, NextFunction } from 'express';
 import type { AuthService } from '../domain/auth-service.js';
 import type { VerifyTokenError } from '../domain/auth-errors.js';
 import type { UserService } from '../../users/domain/user-service.js';
-import type { User } from '../../users/domain/user-schemas.js';
 import type { GetUserByIdError } from '../../users/domain/user-errors.js';
 
-// Extend Express Request type to include auth context
-declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
-  namespace Express {
-    interface Request {
-      auth?: {
-        user: User;
-        token: string;
-      };
-    }
-  }
-}
+// Type declarations are now in auth-types.ts to avoid duplication
 
 // Helper to map errors to HTTP responses (middleware-local)
 const errorToHttpResponse = (error: VerifyTokenError | GetUserByIdError) => {
