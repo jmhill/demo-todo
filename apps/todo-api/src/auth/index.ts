@@ -33,3 +33,7 @@ export {
   extractAuthAndOrgContext,
   type AuthExtractionError,
 } from './domain/auth-types.js';
+
+// Authorization middleware
+export { requireOrgMembership } from './application/organization-middleware.js';
+export { requirePermissions } from './application/authorization-middleware.js';

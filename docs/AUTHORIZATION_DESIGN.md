@@ -143,14 +143,59 @@ The single-user-owns-todos model is being replaced with an organization/workspac
 - Policies are composable and easily testable
 - Ready for Phase 3 middleware integration
 
-### Phase 3: Authorization Middleware (Not Started)
+### Phase 3: Authorization Middleware ✅ (100% COMPLETE)
 
-**Planned:**
+**✅ All Components Completed:**
 
-- Implement requireOrgMembership middleware
-- Implement requirePermissions middleware factory
-- Integration tests for middleware
-- Update global middleware in app.ts
+- **Organization Membership Middleware** (`apps/todo-api/src/auth/application/organization-middleware.ts`):
+  - `requireOrgMembership(membershipStore)` - Fetches org membership and attaches orgContext
+  - Validates authentication (requires `requireAuth` to run first)
+  - Extracts `orgId` from route params (`/orgs/:orgId/...`)
+  - Fetches user's membership using `OrganizationMembershipStore`
+  - Resolves permissions from membership role using `getPermissionsForRole()`
+  - Attaches `orgContext` to `req.auth.orgContext`
+  - Returns appropriate errors (401, 403, 400, 500)
+  - 8 behavior-focused unit tests
+
+- **Permission Checking Middleware** (`apps/todo-api/src/auth/application/authorization-middleware.ts`):
+  - `requirePermissions(...permissions)` - Middleware factory for permission checks
+  - Extracts `orgContext` from request (set by `requireOrgMembership`)
+  - Uses policy functions (`requirePermission`, `requireAnyPermission`) from Phase 2
+  - Supports single or multiple permissions (ANY logic)
+  - Type-safe with at least one permission required (tuple type)
+  - Returns 403 if user lacks required permission(s)
+  - 11 behavior-focused unit tests
+
+- **Exported from `auth/index.ts`:**
+  - `requireOrgMembership` - Organization membership middleware
+  - `requirePermissions` - Permission checking middleware factory
+
+- **Testing:**
+  - Unit tests: 252 passing (added 19 new middleware tests: 8 org + 11 permissions)
+  - Acceptance tests: 92 passing, 2 skipped
+  - Tests refactored to test behavior, not implementation:
+    - Created minimal Express apps per test
+    - Used in-memory stores with real seeded data (no mocks)
+    - Made actual HTTP requests using supertest
+    - Asserted on HTTP responses (status codes, bodies)
+    - Resilient to refactoring - tests verify WHAT middleware does, not HOW
+
+- **Quality:**
+  - ✅ All TypeScript errors resolved (strict mode)
+  - ✅ Format check passing (Prettier)
+  - ✅ Lint check passing (ESLint)
+  - ✅ Type check passing with full type inference
+  - ✅ **`npm run quality` passes completely**
+
+**Implementation Notes:**
+
+- TDD approach: Wrote tests first, then implementation
+- Type safety: Used tuple type `[Permission, ...Permission[]]` to require at least one permission
+- Fixed `exactOptionalPropertyTypes` TypeScript strict mode issues
+- Both middleware functions are composable and testable
+- Try-catch for database errors with graceful degradation
+- Tests follow same pattern as existing security middleware tests (`cors.test.ts`)
+- Ready for Phase 4 router integration
 
 ### Phase 4: Router Updates and Integration (Not Started)
 
@@ -1803,11 +1848,14 @@ describe('Todo Authorization (Acceptance)', () => {
    - Add context extraction helpers
    - 38 unit tests passing
 
-7. 🔜 **Create middleware** (Phase 3 - NEXT)
-   - Implement org membership middleware
-   - Implement permission checking middleware
+7. ✅ **Create middleware** (Phase 3 - COMPLETED)
+   - Implemented `requireOrgMembership` middleware
+   - Implemented `requirePermissions` middleware factory
+   - 19 behavior-focused unit tests (test HTTP responses, not mocks)
+   - Exported from `auth/index.ts`
+   - All quality checks passing
 
-8. ⏳ **Update routers** (Phase 4)
+8. 🔜 **Update routers** (Phase 4 - NEXT)
    - Update contracts with org-scoped paths
    - Update routers with per-endpoint middleware
    - Add resource-specific authorization in handlers where needed
@@ -1823,7 +1871,7 @@ describe('Todo Authorization (Acceptance)', () => {
 
 ## Summary
 
-### Current Status (Phase 1 & 2: ✅ 100% COMPLETE)
+### Current Status (Phase 1, 2 & 3: ✅ 100% COMPLETE)
 
 **Phase 1 Accomplished:**
 
@@ -1849,20 +1897,37 @@ describe('Todo Authorization (Acceptance)', () => {
 - ✅ All authorization code is pure functions using Result types
 - ✅ Full TypeScript type safety with no manual assertions
 
+**Phase 3 Accomplished:**
+
+- ✅ Organization membership middleware (`requireOrgMembership`)
+  - Fetches membership and attaches orgContext to req.auth
+  - Resolves permissions from role
+  - Validates authentication and organization membership
+  - 8 behavior-focused unit tests
+- ✅ Permission checking middleware factory (`requirePermissions`)
+  - Declarative per-endpoint permission checks
+  - Supports single or multiple permissions (ANY logic)
+  - Type-safe with tuple type requiring at least one permission
+  - 11 behavior-focused unit tests
+- ✅ Exported from `auth/index.ts` for use in routers
+- ✅ Tests refactored to test behavior (HTTP responses) not implementation (mocks)
+- ✅ Follows same pattern as existing security middleware tests
+
 **Combined Test Results:**
 
-- ✅ All tests passing (233 unit, 92 acceptance, 2 skipped)
+- ✅ All tests passing (252 unit, 92 acceptance, 2 skipped)
 - ✅ All TypeScript errors resolved (strict mode)
 - ✅ **`npm run quality` passes completely**
 
-**Ready for Phase 3:**
+**Ready for Phase 4:**
 
-The authorization foundation is complete. Phase 3 will add:
+The authorization middleware is complete and ready for router integration. Phase 4 will:
 
-1. `requireOrgMembership` middleware - Fetch membership and attach orgContext
-2. `requirePermissions` middleware factory - Declarative per-endpoint permission checks
-3. Integration tests for middleware
-4. Wire middleware into application flow
+1. Update API contracts with org-scoped paths (`/orgs/:orgId/todos`)
+2. Apply `requireOrgMembership` as global middleware for org routes
+3. Use `requirePermissions` declaratively per-endpoint
+4. Add resource-specific authorization in handlers where needed (e.g., creator-only checks)
+5. Write acceptance tests for authorization flows
 
 ### Design Principles Maintained
 
@@ -1875,12 +1940,13 @@ This implementation maintains:
 - ✅ 100% test coverage for business logic
 - ✅ Type-safe context extraction (Phase 2) - COMPLETE
 - ✅ Pure authorization policies (Phase 2) - COMPLETE
-- 🔜 Declarative per-endpoint permission checks (Phase 3)
+- ✅ Declarative per-endpoint permission checks (Phase 3) - COMPLETE
+- ✅ Behavior-focused testing (tests verify HTTP responses, not mocks) - COMPLETE
 - 🔜 Flexible resource-specific authorization (Phase 4)
 
 ### Phased Implementation Plan
 
 - **Phase 1 (✅ 100%):** Foundation with organizations and membership - COMPLETE
 - **Phase 2 (✅ 100%):** Permission-based authorization with static role bundles - COMPLETE
-- **Phase 3 (0%):** Middleware infrastructure for enforcing permissions
+- **Phase 3 (✅ 100%):** Middleware infrastructure for enforcing permissions - COMPLETE
 - **Phase 4 (0%):** Integration with ts-rest routers
