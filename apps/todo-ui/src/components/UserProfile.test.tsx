@@ -6,7 +6,28 @@ import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
 import { UserProfile } from './UserProfile';
 
 vi.mock('./TodoList', () => ({
-  TodoList: () => <div data-testid="todo-list">TodoList Component</div>,
+  TodoList: ({ organizationId }: { organizationId: string }) => (
+    <div data-testid="todo-list" data-organization-id={organizationId}>
+      TodoList Component
+    </div>
+  ),
+}));
+
+vi.mock('./OrganizationSelector', () => ({
+  OrganizationSelector: ({
+    selectedOrgId,
+    onOrganizationChange,
+  }: {
+    selectedOrgId: string;
+    onOrganizationChange: (orgId: string) => void;
+  }) => (
+    <div data-testid="organization-selector">
+      <span data-testid="selected-org-id">{selectedOrgId}</span>
+      <button onClick={() => onOrganizationChange('new-org-id')}>
+        Change Organization
+      </button>
+    </div>
+  ),
 }));
 
 describe('UserProfile', () => {
@@ -44,9 +65,9 @@ describe('UserProfile', () => {
     expect(screen.getByText('Welcome, testuser!')).toBeInTheDocument();
     expect(screen.getByText('testuser')).toBeInTheDocument();
     expect(screen.getByText('test@example.com')).toBeInTheDocument();
-    expect(
-      screen.getByText('123e4567-e89b-12d3-a456-426614174000'),
-    ).toBeInTheDocument();
+    // User ID appears in both OrganizationSelector and user info display
+    const userIds = screen.getAllByText('123e4567-e89b-12d3-a456-426614174000');
+    expect(userIds.length).toBeGreaterThan(0);
   });
 
   it('should call onLogout when logout button is clicked', async () => {
@@ -88,5 +109,54 @@ describe('UserProfile', () => {
     renderUserProfile(user, onLogout);
 
     expect(screen.getByTestId('todo-list')).toBeInTheDocument();
+  });
+
+  it('should display the OrganizationSelector component', () => {
+    const user = getMockUser();
+    const onLogout = vi.fn();
+
+    renderUserProfile(user, onLogout);
+
+    expect(screen.getByTestId('organization-selector')).toBeInTheDocument();
+  });
+
+  it('should initialize OrganizationSelector with user id as selected organization', () => {
+    const user = getMockUser();
+    const onLogout = vi.fn();
+
+    renderUserProfile(user, onLogout);
+
+    expect(screen.getByTestId('selected-org-id')).toHaveTextContent(user.id);
+  });
+
+  it('should pass selected organization id to TodoList', () => {
+    const user = getMockUser();
+    const onLogout = vi.fn();
+
+    renderUserProfile(user, onLogout);
+
+    const todoList = screen.getByTestId('todo-list');
+    expect(todoList).toHaveAttribute('data-organization-id', user.id);
+  });
+
+  it('should update TodoList organization when organization changes', async () => {
+    const user = getMockUser();
+    const onLogout = vi.fn();
+
+    renderUserProfile(user, onLogout);
+
+    // Initially should be user.id
+    let todoList = screen.getByTestId('todo-list');
+    expect(todoList).toHaveAttribute('data-organization-id', user.id);
+
+    // Change organization
+    const changeButton = screen.getByRole('button', {
+      name: /change organization/i,
+    });
+    await userEvent.click(changeButton);
+
+    // Should update to new organization
+    todoList = screen.getByTestId('todo-list');
+    expect(todoList).toHaveAttribute('data-organization-id', 'new-org-id');
   });
 });

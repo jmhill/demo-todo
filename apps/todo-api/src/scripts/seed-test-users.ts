@@ -90,14 +90,84 @@ async function seedTestUsers(): Promise<void> {
     const todoStore = createSequelizeTodoStore(sequelize);
     const todoService = createTodoService(todoStore, idGenerator, clock);
 
-    // Step 1: Create shared organizations
+    // Step 1: Create the first user (needed as creator for shared organizations)
+    console.log('\nCreating initial user for shared organizations...');
+    const firstTestUser = testData.users[0];
+    let firstUserId: string | null = null;
+
+    if (!firstTestUser) {
+      throw new Error('No users found in test data');
+    }
+
+    const firstUserResult = await userService.createUser(firstTestUser);
+    await firstUserResult.match(
+      (user) => {
+        firstUserId = user.id;
+        console.log(`✓ Created initial user: ${user.username} (${user.email})`);
+      },
+      (error) => {
+        if (
+          error.code === 'EMAIL_ALREADY_EXISTS' ||
+          error.code === 'USERNAME_ALREADY_EXISTS'
+        ) {
+          // User already exists - fetch their ID
+          console.log(
+            `⊘ User already exists: ${firstTestUser.username} - will fetch ID`,
+          );
+        } else {
+          const errorMessage =
+            'message' in error ? error.message : JSON.stringify(error);
+          throw new Error(`Failed to create initial user: ${errorMessage}`);
+        }
+      },
+    );
+
+    // If user already existed, fetch their ID
+    if (!firstUserId) {
+      const existingUser = await userStore.findByUsername(
+        firstTestUser.username,
+      );
+      if (existingUser) {
+        firstUserId = existingUser.id;
+        console.log(`✓ Found existing user ID: ${firstUserId}`);
+      } else {
+        throw new Error(`Could not find user: ${firstTestUser.username}`);
+      }
+    }
+
+    // Create personal organization for first user
+    const firstUserPersonalSlug = firstTestUser.username
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '-');
+
+    const firstUserPersonalOrgResult =
+      await organizationService.createOrganization({
+        name: `${firstTestUser.username}'s Personal Workspace`,
+        slug: firstUserPersonalSlug,
+        createdByUserId: firstUserId,
+      });
+
+    if (firstUserPersonalOrgResult.isOk()) {
+      console.log(`  ✓ Created personal workspace: ${firstUserPersonalSlug}`);
+    } else {
+      const error = firstUserPersonalOrgResult.error;
+      if (error.code === 'SLUG_ALREADY_EXISTS') {
+        console.log(
+          `  ⊘ Personal workspace already exists: ${firstUserPersonalSlug}`,
+        );
+      } else {
+        console.error(
+          `  ✗ Failed to create personal workspace:`,
+          error.message,
+        );
+      }
+    }
+
+    // Step 2: Create shared organizations
     console.log(
       `\nCreating ${testData.sharedOrganizations.length} shared organizations...`,
     );
     const orgSlugToIdMap = new Map<string, string>();
-
-    // First user will be the creator of shared orgs (placeholder)
-    const firstUserId = idGenerator.generate();
 
     for (const org of testData.sharedOrganizations) {
       // Check if organization already exists
@@ -136,110 +206,130 @@ async function seedTestUsers(): Promise<void> {
       }
     }
 
-    // Step 2: Create users and their personal organizations
-    console.log(`\nSeeding ${testData.users.length} test users...`);
+    // Step 3: Create remaining users and their personal organizations
+    console.log(`\nSeeding all test users and memberships...`);
     const userUsernameToIdMap = new Map<string, string>();
 
+    // Add first user to the map (already created)
+    userUsernameToIdMap.set(firstTestUser.username, firstUserId);
+
     for (const testUser of testData.users) {
-      const result = await userService.createUser(testUser);
+      let userId: string | undefined;
 
-      await result.match(
-        async (user) => {
-          userUsernameToIdMap.set(user.username, user.id);
-          console.log(
-            `✓ Created user: ${user.username} (${user.email}) [ID: ${user.id}]`,
-          );
+      // Check if this is the first user (already created)
+      if (testUser.username === firstTestUser.username) {
+        userId = firstUserId;
+        console.log(
+          `⊘ User already created: ${testUser.username} (${testUser.email})`,
+        );
+      } else {
+        // Create new user
+        const result = await userService.createUser(testUser);
 
-          // Create a personal organization for this user
-          const personalSlug = user.username
-            .toLowerCase()
-            .replace(/[^a-z0-9]/g, '-');
+        await result.match(
+          async (user) => {
+            userId = user.id;
+            userUsernameToIdMap.set(user.username, user.id);
+            console.log(
+              `✓ Created user: ${user.username} (${user.email}) [ID: ${user.id}]`,
+            );
 
-          const personalOrgResult =
-            await organizationService.createOrganization({
-              name: `${user.username}'s Personal Workspace`,
-              slug: personalSlug,
-              createdByUserId: user.id,
-            });
+            // Create a personal organization for this user
+            const personalSlug = user.username
+              .toLowerCase()
+              .replace(/[^a-z0-9]/g, '-');
 
-          if (personalOrgResult.isOk()) {
-            console.log(`  ✓ Created personal workspace: ${personalSlug}`);
-          } else {
-            const error = personalOrgResult.error;
-            const errorMsg =
-              error.code === 'SLUG_ALREADY_EXISTS'
-                ? `Slug '${error.slug}' already exists`
-                : error.message;
-            console.error(`  ✗ Failed to create personal workspace:`, errorMsg);
-          }
-
-          // Create memberships for shared organizations
-          if (testUser.memberships && testUser.memberships.length > 0) {
-            for (const membership of testUser.memberships) {
-              const orgId = orgSlugToIdMap.get(membership.organizationSlug);
-              if (!orgId) {
-                console.warn(
-                  `  ⚠ Organization not found: ${membership.organizationSlug}`,
-                );
-                continue;
-              }
-
-              // Add member using service
-              const addMemberResult = await organizationService.addMember({
-                organizationId: orgId,
-                userId: user.id,
-                role: membership.role,
+            const personalOrgResult =
+              await organizationService.createOrganization({
+                name: `${user.username}'s Personal Workspace`,
+                slug: personalSlug,
+                createdByUserId: user.id,
               });
 
-              await addMemberResult.match(
-                () => {
-                  console.log(
-                    `  ✓ Added to ${membership.organizationSlug} as ${membership.role}`,
-                  );
-                },
-                (error) => {
-                  if (error.code === 'USER_ALREADY_MEMBER') {
-                    console.log(
-                      `  ⊘ Already member of ${membership.organizationSlug}`,
-                    );
-                  } else {
-                    const errorMsg =
-                      error.code === 'ORGANIZATION_NOT_FOUND'
-                        ? `Organization not found: ${error.organizationId}`
-                        : error.message;
-                    console.error(
-                      `  ✗ Failed to add to ${membership.organizationSlug}:`,
-                      errorMsg,
-                    );
-                  }
-                },
+            if (personalOrgResult.isOk()) {
+              console.log(`  ✓ Created personal workspace: ${personalSlug}`);
+            } else {
+              const error = personalOrgResult.error;
+              const errorMsg =
+                error.code === 'SLUG_ALREADY_EXISTS'
+                  ? `Slug '${error.slug}' already exists`
+                  : error.message;
+              console.error(
+                `  ✗ Failed to create personal workspace:`,
+                errorMsg,
               );
             }
-          }
-        },
-        async (error) => {
-          // If user already exists, skip (they already have organizations and todos)
-          if (
-            error.code === 'EMAIL_ALREADY_EXISTS' ||
-            error.code === 'USERNAME_ALREADY_EXISTS'
-          ) {
-            console.log(
-              `⊘ User already exists: ${testUser.username} (${testUser.email}) - skipping`,
+          },
+          async (error) => {
+            // If user already exists, skip (they already have organizations and todos)
+            if (
+              error.code === 'EMAIL_ALREADY_EXISTS' ||
+              error.code === 'USERNAME_ALREADY_EXISTS'
+            ) {
+              console.log(
+                `⊘ User already exists: ${testUser.username} (${testUser.email}) - skipping`,
+              );
+              return; // Skip this user entirely
+            } else {
+              // For other errors, log and continue
+              const errorMessage =
+                'message' in error ? error.message : JSON.stringify(error);
+              console.error(
+                `✗ Failed to create user ${testUser.username}:`,
+                errorMessage,
+              );
+              return; // Skip this user entirely
+            }
+          },
+        );
+      }
+
+      // Create memberships for shared organizations (for all users including first)
+      if (userId && testUser.memberships && testUser.memberships.length > 0) {
+        for (const membership of testUser.memberships) {
+          const orgId = orgSlugToIdMap.get(membership.organizationSlug);
+          if (!orgId) {
+            console.warn(
+              `  ⚠ Organization not found: ${membership.organizationSlug}`,
             );
-          } else {
-            // For other errors, log and continue
-            const errorMessage =
-              'message' in error ? error.message : JSON.stringify(error);
-            console.error(
-              `✗ Failed to create user ${testUser.username}:`,
-              errorMessage,
-            );
+            continue;
           }
-        },
-      );
+
+          // Add member using service
+          const addMemberResult = await organizationService.addMember({
+            organizationId: orgId,
+            userId: userId,
+            role: membership.role,
+          });
+
+          await addMemberResult.match(
+            () => {
+              console.log(
+                `  ✓ Added to ${membership.organizationSlug} as ${membership.role}`,
+              );
+            },
+            (error) => {
+              if (error.code === 'USER_ALREADY_MEMBER') {
+                console.log(
+                  `  ⊘ Already member of ${membership.organizationSlug}`,
+                );
+              } else {
+                const errorMsg =
+                  error.code === 'ORGANIZATION_NOT_FOUND'
+                    ? `Organization not found: ${error.organizationId}`
+                    : error.message;
+                console.error(
+                  `  ✗ Failed to add to ${membership.organizationSlug}:`,
+                  errorMsg,
+                );
+              }
+            },
+          );
+        }
+      }
     }
 
-    // Step 3: Create todos for each user in their organizations
+    // Step 4: Create todos for each user in their organizations
     console.log(`\nSeeding todos...`);
 
     for (const testUser of testData.users) {

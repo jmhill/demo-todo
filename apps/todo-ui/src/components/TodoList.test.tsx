@@ -63,7 +63,7 @@ describe('TodoList', () => {
     } as unknown as ReturnType<typeof tsr.todos.createTodo.useMutation>);
   });
 
-  const renderTodoList = () => {
+  const renderTodoList = (organizationId = 'org-123') => {
     const queryClient = new QueryClient({
       defaultOptions: {
         queries: { retry: false },
@@ -72,18 +72,12 @@ describe('TodoList', () => {
 
     const user = userEvent.setup();
 
-    const mockUser = {
-      id: 'user-123',
-      username: 'testuser',
-      email: 'test@example.com',
-    };
-
     return {
       user,
       ...render(
         <ChakraProvider value={defaultSystem}>
           <QueryClientProvider client={queryClient}>
-            <TodoList user={mockUser} />
+            <TodoList organizationId={organizationId} />
           </QueryClientProvider>
         </ChakraProvider>,
       ),
@@ -305,7 +299,7 @@ describe('TodoList', () => {
     await user.click(checkbox);
 
     expect(mockMutate).toHaveBeenCalledWith({
-      params: { orgId: 'user-123', id: '1' },
+      params: { orgId: 'org-123', id: '1' },
       body: undefined,
     });
   });
@@ -366,7 +360,7 @@ describe('TodoList', () => {
 
       expect(mockMutate).toHaveBeenCalledWith(
         {
-          params: { orgId: 'user-123' },
+          params: { orgId: 'org-123' },
           body: {
             title: 'New Todo',
             description: 'Todo description',
@@ -411,7 +405,7 @@ describe('TodoList', () => {
 
       expect(mockMutate).toHaveBeenCalledWith(
         {
-          params: { orgId: 'user-123' },
+          params: { orgId: 'org-123' },
           body: {
             title: 'Simple Todo',
             description: '',

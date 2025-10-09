@@ -16,21 +16,17 @@ import { Checkbox } from '@chakra-ui/react';
 import { tsr } from '../lib/api-client';
 
 interface TodoListProps {
-  user: {
-    id: string;
-    username: string;
-    email: string;
-  };
+  organizationId: string;
 }
 
-export const TodoList = ({ user }: TodoListProps) => {
+export const TodoList = ({ organizationId }: TodoListProps) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
 
-  // Use user's personal organization (orgId = userId)
-  const orgId = user.id;
+  // Use the provided organization ID
+  const orgId = organizationId;
 
   const { data, isLoading, isError, refetch } = tsr.todos.listTodos.useQuery({
     queryKey: ['todos', orgId],
