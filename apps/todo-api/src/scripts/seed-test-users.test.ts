@@ -22,82 +22,100 @@ const TestTodoSchema = z.object({
   completed: z.boolean().optional(),
 });
 
+const SharedOrganizationSchema = z.object({
+  name: z.string().min(1).max(100),
+  slug: z.string().regex(/^[a-z0-9-]+$/),
+});
+
+const MembershipSchema = z.object({
+  organizationSlug: z.string(),
+  role: z.enum(['owner', 'admin', 'member', 'viewer']),
+});
+
 const TestUserSchema = z.object({
   email: z.string().email(),
   username: z.string().min(3).max(50),
   password: z.string().min(8),
-  todos: z.array(TestTodoSchema).optional(),
+  memberships: z.array(MembershipSchema).optional(),
+  todos: z.record(z.string(), z.array(TestTodoSchema)).optional(),
 });
 
-const TestUsersSchema = z.array(TestUserSchema);
+const TestDataSchema = z.object({
+  sharedOrganizations: z.array(SharedOrganizationSchema),
+  users: z.array(TestUserSchema),
+});
 
 describe('Test User Seeding', () => {
   describe('test-users.json validation', () => {
-    it('should contain valid test user data', async () => {
-      const testUsersPath = join(__dirname, '../../seed-data/test-users.json');
-      const testUsersJson = await readFile(testUsersPath, 'utf-8');
-      const testUsersData = JSON.parse(testUsersJson);
+    it('should contain valid test data structure', async () => {
+      const testDataPath = join(__dirname, '../../seed-data/test-users.json');
+      const testDataJson = await readFile(testDataPath, 'utf-8');
+      const testDataParsed = JSON.parse(testDataJson);
 
-      const result = TestUsersSchema.safeParse(testUsersData);
+      const result = TestDataSchema.safeParse(testDataParsed);
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.length).toBeGreaterThan(0);
-        expect(result.data[0]).toHaveProperty('email');
-        expect(result.data[0]).toHaveProperty('username');
-        expect(result.data[0]).toHaveProperty('password');
+        expect(result.data.users.length).toBeGreaterThan(0);
+        expect(result.data.users[0]).toHaveProperty('email');
+        expect(result.data.users[0]).toHaveProperty('username');
+        expect(result.data.users[0]).toHaveProperty('password');
+        expect(result.data.sharedOrganizations).toBeDefined();
       }
     });
 
     it('should have valid email formats', async () => {
-      const testUsersPath = join(__dirname, '../../seed-data/test-users.json');
-      const testUsersJson = await readFile(testUsersPath, 'utf-8');
-      const testUsersData = JSON.parse(testUsersJson);
-      const testUsers = TestUsersSchema.parse(testUsersData);
+      const testDataPath = join(__dirname, '../../seed-data/test-users.json');
+      const testDataJson = await readFile(testDataPath, 'utf-8');
+      const testDataParsed = JSON.parse(testDataJson);
+      const testData = TestDataSchema.parse(testDataParsed);
 
-      testUsers.forEach((user) => {
+      testData.users.forEach((user) => {
         expect(user.email).toMatch(/^[^\s@]+@[^\s@]+\.[^\s@]+$/);
       });
     });
 
     it('should have usernames with minimum length of 3', async () => {
-      const testUsersPath = join(__dirname, '../../seed-data/test-users.json');
-      const testUsersJson = await readFile(testUsersPath, 'utf-8');
-      const testUsersData = JSON.parse(testUsersJson);
-      const testUsers = TestUsersSchema.parse(testUsersData);
+      const testDataPath = join(__dirname, '../../seed-data/test-users.json');
+      const testDataJson = await readFile(testDataPath, 'utf-8');
+      const testDataParsed = JSON.parse(testDataJson);
+      const testData = TestDataSchema.parse(testDataParsed);
 
-      testUsers.forEach((user) => {
+      testData.users.forEach((user) => {
         expect(user.username.length).toBeGreaterThanOrEqual(3);
       });
     });
 
     it('should have passwords with minimum length of 8', async () => {
-      const testUsersPath = join(__dirname, '../../seed-data/test-users.json');
-      const testUsersJson = await readFile(testUsersPath, 'utf-8');
-      const testUsersData = JSON.parse(testUsersJson);
-      const testUsers = TestUsersSchema.parse(testUsersData);
+      const testDataPath = join(__dirname, '../../seed-data/test-users.json');
+      const testDataJson = await readFile(testDataPath, 'utf-8');
+      const testDataParsed = JSON.parse(testDataJson);
+      const testData = TestDataSchema.parse(testDataParsed);
 
-      testUsers.forEach((user) => {
+      testData.users.forEach((user) => {
         expect(user.password.length).toBeGreaterThanOrEqual(8);
       });
     });
 
     it('should have valid todos when present', async () => {
-      const testUsersPath = join(__dirname, '../../seed-data/test-users.json');
-      const testUsersJson = await readFile(testUsersPath, 'utf-8');
-      const testUsersData = JSON.parse(testUsersJson);
-      const testUsers = TestUsersSchema.parse(testUsersData);
+      const testDataPath = join(__dirname, '../../seed-data/test-users.json');
+      const testDataJson = await readFile(testDataPath, 'utf-8');
+      const testDataParsed = JSON.parse(testDataJson);
+      const testData = TestDataSchema.parse(testDataParsed);
 
-      testUsers.forEach((user) => {
+      testData.users.forEach((user) => {
         if (user.todos) {
-          expect(Array.isArray(user.todos)).toBe(true);
-          user.todos.forEach((todo) => {
-            expect(todo.title).toBeTruthy();
-            expect(todo.title.length).toBeGreaterThan(0);
-            expect(todo.title.length).toBeLessThanOrEqual(500);
-            if (todo.description) {
-              expect(todo.description.length).toBeLessThanOrEqual(2000);
-            }
+          // Todos is now a record (object), not an array
+          Object.values(user.todos).forEach((todosArray) => {
+            expect(Array.isArray(todosArray)).toBe(true);
+            todosArray.forEach((todo) => {
+              expect(todo.title).toBeTruthy();
+              expect(todo.title.length).toBeGreaterThan(0);
+              expect(todo.title.length).toBeLessThanOrEqual(500);
+              if (todo.description) {
+                expect(todo.description.length).toBeLessThanOrEqual(2000);
+              }
+            });
           });
         }
       });

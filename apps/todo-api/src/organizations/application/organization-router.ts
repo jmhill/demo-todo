@@ -2,6 +2,7 @@ import { initServer } from '@ts-rest/express';
 import {
   organizationContract,
   type OrganizationResponse,
+  type OrganizationWithMembershipResponse,
   type MembershipResponse,
 } from '@demo-todo/api-contracts';
 import type { OrganizationService } from '../domain/organization-service.js';
@@ -129,9 +130,15 @@ export const createOrganizationRouter = (
     listUserOrganizations: async ({ req }) => {
       const user = extractAuthUser(req);
 
-      const result = await organizationService.listUserOrganizations(user.id);
+      // Fetch both organizations and memberships
+      const orgsResult = await organizationService.listUserOrganizations(
+        user.id,
+      );
+      const membershipsResult = await organizationService.getUserMemberships(
+        user.id,
+      );
 
-      if (result.isErr()) {
+      if (orgsResult.isErr() || membershipsResult.isErr()) {
         return {
           status: 500,
           body: {
@@ -141,9 +148,36 @@ export const createOrganizationRouter = (
         };
       }
 
+      const organizations = orgsResult.value;
+      const memberships = membershipsResult.value;
+
+      // Create a map of organizationId -> membership for quick lookup
+      const membershipMap = new Map(
+        memberships.map((m) => [m.organizationId, m]),
+      );
+
+      // Combine organizations with their memberships
+      const organizationsWithMemberships: OrganizationWithMembershipResponse[] =
+        organizations.map((org) => {
+          const membership = membershipMap.get(org.id);
+          // Membership should always exist since we got orgs from memberships
+          // but handle edge case defensively
+          if (!membership) {
+            throw new Error(`Membership not found for organization ${org.id}`);
+          }
+
+          return {
+            ...toOrganizationResponse(org),
+            membership: {
+              id: membership.id,
+              role: membership.role,
+            },
+          };
+        });
+
       return {
         status: 200,
-        body: result.value.map(toOrganizationResponse),
+        body: organizationsWithMemberships,
       };
     },
 

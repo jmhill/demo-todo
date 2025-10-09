@@ -58,3 +58,16 @@ export const MembershipResponseSchema = z.object({
 });
 
 export type MembershipResponse = z.infer<typeof MembershipResponseSchema>;
+
+// Enhanced response schema with membership info for listUserOrganizations
+export const OrganizationWithMembershipResponseSchema =
+  OrganizationResponseSchema.extend({
+    membership: z.object({
+      id: z.string().uuid(),
+      role: OrganizationRoleSchema,
+    }),
+  });
+
+export type OrganizationWithMembershipResponse = z.infer<
+  typeof OrganizationWithMembershipResponseSchema
+>;

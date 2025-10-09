@@ -190,5 +190,52 @@ describe('Organization CRUD Operations (Acceptance)', () => {
       expect(response.body).toHaveLength(1);
       expect(response.body[0].name).toContain('Organization');
     });
+
+    it('should include user membership info for each organization', async () => {
+      const { token } = await createAuthenticatedUser(app);
+
+      // Create an organization (user becomes owner)
+      await request(app)
+        .post('/organizations')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          name: 'Test Org',
+          slug: 'test-org',
+        })
+        .expect(201);
+
+      // List organizations
+      const response = await request(app)
+        .get('/organizations')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      // Should have 2 orgs (personal + created)
+      expect(response.body).toHaveLength(2);
+
+      // Each org should include membership info
+      for (const org of response.body) {
+        expect(org).toMatchObject({
+          id: expect.any(String),
+          name: expect.any(String),
+          slug: expect.any(String),
+          createdAt: expect.any(String),
+          updatedAt: expect.any(String),
+          membership: {
+            id: expect.any(String),
+            role: expect.stringMatching(/^(owner|admin|member|viewer)$/),
+          },
+        });
+
+        // Verify membership has a valid UUID
+        expect(org.membership.id).toMatch(
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+        );
+      }
+
+      // User should be owner of both organizations
+      expect(response.body[0].membership.role).toBe('owner');
+      expect(response.body[1].membership.role).toBe('owner');
+    });
   });
 });

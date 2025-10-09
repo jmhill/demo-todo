@@ -1,51 +1,107 @@
-[
-  {
-    "email": "alice@example.com",
-    "username": "alice",
-    "password": "password123",
-    "todos": [
-      {
-        "title": "Buy groceries",
-        "description": "Get milk, eggs, and bread from the store",
-        "completed": false
-      },
-      {
-        "title": "Finish project report",
-        "description": "Complete the Q4 analysis report",
-        "completed": false
-      },
-      {
-        "title": "Call dentist",
-        "completed": true
+{
+  "sharedOrganizations": [
+    {
+      "name": "ACME Corp",
+      "slug": "acme-corp"
+    },
+    {
+      "name": "Tech Startup",
+      "slug": "tech-startup"
+    },
+    {
+      "name": "Design Agency",
+      "slug": "design-agency"
+    }
+  ],
+  "users": [
+    {
+      "email": "alice@example.com",
+      "username": "alice",
+      "password": "password123",
+      "memberships": [
+        { "organizationSlug": "acme-corp", "role": "owner" },
+        { "organizationSlug": "tech-startup", "role": "member" }
+      ],
+      "todos": {
+        "acme-corp": [
+          {
+            "title": "Review Q4 budget",
+            "description": "Prepare financial review for board meeting",
+            "completed": false
+          },
+          {
+            "title": "Hire new developer",
+            "description": "Interview candidates for senior role",
+            "completed": false
+          }
+        ],
+        "tech-startup": [
+          {
+            "title": "Fix login bug",
+            "description": "Users reporting 500 error on login",
+            "completed": true
+          }
+        ]
       }
-    ]
-  },
-  {
-    "email": "bob@example.com",
-    "username": "bob",
-    "password": "password123",
-    "todos": [
-      {
-        "title": "Review pull requests",
-        "description": "Check team's PRs before end of day",
-        "completed": false
-      },
-      {
-        "title": "Update documentation",
-        "completed": false
+    },
+    {
+      "email": "bob@example.com",
+      "username": "bob",
+      "password": "password123",
+      "memberships": [
+        { "organizationSlug": "acme-corp", "role": "admin" },
+        { "organizationSlug": "tech-startup", "role": "owner" },
+        { "organizationSlug": "design-agency", "role": "member" }
+      ],
+      "todos": {
+        "acme-corp": [
+          {
+            "title": "Update security policies",
+            "description": "Review and update company security guidelines",
+            "completed": false
+          }
+        ],
+        "tech-startup": [
+          {
+            "title": "Deploy v2.0",
+            "description": "Production deployment of new version",
+            "completed": true
+          },
+          {
+            "title": "Plan marketing campaign",
+            "completed": false
+          }
+        ],
+        "design-agency": [
+          {
+            "title": "Review client mockups",
+            "description": "Provide feedback on latest designs",
+            "completed": false
+          }
+        ]
       }
-    ]
-  },
-  {
-    "email": "charlie@example.com",
-    "username": "charlie",
-    "password": "password123",
-    "todos": [
-      {
-        "title": "Plan team meeting",
-        "description": "Schedule and prepare agenda for next sprint planning",
-        "completed": false
+    },
+    {
+      "email": "charlie@example.com",
+      "username": "charlie",
+      "password": "password123",
+      "memberships": [
+        { "organizationSlug": "design-agency", "role": "owner" },
+        { "organizationSlug": "tech-startup", "role": "viewer" }
+      ],
+      "todos": {
+        "design-agency": [
+          {
+            "title": "Create brand guidelines",
+            "description": "Document visual identity for new client",
+            "completed": false
+          },
+          {
+            "title": "Order design supplies",
+            "completed": true
+          }
+        ]
       }
-    ]
-  }
-]
+    }
+  ]
+}

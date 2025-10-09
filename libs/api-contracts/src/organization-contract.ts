@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   CreateOrganizationRequestSchema,
   OrganizationResponseSchema,
+  OrganizationWithMembershipResponseSchema,
   AddMemberRequestSchema,
   UpdateMemberRoleRequestSchema,
   MembershipResponseSchema,
@@ -57,13 +58,14 @@ export const organizationContract = c.router(
       method: 'GET',
       path: '/organizations',
       responses: {
-        200: z.array(OrganizationResponseSchema),
+        200: z.array(OrganizationWithMembershipResponseSchema),
         500: z.object({
           message: z.string(),
           code: z.literal('UNEXPECTED_ERROR'),
         }),
       },
-      summary: 'List all organizations the current user belongs to',
+      summary:
+        'List all organizations the current user belongs to with membership info',
       strictStatusCodes: true,
     },
 

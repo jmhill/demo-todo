@@ -4,6 +4,7 @@ import {
   authContract,
   todoContract,
   userContract,
+  organizationContract,
 } from '@demo-todo/api-contracts';
 
 const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -14,6 +15,7 @@ const appContract = c.router({
   auth: authContract,
   todos: todoContract,
   users: userContract,
+  organizations: organizationContract,
 });
 
 export const tsr = initTsrReactQuery(appContract, {

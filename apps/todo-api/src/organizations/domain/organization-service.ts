@@ -68,6 +68,10 @@ export interface OrganizationService {
   listMembers(
     organizationId: string,
   ): ResultAsync<OrganizationMembership[], ListOrganizationsError>;
+
+  getUserMemberships(
+    userId: string,
+  ): ResultAsync<OrganizationMembership[], ListOrganizationsError>;
 }
 
 export function createOrganizationService(
@@ -400,6 +404,19 @@ export function createOrganizationService(
         (error): ListOrganizationsError => ({
           code: 'UNEXPECTED_ERROR',
           message: 'Database error fetching members',
+          cause: error,
+        }),
+      );
+    },
+
+    getUserMemberships(
+      userId: string,
+    ): ResultAsync<OrganizationMembership[], ListOrganizationsError> {
+      return ResultAsync.fromPromise(
+        membershipStore.findByUserId(userId),
+        (error): ListOrganizationsError => ({
+          code: 'UNEXPECTED_ERROR',
+          message: 'Database error fetching user memberships',
           cause: error,
         }),
       );
