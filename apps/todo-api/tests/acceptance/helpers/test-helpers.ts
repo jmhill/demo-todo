@@ -256,6 +256,65 @@ export async function createAuthenticatedUser(
   };
 }
 
+// Helper to create an organization
+export async function createOrganization(
+  app: Express,
+  token: string,
+  data: { name: string; slug: string },
+): Promise<{ id: string; name: string; slug: string }> {
+  const response = await request(app)
+    .post('/organizations')
+    .set('Authorization', `Bearer ${token}`)
+    .send(data)
+    .expect(201);
+
+  return response.body;
+}
+
+// Helper to add a member to an organization
+export async function addOrgMember(
+  app: Express,
+  ownerToken: string,
+  orgId: string,
+  data: { userId: string; role: 'owner' | 'admin' | 'member' | 'viewer' },
+): Promise<{
+  id: string;
+  userId: string;
+  organizationId: string;
+  role: string;
+}> {
+  const response = await request(app)
+    .post(`/organizations/${orgId}/members`)
+    .set('Authorization', `Bearer ${ownerToken}`)
+    .send(data)
+    .expect(201);
+
+  return response.body;
+}
+
+// Helper to create a todo in an organization
+export async function createTodo(
+  app: Express,
+  token: string,
+  orgId: string,
+  data: { title: string; description?: string },
+): Promise<{
+  id: string;
+  organizationId: string;
+  createdBy: string;
+  title: string;
+  description?: string;
+  completed: boolean;
+}> {
+  const response = await request(app)
+    .post(`/orgs/${orgId}/todos`)
+    .set('Authorization', `Bearer ${token}`)
+    .send(data)
+    .expect(201);
+
+  return response.body;
+}
+
 // Test scenario types
 export type TestScenario = {
   description: string;

@@ -23,3 +23,8 @@ export type CompleteTodoError =
   | { code: 'TODO_NOT_FOUND'; identifier: string }
   | { code: 'TODO_ALREADY_COMPLETED'; todoId: string }
   | { code: 'UNEXPECTED_ERROR'; message: string; cause?: unknown };
+
+export type DeleteTodoError =
+  | { code: 'INVALID_TODO_ID'; id: string }
+  | { code: 'TODO_NOT_FOUND'; identifier: string }
+  | { code: 'UNEXPECTED_ERROR'; message: string; cause?: unknown };

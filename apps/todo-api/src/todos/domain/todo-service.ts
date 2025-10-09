@@ -6,6 +6,7 @@ import type {
   ListTodosError,
   GetTodoByIdError,
   CompleteTodoError,
+  DeleteTodoError,
 } from './todo-errors.js';
 
 // Domain-owned port - infrastructure implements this
@@ -14,6 +15,7 @@ export interface TodoStore {
   findById(id: string): Promise<Todo | null>;
   findByOrganizationId(organizationId: string): Promise<Todo[]>;
   update(todo: Todo): Promise<void>;
+  delete(id: string): Promise<void>;
 }
 
 export interface TodoService {
@@ -21,6 +23,7 @@ export interface TodoService {
   listTodos(organizationId: string): ResultAsync<Todo[], ListTodosError>;
   getTodoById(todoId: string): ResultAsync<Todo, GetTodoByIdError>;
   completeTodo(todoId: string): ResultAsync<Todo, CompleteTodoError>;
+  deleteTodo(todoId: string): ResultAsync<void, DeleteTodoError>;
 }
 
 export function createTodoService(
@@ -134,6 +137,41 @@ export function createTodoService(
               cause: error,
             }),
           ).map(() => updatedTodo);
+        });
+    },
+
+    deleteTodo(todoId: string): ResultAsync<void, DeleteTodoError> {
+      // Validate ID format - domain responsibility for todo identity invariants
+      if (!idGenerator.validate(todoId)) {
+        return errAsync({ code: 'INVALID_TODO_ID', id: todoId } as const);
+      }
+
+      return ResultAsync.fromPromise(
+        todoStore.findById(todoId),
+        (error): DeleteTodoError => ({
+          code: 'UNEXPECTED_ERROR',
+          message: 'Database error fetching todo',
+          cause: error,
+        }),
+      )
+        .andThen((todo) => {
+          if (!todo) {
+            return errAsync({
+              code: 'TODO_NOT_FOUND',
+              identifier: todoId,
+            } as const);
+          }
+          return okAsync(todo);
+        })
+        .andThen(() => {
+          return ResultAsync.fromPromise(
+            todoStore.delete(todoId),
+            (error): DeleteTodoError => ({
+              code: 'UNEXPECTED_ERROR',
+              message: 'Database error deleting todo',
+              cause: error,
+            }),
+          );
         });
     },
   };

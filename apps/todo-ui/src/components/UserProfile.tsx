@@ -32,7 +32,7 @@ export const UserProfile = ({ user, onLogout }: UserProfileProps) => {
           </Text>
         </Stack>
       </Box>
-      <TodoList />
+      <TodoList user={user} />
     </Stack>
   );
 };

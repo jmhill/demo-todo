@@ -72,12 +72,18 @@ describe('TodoList', () => {
 
     const user = userEvent.setup();
 
+    const mockUser = {
+      id: 'user-123',
+      username: 'testuser',
+      email: 'test@example.com',
+    };
+
     return {
       user,
       ...render(
         <ChakraProvider value={defaultSystem}>
           <QueryClientProvider client={queryClient}>
-            <TodoList />
+            <TodoList user={mockUser} />
           </QueryClientProvider>
         </ChakraProvider>,
       ),
@@ -299,7 +305,7 @@ describe('TodoList', () => {
     await user.click(checkbox);
 
     expect(mockMutate).toHaveBeenCalledWith({
-      params: { id: '1' },
+      params: { orgId: 'user-123', id: '1' },
       body: undefined,
     });
   });
@@ -360,6 +366,7 @@ describe('TodoList', () => {
 
       expect(mockMutate).toHaveBeenCalledWith(
         {
+          params: { orgId: 'user-123' },
           body: {
             title: 'New Todo',
             description: 'Todo description',
@@ -404,6 +411,7 @@ describe('TodoList', () => {
 
       expect(mockMutate).toHaveBeenCalledWith(
         {
+          params: { orgId: 'user-123' },
           body: {
             title: 'Simple Todo',
             description: '',
@@ -428,7 +436,10 @@ describe('TodoList', () => {
         () =>
           ({
             mutate: (
-              variables: { body: { title: string; description: string } },
+              variables: {
+                params: { orgId: string };
+                body: { title: string; description: string };
+              },
               options?: {
                 onSuccess?: (response: {
                   status: number;
@@ -502,7 +513,10 @@ describe('TodoList', () => {
         () =>
           ({
             mutate: (
-              _variables: { body: { title: string; description: string } },
+              _variables: {
+                params: { orgId: string };
+                body: { title: string; description: string };
+              },
               options?: {
                 onSuccess?: (response: {
                   status: number;

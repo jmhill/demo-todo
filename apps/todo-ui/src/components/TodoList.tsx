@@ -15,14 +15,26 @@ import { List } from '@chakra-ui/react/list';
 import { Checkbox } from '@chakra-ui/react';
 import { tsr } from '../lib/api-client';
 
-export const TodoList = () => {
+interface TodoListProps {
+  user: {
+    id: string;
+    username: string;
+    email: string;
+  };
+}
+
+export const TodoList = ({ user }: TodoListProps) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
 
+  // Use user's personal organization (orgId = userId)
+  const orgId = user.id;
+
   const { data, isLoading, isError, refetch } = tsr.todos.listTodos.useQuery({
-    queryKey: ['todos'],
+    queryKey: ['todos', orgId],
+    queryData: { params: { orgId } },
   });
 
   const { mutate: completeTodo } = tsr.todos.completeTodo.useMutation({
@@ -39,6 +51,7 @@ export const TodoList = () => {
 
     createTodoMutation.mutate(
       {
+        params: { orgId },
         body: {
           title,
           description,
@@ -68,7 +81,7 @@ export const TodoList = () => {
 
   const handleCheckboxChange = (todoId: string) => {
     completeTodo({
-      params: { id: todoId },
+      params: { orgId, id: todoId },
       body: undefined,
     });
   };

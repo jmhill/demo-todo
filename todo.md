@@ -70,14 +70,14 @@
 - [x] add 'mark complete' todo story (end to end)
 - [x] add 'create todo' story
 - [x] add 'view completed' story
-- [ ] revise quality/test scripts to run in parallel with clearer reporting of problems
+- [x] revise quality/test scripts to run in parallel with clearer reporting of problems
 - [ ] add demo logging infrastructure (otel?)
 - [ ] show how to run one set of test against different implementations of an adapter
 
 ## milestone 3: more data adapter and complex service examples
 
 - [x] groups/workspaces/organizations (see docs/AUTHORIZATION_DESIGN.md)
-- [-] basic authorization demo (see docs/AUTHORIZATION_DESIGN.md)
+- [x] basic authorization demo (see docs/AUTHORIZATION_DESIGN.md)
 - [ ] organization switcher UI
 - [ ] enforce system invariant that user always has their own "personal" workspace/avoid orphaned user scenario?
 - [ ] more complex service (todo completion goals and streaks?)

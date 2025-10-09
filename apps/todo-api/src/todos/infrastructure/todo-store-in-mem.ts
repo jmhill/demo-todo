@@ -37,5 +37,23 @@ export function createInMemoryTodoStore(): TodoStore {
     async update(todo: Todo): Promise<void> {
       todos.set(todo.id, todo);
     },
+
+    async delete(id: string): Promise<void> {
+      const todo = todos.get(id);
+      if (todo) {
+        // Remove from main map
+        todos.delete(id);
+
+        // Remove from organization index
+        const todoIds = organizationIdIndex.get(todo.organizationId);
+        if (todoIds) {
+          todoIds.delete(id);
+          // Clean up empty sets
+          if (todoIds.size === 0) {
+            organizationIdIndex.delete(todo.organizationId);
+          }
+        }
+      }
+    },
   };
 }

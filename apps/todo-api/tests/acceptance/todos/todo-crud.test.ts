@@ -17,10 +17,10 @@ describe('Todo CRUD Operations (Acceptance)', () => {
     app = await createTestApp();
   });
 
-  describe('POST /todos - Create Todo', () => {
+  describe('POST /orgs/:orgId/todos - Create Todo', () => {
     it('should require authentication', async () => {
       const response = await request(app)
-        .post('/todos')
+        .post('/orgs/550e8400-e29b-41d4-a716-446655440000/todos')
         .send({
           title: 'Test todo',
           description: 'Test description',
@@ -31,10 +31,12 @@ describe('Todo CRUD Operations (Acceptance)', () => {
     });
 
     it('should create a new todo', async () => {
-      const { token } = await createAuthenticatedUser(app);
+      const { token, userId } = await createAuthenticatedUser(app);
+      // User's personal org has same ID as userId
+      const orgId = userId;
 
       const response = await request(app)
-        .post('/todos')
+        .post(`/orgs/${orgId}/todos`)
         .set('Authorization', `Bearer ${token}`)
         .send({
           title: 'Buy groceries',
@@ -56,10 +58,11 @@ describe('Todo CRUD Operations (Acceptance)', () => {
     });
 
     it('should create a todo without description', async () => {
-      const { token } = await createAuthenticatedUser(app);
+      const { token, userId } = await createAuthenticatedUser(app);
+      const orgId = userId;
 
       const response = await request(app)
-        .post('/todos')
+        .post(`/orgs/${orgId}/todos`)
         .set('Authorization', `Bearer ${token}`)
         .send({
           title: 'Simple todo',
@@ -72,10 +75,11 @@ describe('Todo CRUD Operations (Acceptance)', () => {
     });
 
     it('should reject empty title', async () => {
-      const { token } = await createAuthenticatedUser(app);
+      const { token, userId } = await createAuthenticatedUser(app);
+      const orgId = userId;
 
       const response = await request(app)
-        .post('/todos')
+        .post(`/orgs/${orgId}/todos`)
         .set('Authorization', `Bearer ${token}`)
         .send({
           title: '',
@@ -87,29 +91,32 @@ describe('Todo CRUD Operations (Acceptance)', () => {
     });
   });
 
-  describe('GET /todos - List Todos', () => {
+  describe('GET /orgs/:orgId/todos - List Todos', () => {
     it('should require authentication', async () => {
-      const response = await request(app).get('/todos').expect(401);
+      const response = await request(app)
+        .get('/orgs/550e8400-e29b-41d4-a716-446655440000/todos')
+        .expect(401);
 
       expect(response.body.message).toBeDefined();
     });
 
-    it('should return all todos for authenticated user', async () => {
-      const { token } = await createAuthenticatedUser(app);
+    it('should return all todos for organization', async () => {
+      const { token, userId } = await createAuthenticatedUser(app);
+      const orgId = userId;
 
       // Create multiple todos
       await request(app)
-        .post('/todos')
+        .post(`/orgs/${orgId}/todos`)
         .set('Authorization', `Bearer ${token}`)
         .send({ title: 'First todo' });
 
       await request(app)
-        .post('/todos')
+        .post(`/orgs/${orgId}/todos`)
         .set('Authorization', `Bearer ${token}`)
         .send({ title: 'Second todo', description: 'With description' });
 
       const response = await request(app)
-        .get('/todos')
+        .get(`/orgs/${orgId}/todos`)
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
@@ -127,62 +134,73 @@ describe('Todo CRUD Operations (Acceptance)', () => {
       expect(todoWithDesc.description).toBe('With description');
     });
 
-    it('should return empty array when user has no todos', async () => {
-      const { token } = await createAuthenticatedUser(app);
+    it('should return empty array when organization has no todos', async () => {
+      const { token, userId } = await createAuthenticatedUser(app);
+      const orgId = userId;
 
       const response = await request(app)
-        .get('/todos')
+        .get(`/orgs/${orgId}/todos`)
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
       expect(response.body).toHaveLength(0);
     });
 
-    it('should only return todos for authenticated user', async () => {
-      const { token: token1 } = await createAuthenticatedUser(app);
-      const { token: token2 } = await createAuthenticatedUser(app, {
-        email: 'user2@example.com',
-        username: 'user2',
-      });
+    it('should only return todos for the specified organization', async () => {
+      const { token: token1, userId: userId1 } =
+        await createAuthenticatedUser(app);
+      const { token: token2, userId: userId2 } = await createAuthenticatedUser(
+        app,
+        {
+          email: 'user2@example.com',
+          username: 'user2',
+        },
+      );
 
-      // Create todos for user 1
+      const org1Id = userId1;
+      const org2Id = userId2;
+
+      // Create todos for org 1
       await request(app)
-        .post('/todos')
+        .post(`/orgs/${org1Id}/todos`)
         .set('Authorization', `Bearer ${token1}`)
-        .send({ title: 'User 1 todo' });
+        .send({ title: 'Org 1 todo' });
 
-      // Create todos for user 2
+      // Create todos for org 2
       await request(app)
-        .post('/todos')
+        .post(`/orgs/${org2Id}/todos`)
         .set('Authorization', `Bearer ${token2}`)
-        .send({ title: 'User 2 todo' });
+        .send({ title: 'Org 2 todo' });
 
-      // User 1 should only see their own todos
+      // User 1 should only see their org's todos
       const response = await request(app)
-        .get('/todos')
+        .get(`/orgs/${org1Id}/todos`)
         .set('Authorization', `Bearer ${token1}`)
         .expect(200);
 
       expect(response.body).toHaveLength(1);
-      expect(response.body[0].title).toBe('User 1 todo');
+      expect(response.body[0].title).toBe('Org 1 todo');
     });
   });
 
-  describe('GET /todos/:id - Get Todo by ID', () => {
+  describe('GET /orgs/:orgId/todos/:id - Get Todo by ID', () => {
     it('should require authentication', async () => {
       const response = await request(app)
-        .get('/todos/550e8400-e29b-41d4-a716-446655440000')
+        .get(
+          '/orgs/550e8400-e29b-41d4-a716-446655440000/todos/550e8400-e29b-41d4-a716-446655440001',
+        )
         .expect(401);
 
       expect(response.body.message).toBeDefined();
     });
 
     it('should return todo when found and authorized', async () => {
-      const { token } = await createAuthenticatedUser(app);
+      const { token, userId } = await createAuthenticatedUser(app);
+      const orgId = userId;
 
       // Create a todo
       const createResponse = await request(app)
-        .post('/todos')
+        .post(`/orgs/${orgId}/todos`)
         .set('Authorization', `Bearer ${token}`)
         .send({ title: 'Test todo', description: 'Test description' });
 
@@ -190,7 +208,7 @@ describe('Todo CRUD Operations (Acceptance)', () => {
 
       // Get the todo
       const response = await request(app)
-        .get(`/todos/${todoId}`)
+        .get(`/orgs/${orgId}/todos/${todoId}`)
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
@@ -200,10 +218,11 @@ describe('Todo CRUD Operations (Acceptance)', () => {
     });
 
     it('should return 404 when todo not found', async () => {
-      const { token } = await createAuthenticatedUser(app);
+      const { token, userId } = await createAuthenticatedUser(app);
+      const orgId = userId;
 
       const response = await request(app)
-        .get('/todos/550e8400-e29b-41d4-a716-446655440099')
+        .get(`/orgs/${orgId}/todos/550e8400-e29b-41d4-a716-446655440099`)
         .set('Authorization', `Bearer ${token}`)
         .expect(404);
 
@@ -211,35 +230,38 @@ describe('Todo CRUD Operations (Acceptance)', () => {
     });
 
     it('should return 400 for invalid todo ID format', async () => {
-      const { token } = await createAuthenticatedUser(app);
+      const { token, userId } = await createAuthenticatedUser(app);
+      const orgId = userId;
 
       const response = await request(app)
-        .get('/todos/not-a-uuid')
+        .get(`/orgs/${orgId}/todos/not-a-uuid`)
         .set('Authorization', `Bearer ${token}`)
         .expect(400);
 
       expect(response.body.message).toBeDefined();
     });
 
-    // TODO: Phase 2 - Re-enable this test when authorization is implemented at application layer
-    it.skip('should return 403 when accessing another users todo', async () => {
-      const { token: token1 } = await createAuthenticatedUser(app);
+    it("should return 403 when accessing another organization's todo", async () => {
+      const { token: token1, userId: userId1 } =
+        await createAuthenticatedUser(app);
       const { token: token2 } = await createAuthenticatedUser(app, {
         email: 'user2@example.com',
         username: 'user2',
       });
 
-      // User 1 creates a todo
+      const org1Id = userId1;
+
+      // User 1 creates a todo in their org
       const createResponse = await request(app)
-        .post('/todos')
+        .post(`/orgs/${org1Id}/todos`)
         .set('Authorization', `Bearer ${token1}`)
         .send({ title: 'User 1 todo' });
 
       const todoId = createResponse.body.id;
 
-      // User 2 tries to access it
+      // User 2 tries to access it through their org (should be rejected by requireOrgMembership)
       const response = await request(app)
-        .get(`/todos/${todoId}`)
+        .get(`/orgs/${org1Id}/todos/${todoId}`)
         .set('Authorization', `Bearer ${token2}`)
         .expect(403);
 
@@ -247,21 +269,24 @@ describe('Todo CRUD Operations (Acceptance)', () => {
     });
   });
 
-  describe('PATCH /todos/:id/complete - Complete Todo', () => {
+  describe('PATCH /orgs/:orgId/todos/:id/complete - Complete Todo', () => {
     it('should require authentication', async () => {
       const response = await request(app)
-        .patch('/todos/550e8400-e29b-41d4-a716-446655440000/complete')
+        .patch(
+          '/orgs/550e8400-e29b-41d4-a716-446655440000/todos/550e8400-e29b-41d4-a716-446655440001/complete',
+        )
         .expect(401);
 
       expect(response.body.message).toBeDefined();
     });
 
     it('should mark todo as completed', async () => {
-      const { token } = await createAuthenticatedUser(app);
+      const { token, userId } = await createAuthenticatedUser(app);
+      const orgId = userId;
 
       // Create a todo
       const createResponse = await request(app)
-        .post('/todos')
+        .post(`/orgs/${orgId}/todos`)
         .set('Authorization', `Bearer ${token}`)
         .send({ title: 'Todo to complete' });
 
@@ -269,7 +294,7 @@ describe('Todo CRUD Operations (Acceptance)', () => {
 
       // Complete the todo
       const response = await request(app)
-        .patch(`/todos/${todoId}/complete`)
+        .patch(`/orgs/${orgId}/todos/${todoId}/complete`)
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
@@ -279,10 +304,13 @@ describe('Todo CRUD Operations (Acceptance)', () => {
     });
 
     it('should return 404 when todo not found', async () => {
-      const { token } = await createAuthenticatedUser(app);
+      const { token, userId } = await createAuthenticatedUser(app);
+      const orgId = userId;
 
       const response = await request(app)
-        .patch('/todos/550e8400-e29b-41d4-a716-446655440099/complete')
+        .patch(
+          `/orgs/${orgId}/todos/550e8400-e29b-41d4-a716-446655440099/complete`,
+        )
         .set('Authorization', `Bearer ${token}`)
         .expect(404);
 
@@ -290,11 +318,12 @@ describe('Todo CRUD Operations (Acceptance)', () => {
     });
 
     it('should return 400 when todo is already completed', async () => {
-      const { token } = await createAuthenticatedUser(app);
+      const { token, userId } = await createAuthenticatedUser(app);
+      const orgId = userId;
 
       // Create and complete a todo
       const createResponse = await request(app)
-        .post('/todos')
+        .post(`/orgs/${orgId}/todos`)
         .set('Authorization', `Bearer ${token}`)
         .send({ title: 'Todo to complete' });
 
@@ -302,38 +331,40 @@ describe('Todo CRUD Operations (Acceptance)', () => {
 
       // Complete it first time
       await request(app)
-        .patch(`/todos/${todoId}/complete`)
+        .patch(`/orgs/${orgId}/todos/${todoId}/complete`)
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
       // Try to complete again
       const response = await request(app)
-        .patch(`/todos/${todoId}/complete`)
+        .patch(`/orgs/${orgId}/todos/${todoId}/complete`)
         .set('Authorization', `Bearer ${token}`)
         .expect(400);
 
       expect(response.body.message).toBeDefined();
     });
 
-    // TODO: Phase 2 - Re-enable this test when authorization is implemented at application layer
-    it.skip('should return 403 when completing another users todo', async () => {
-      const { token: token1 } = await createAuthenticatedUser(app);
+    it('should return 403 when user not in organization tries to complete todo', async () => {
+      const { token: token1, userId: userId1 } =
+        await createAuthenticatedUser(app);
       const { token: token2 } = await createAuthenticatedUser(app, {
         email: 'user2@example.com',
         username: 'user2',
       });
 
+      const org1Id = userId1;
+
       // User 1 creates a todo
       const createResponse = await request(app)
-        .post('/todos')
+        .post(`/orgs/${org1Id}/todos`)
         .set('Authorization', `Bearer ${token1}`)
         .send({ title: 'User 1 todo' });
 
       const todoId = createResponse.body.id;
 
-      // User 2 tries to complete it
+      // User 2 tries to complete it (not a member of org1)
       const response = await request(app)
-        .patch(`/todos/${todoId}/complete`)
+        .patch(`/orgs/${org1Id}/todos/${todoId}/complete`)
         .set('Authorization', `Bearer ${token2}`)
         .expect(403);
 

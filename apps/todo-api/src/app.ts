@@ -22,6 +22,7 @@ import {
   createInMemoryTokenStore,
   createAuthMiddleware,
   createAuthRouter,
+  requireOrgMembership,
 } from './auth/index.js';
 import { createExpressEndpoints } from '@ts-rest/express';
 import {
@@ -124,6 +125,9 @@ export function createApp(config: AppConfig): Express {
   // Create auth middleware for protected routes
   const requireAuth = createAuthMiddleware(authService, userService);
 
+  // Create organization membership middleware
+  const requireOrg = requireOrgMembership(membershipStore);
+
   // Configure route handlers
   app.get('/health', healthCheckHandler);
   app.post('/health', healthCheckHandler);
@@ -157,11 +161,11 @@ export function createApp(config: AppConfig): Express {
     globalMiddleware: [requireAuth],
   });
 
-  // Todo routes (using ts-rest, all protected)
+  // Todo routes (using ts-rest, all protected with auth and org membership)
   const todoRouter = createTodoRouter(todoService);
   createExpressEndpoints(todoContract, todoRouter, app, {
     logInitialization: false,
-    globalMiddleware: [requireAuth],
+    globalMiddleware: [requireAuth, requireOrg],
   });
 
   // Organization routes (using ts-rest, all protected)

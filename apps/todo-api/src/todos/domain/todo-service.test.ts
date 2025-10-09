@@ -264,4 +264,54 @@ describe('TodoService', () => {
       }
     });
   });
+
+  describe('deleteTodo', () => {
+    it('should delete an existing todo', async () => {
+      const organizationId = '550e8400-e29b-41d4-a716-446655440000';
+      const createdBy = '550e8400-e29b-41d4-a716-446655440001';
+
+      const createResult = await todoService.createTodo({
+        organizationId,
+        createdBy,
+        title: 'Todo to delete',
+      });
+      expect(createResult.isOk()).toBe(true);
+      if (!createResult.isOk()) return;
+
+      const todoId = createResult.value.id;
+
+      const result = await todoService.deleteTodo(todoId);
+
+      expect(result.isOk()).toBe(true);
+
+      // Verify todo is deleted
+      const getResult = await todoService.getTodoById(todoId);
+      expect(getResult.isErr()).toBe(true);
+      if (getResult.isErr()) {
+        expect(getResult.error.code).toBe('TODO_NOT_FOUND');
+      }
+    });
+
+    it('should return error when todo not found', async () => {
+      const nonExistentId = '550e8400-e29b-41d4-a716-446655440099';
+
+      const result = await todoService.deleteTodo(nonExistentId);
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.code).toBe('TODO_NOT_FOUND');
+      }
+    });
+
+    it('should return error when todo ID format is invalid', async () => {
+      const invalidId = 'not-a-uuid';
+
+      const result = await todoService.deleteTodo(invalidId);
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.code).toBe('INVALID_TODO_ID');
+      }
+    });
+  });
 });

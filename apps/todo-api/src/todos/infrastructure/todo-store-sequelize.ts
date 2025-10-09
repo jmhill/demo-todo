@@ -70,5 +70,13 @@ export function createSequelizeTodoStore(sequelize: Sequelize): TodoStore {
         },
       );
     },
+
+    async delete(id: string): Promise<void> {
+      await TodoModel.destroy({
+        where: {
+          id,
+        },
+      });
+    },
   };
 }
