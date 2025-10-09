@@ -1147,6 +1147,271 @@ function toHttpResponse<T>(result: Result<T, TodoError>): {
 4. **No Hidden Exceptions**: All errors must be handled
 5. **Better Testing**: Test both success and error paths easily
 
+## Multi-Tenant Authorization
+
+### Why Multi-Tenancy?
+
+The application implements a multi-tenant architecture where multiple users can collaborate within organizations:
+
+- **Organizations as collaboration spaces** - Todos belong to organizations, not individual users
+- **Flexible membership** - Users can belong to multiple organizations with different roles
+- **Granular permissions** - Fine-grained control over what users can do within each organization
+- **Separation of concerns** - Authorization logic stays separate from business logic
+
+### Permission-Based Authorization Model
+
+Rather than role hierarchies, the system uses **permission-based authorization** with roles as bundles of permissions:
+
+```typescript
+// Granular, atomic permissions
+export const PermissionSchema = z.enum([
+  'todos:create',
+  'todos:read',
+  'todos:update',
+  'todos:delete',
+  'todos:complete',
+  'org:members:read',
+  'org:members:invite',
+  'org:members:remove',
+  'org:settings:update',
+]);
+
+// Roles are static permission bundles
+export const RoleDefinitions = {
+  owner: [
+    'todos:create', 'todos:read', 'todos:update', 'todos:delete', 'todos:complete',
+    'org:members:read', 'org:members:invite', 'org:members:remove', 'org:settings:update',
+  ],
+  admin: [
+    'todos:create', 'todos:read', 'todos:update', 'todos:delete', 'todos:complete',
+    'org:members:read', 'org:members:invite',
+  ],
+  member: [
+    'todos:create', 'todos:read', 'todos:update', 'todos:complete',
+    'org:members:read',
+  ],
+  viewer: ['todos:read', 'org:members:read'],
+} as const;
+```
+
+**Benefits of permission-based approach:**
+
+- ✅ **Flexible** - Easy to add new permissions or customize role bundles
+- ✅ **Explicit** - Clear what each role can do
+- ✅ **Maintainable** - No complex role hierarchies to reason about
+- ✅ **Testable** - Permission checks are pure functions
+
+### Middleware-Based Authorization
+
+Authorization is implemented as middleware at the application layer, keeping domain services pure:
+
+```typescript
+// Request Flow:
+//
+// HTTP Request
+//   ↓
+// requireAuth (global)
+//   → Verifies JWT, attaches req.auth.user
+//   ↓
+// requireOrgMembership (global for org routes)
+//   → Fetches membership, resolves permissions
+//   → Attaches req.auth.orgContext
+//   ↓
+// requirePermissions('todos:create') (per-endpoint)
+//   → Checks specific permission(s)
+//   → Fails fast if missing
+//   ↓
+// Handler
+//   → Fetch resource (if needed)
+//   → Resource-specific authorization (if needed)
+//   → Call domain service
+//   → Map Result to HTTP response
+```
+
+**Example: Declarative permission checks**
+
+```typescript
+// Simple case: Check permission via middleware
+createTodo: {
+  middleware: [requirePermissions('todos:create')],
+  handler: async ({ body, req }) => {
+    const { user, orgContext } = extractAuthAndOrgContext(req).value;
+
+    const result = await todoService.createTodo({
+      organizationId: orgContext.organizationId,
+      createdBy: user.id,
+      title: body.title,
+      description: body.description,
+    });
+
+    return result.match(
+      (todo) => ({ status: 201, body: toTodoResponse(todo) }),
+      (error) => ({ status: 500, body: { message: error.message } })
+    );
+  },
+}
+```
+
+**Example: Resource-specific authorization**
+
+```typescript
+// Complex case: Creator OR permission
+completeTodo: {
+  handler: async ({ params, req }) => {
+    const { orgContext } = extractAuthAndOrgContext(req).value;
+
+    // Fetch resource first
+    const todoResult = await todoService.getTodoById(params.id);
+    if (todoResult.isErr()) {
+      return { status: 404, body: { message: 'Not found' } };
+    }
+
+    const todo = todoResult.value;
+
+    // Resource-specific check: creator OR has permission
+    const authResult = requireCreatorOrPermission('todos:complete')(
+      orgContext,
+      { createdBy: todo.createdBy }
+    );
+
+    if (authResult.isErr()) {
+      return { status: 403, body: { message: 'Forbidden' } };
+    }
+
+    // Now execute business logic
+    const result = await todoService.completeTodo(params.id);
+    return result.match(/* ... */);
+  },
+}
+```
+
+### Type-Safe Context Extraction
+
+Authorization context is extracted using helper functions that return `Result` types, eliminating manual type assertions:
+
+```typescript
+// No more req.auth! assertions
+const contextResult = extractAuthAndOrgContext(req);
+
+if (contextResult.isErr()) {
+  return { status: 401, body: { message: 'Unauthorized' } };
+}
+
+// Type-safe access to user and org context
+const { user, orgContext } = contextResult.value;
+//      ^-- User type
+//             ^-- OrgContext type with resolved permissions
+```
+
+### Pure Authorization Policies
+
+Authorization logic is implemented as composable, testable pure functions:
+
+```typescript
+// Policy: Check single permission
+export const requirePermission = (permission: Permission): Policy => {
+  return (orgContext) => {
+    if (orgContext.permissions.includes(permission)) {
+      return ok(undefined);
+    }
+    return err({
+      code: 'MISSING_PERMISSION',
+      required: permission,
+      available: orgContext.permissions,
+    });
+  };
+};
+
+// Policy: Creator OR permission
+export const requireCreatorOrPermission = (permission: Permission): Policy => {
+  return (orgContext, resourceContext) => {
+    // User created the resource?
+    if (resourceContext?.createdBy === orgContext.membership.userId) {
+      return ok(undefined);
+    }
+    // Otherwise check permission
+    return requirePermission(permission)(orgContext, resourceContext);
+  };
+};
+```
+
+**Testing is straightforward:**
+
+```typescript
+it('should allow creator without permission', () => {
+  const policy = requireCreatorOrPermission('todos:complete');
+
+  const result = policy(
+    {
+      organizationId: 'org-1',
+      membership: { userId: 'user-1', role: 'member' },
+      permissions: ['todos:read'], // No complete permission
+    },
+    { createdBy: 'user-1' } // But user is creator
+  );
+
+  expect(result.isOk()).toBe(true);
+});
+```
+
+### Maintaining Architectural Principles
+
+The authorization system maintains all core architectural principles:
+
+1. **Domain stays pure** - No authorization logic in domain services
+2. **Schema-first** - All types derived from Zod schemas
+3. **Explicit boundaries** - Authorization at application layer, not domain
+4. **Testability** - Pure policies, in-memory stores for unit tests
+5. **Type safety** - Full type inference, no manual assertions
+6. **Separation of concerns** - Authorization is a cross-cutting concern
+
+**Example: Domain service remains pure**
+
+```typescript
+// Domain service has NO authorization logic
+export function createTodoService(
+  todoStore: TodoStore,
+  idGenerator: IdGenerator,
+  clock: Clock
+): TodoService {
+  return {
+    createTodo(command: CreateTodoCommand): ResultAsync<Todo, CreateTodoError> {
+      // Pure business logic only
+      const todo: Todo = {
+        id: idGenerator.generate(),
+        organizationId: command.organizationId,
+        createdBy: command.createdBy,
+        title: command.title,
+        description: command.description,
+        completed: false,
+        createdAt: clock.now(),
+        updatedAt: clock.now(),
+      };
+
+      return ResultAsync.fromPromise(
+        todoStore.save(todo),
+        (error): CreateTodoError => ({
+          code: 'UNEXPECTED_ERROR',
+          message: 'Database error saving todo',
+          cause: error,
+        })
+      ).map(() => todo);
+    },
+  };
+}
+```
+
+### Benefits Realized
+
+- ✅ **Secure by design** - Authorization enforced at entry points, cannot be bypassed
+- ✅ **Flexible permissions** - Easy to add new permissions or customize roles
+- ✅ **Type-safe** - Compile-time verification of authorization code
+- ✅ **Testable** - Pure policies, behavior-focused acceptance tests
+- ✅ **Maintainable** - Clear separation between authorization and business logic
+- ✅ **Scalable** - Multi-tenant model supports team collaboration
+
+**Location**: Implementation details in `apps/todo-api/src/auth/` and design documentation in `docs/AUTHORIZATION_DESIGN.md`
+
 ## Benefits Realized
 
 ### End-to-End Type Safety with ts-rest
