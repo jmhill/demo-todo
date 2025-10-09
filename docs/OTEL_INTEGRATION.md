@@ -25,17 +25,20 @@ MySQL Database (port 3306)
 ## Technology Choices
 
 ### Why SigNoz?
+
 - Handles all three signals (traces, metrics, logs) in one UI
 - Single Docker Compose setup for local development
 - Purpose-built for OTLP
 - Alternative to Jaeger (traces only) or full Grafana stack (complex)
 
 ### Signal Coverage
+
 - **Traces**: ✅ Full distributed tracing from browser → API → database
 - **Metrics**: ✅ Basic runtime + custom business metrics
 - **Logs**: ✅ Winston bridge with automatic trace_id correlation
 
 ### What We're Demonstrating
+
 1. Log/trace correlation (logs automatically tagged with trace_id)
 2. Distributed tracing across frontend/backend/database
 3. Vendor-independent OTLP pattern (app code never changes)
@@ -46,7 +49,7 @@ MySQL Database (port 3306)
 ### 1. Docker Compose Setup
 
 ```yaml
-version: "3.8"
+version: '3.8'
 
 services:
   db:
@@ -55,14 +58,14 @@ services:
       MYSQL_ROOT_PASSWORD: password
       MYSQL_DATABASE: demo_todo
     ports:
-      - "3306:3306"
+      - '3306:3306'
     volumes:
       - mysql-data:/var/lib/mysql
 
   api:
     build: ./backend
     ports:
-      - "3001:3001"
+      - '3001:3001'
     environment:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
       - DATABASE_URL=mysql://root:password@db:3306/demo_todo
@@ -73,19 +76,19 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "3000:3000"
+      - '3000:3000'
     depends_on:
       - api
 
   # OpenTelemetry Collector
   otel-collector:
     image: signoz/signoz-otel-collector:0.88.11
-    command: ["--config=/etc/otel-collector-config.yaml"]
+    command: ['--config=/etc/otel-collector-config.yaml']
     volumes:
       - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
     ports:
-      - "4318:4318"  # OTLP HTTP (for apps)
-      - "4317:4317"  # OTLP gRPC
+      - '4318:4318' # OTLP HTTP (for apps)
+      - '4317:4317' # OTLP gRPC
     depends_on:
       - clickhouse
 
@@ -99,7 +102,7 @@ services:
 
   query-service:
     image: signoz/query-service:0.38.0
-    command: ["-config=/root/config/prometheus.yml"]
+    command: ['-config=/root/config/prometheus.yml']
     environment:
       - STORAGE=clickhouse
       - GODEBUG=netdns=go
@@ -112,7 +115,7 @@ services:
   signoz-frontend:
     image: signoz/frontend:0.38.0
     ports:
-      - "3301:3301"
+      - '3301:3301'
     environment:
       - FRONTEND_API_ENDPOINT=http://query-service:8080
     depends_on:
@@ -134,7 +137,7 @@ receivers:
       http:
         cors:
           allowed_origins:
-            - "http://localhost:3000"  # React app
+            - 'http://localhost:3000' # React app
       grpc:
 
 processors:
@@ -240,7 +243,7 @@ process.on('SIGTERM', () => {
 **File: `backend/src/index.ts`**
 
 ```typescript
-import './instrumentation';  // MUST BE FIRST
+import './instrumentation'; // MUST BE FIRST
 import express from 'express';
 import mysql from 'mysql2/promise';
 import winston from 'winston';
@@ -257,21 +260,23 @@ const pool = mysql.createPool(process.env.DATABASE_URL!);
 
 app.get('/api/todos', async (req, res) => {
   logger.info('Fetching todos');
-  
-  const [rows] = await pool.query('SELECT * FROM todos WHERE completed = ?', [false]);
-  
+
+  const [rows] = await pool.query('SELECT * FROM todos WHERE completed = ?', [
+    false,
+  ]);
+
   logger.info('Fetched todos', { count: (rows as any[]).length });
   res.json({ todos: rows });
 });
 
 app.post('/api/todos', async (req, res) => {
   logger.info('Creating todo', { title: req.body.title });
-  
+
   const [result] = await pool.query(
     'INSERT INTO todos (title, completed) VALUES (?, ?)',
-    [req.body.title, false]
+    [req.body.title, false],
   );
-  
+
   res.json({ id: (result as any).insertId });
 });
 
@@ -281,6 +286,7 @@ app.listen(3001, () => {
 ```
 
 **Auto-Instrumentation Coverage:**
+
 - ✅ Express routes (automatic)
 - ✅ HTTP requests (automatic)
 - ✅ MySQL queries (automatic via mysql2)
@@ -340,8 +346,8 @@ provider.addSpanProcessor(
   new BatchSpanProcessor(
     new OTLPTraceExporter({
       url: 'http://localhost:4318/v1/traces',
-    })
-  )
+    }),
+  ),
 );
 
 provider.register();
@@ -367,6 +373,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(<App />);
 ```
 
 **Auto-Instrumentation Coverage:**
+
 - ✅ fetch() calls (automatic)
 - ✅ Trace context propagation to backend (automatic via traceparent header)
 
@@ -381,7 +388,7 @@ function TodoList() {
   const handleCreateTodo = async (title: string) => {
     const span = tracer.startSpan('user.create_todo');
     span.setAttribute('todo.title', title);
-    
+
     try {
       await fetch('/api/todos', {
         method: 'POST',
@@ -404,6 +411,7 @@ function TodoList() {
 
 **Traces Tab:**
 Click "Add Todo" in React → See full distributed trace:
+
 ```
 user.create_todo (browser) - 847ms
   └─ HTTP POST /api/todos (browser) - 823ms
@@ -416,6 +424,7 @@ All spans share the same `trace_id`.
 
 **Logs Tab:**
 Every winston log includes:
+
 ```json
 {
   "message": "Creating todo",
@@ -428,6 +437,7 @@ Every winston log includes:
 Click a log → Jump to its trace. Click a span → See all logs from that span.
 
 **Metrics Tab:**
+
 - `http.server.request.duration` (Express auto-instrumented)
 - `todos.created` (custom counter)
 - `process.runtime.nodejs.memory.heap.used` (auto)
@@ -435,6 +445,7 @@ Click a log → Jump to its trace. Click a span → See all logs from that span.
 ## Known Limitations & Tradeoffs
 
 ### What's Simple (For a Demo)
+
 - No sampling configuration (captures everything)
 - No error handling/retry logic in exporters
 - No authentication on collector
@@ -442,18 +453,21 @@ Click a log → Jump to its trace. Click a span → See all logs from that span.
 - CORS wide open for local dev
 
 ### What's Production-Ready Pattern
+
 - OTLP as stable interface ✅
 - Collector as swap point ✅
 - Auto-instrumentation where possible ✅
 - Structured logging with trace correlation ✅
 
 ### Frontend Observability Reality
+
 - Auto-instrumentation is basic (fetch only)
 - No auto-metrics (need custom implementation)
 - Logs shouldn't go over network (use console + source maps)
 - Manual spans required for business logic
 
 ### Log Bridging
+
 Winston logs are exported as separate signals from traces. They connect via `trace_id` correlation in the UI, not a unified API. This is the current state of OTLP logs spec.
 
 ## Running the Demo
@@ -476,6 +490,7 @@ open http://localhost:3301
 This section demonstrates the core value proposition: **zero application code changes** when switching observability backends.
 
 ### What Stays Identical
+
 - ✅ All backend instrumentation code (`backend/src/instrumentation.ts`)
 - ✅ All frontend instrumentation code (`frontend/src/instrumentation.ts`)
 - ✅ All application logic and business code
@@ -484,6 +499,7 @@ This section demonstrates the core value proposition: **zero application code ch
 - ✅ Distributed tracing across services
 
 ### What Changes
+
 Only infrastructure configuration - choose one of two approaches:
 
 ### Approach A: Direct to Datadog Agent (Recommended)
@@ -497,14 +513,14 @@ services:
   datadog-agent:
     image: gcr.io/datadoghq/agent:latest
     environment:
-      - DD_API_KEY=${DD_API_KEY}  # Your Datadog API key
-      - DD_SITE=datadoghq.com     # Or datadoghq.eu, etc.
+      - DD_API_KEY=${DD_API_KEY} # Your Datadog API key
+      - DD_SITE=datadoghq.com # Or datadoghq.eu, etc.
       - DD_OTLP_CONFIG_RECEIVER_PROTOCOLS_GRPC_ENDPOINT=0.0.0.0:4317
       - DD_OTLP_CONFIG_RECEIVER_PROTOCOLS_HTTP_ENDPOINT=0.0.0.0:4318
       - DD_OTLP_CONFIG_LOGS_ENABLED=true
     ports:
-      - "4318:4318"
-      - "4317:4317"
+      - '4318:4318'
+      - '4317:4317'
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /proc/:/host/proc/:ro
@@ -537,7 +553,7 @@ receivers:
       http:
         cors:
           allowed_origins:
-            - "http://localhost:3000"
+            - 'http://localhost:3000'
       grpc:
 
 processors:
@@ -549,14 +565,14 @@ exporters:
   datadog:
     api:
       key: ${DD_API_KEY}
-      site: datadoghq.com  # Or datadoghq.eu, etc.
+      site: datadoghq.com # Or datadoghq.eu, etc.
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [datadog]  # Only this changed from SigNoz
+      exporters: [datadog] # Only this changed from SigNoz
     metrics:
       receivers: [otlp]
       processors: [batch]
@@ -573,13 +589,13 @@ service:
 services:
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
-    command: ["--config=/etc/otel-collector-config.yaml"]
+    command: ['--config=/etc/otel-collector-config.yaml']
     volumes:
       - ./otel-collector-config.datadog.yaml:/etc/otel-collector-config.yaml
     environment:
       - DD_API_KEY=${DD_API_KEY}
     ports:
-      - "4318:4318"
+      - '4318:4318'
 
   api:
     environment:
@@ -594,28 +610,33 @@ services:
 After switching, your telemetry appears in Datadog's web UI:
 
 **Traces:**
+
 - Navigate to **APM → Traces** in Datadog
 - See the same distributed traces: browser → API → database
 - Click any trace to see the waterfall view
 
 **Log/Trace Correlation:**
+
 - Navigate to **Logs → Search**
 - Every winston log has `trace_id` and `span_id` fields automatically
 - Click "View Trace" on any log to jump to its trace
 - Click "View Logs" on any trace span to see related logs
 
 **Metrics:**
+
 - Navigate to **Metrics → Explorer**
 - See `http.server.request.duration`, `todos.created`, etc.
 - All custom metrics from your application appear here
 
 **Service Map:**
+
 - Navigate to **APM → Service Map**
 - Visual representation of `demo-todo-frontend` → `demo-todo-api` → `mysql`
 
 ### Datadog-Specific Limitations
 
 **What works with OTLP:**
+
 - ✅ Distributed tracing (APM)
 - ✅ Log/trace correlation
 - ✅ Metrics and custom metrics
@@ -623,6 +644,7 @@ After switching, your telemetry appears in Datadog's web UI:
 - ✅ Trace search and analytics
 
 **What requires Datadog's native tracers:**
+
 - ❌ Application Security Management (ASM)
 - ❌ Continuous Profiler
 - ❌ Some ingestion rules and sampling features
@@ -663,7 +685,7 @@ exporters:
   datadog:
     api:
       key: ${DD_API_KEY}
-  
+
   otlphttp/honeycomb:
     endpoint: https://api.honeycomb.io
     headers:
@@ -674,7 +696,7 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [datadog, otlphttp/honeycomb]  # Both!
+      exporters: [datadog, otlphttp/honeycomb] # Both!
 ```
 
 This demonstrates OTLP's vendor independence - send the same data to multiple backends for migration, comparison, or redundancy.

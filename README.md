@@ -1179,15 +1179,30 @@ export const PermissionSchema = z.enum([
 // Roles are static permission bundles
 export const RoleDefinitions = {
   owner: [
-    'todos:create', 'todos:read', 'todos:update', 'todos:delete', 'todos:complete',
-    'org:members:read', 'org:members:invite', 'org:members:remove', 'org:settings:update',
+    'todos:create',
+    'todos:read',
+    'todos:update',
+    'todos:delete',
+    'todos:complete',
+    'org:members:read',
+    'org:members:invite',
+    'org:members:remove',
+    'org:settings:update',
   ],
   admin: [
-    'todos:create', 'todos:read', 'todos:update', 'todos:delete', 'todos:complete',
-    'org:members:read', 'org:members:invite',
+    'todos:create',
+    'todos:read',
+    'todos:update',
+    'todos:delete',
+    'todos:complete',
+    'org:members:read',
+    'org:members:invite',
   ],
   member: [
-    'todos:create', 'todos:read', 'todos:update', 'todos:complete',
+    'todos:create',
+    'todos:read',
+    'todos:update',
+    'todos:complete',
     'org:members:read',
   ],
   viewer: ['todos:read', 'org:members:read'],
@@ -1347,7 +1362,7 @@ it('should allow creator without permission', () => {
       membership: { userId: 'user-1', role: 'member' },
       permissions: ['todos:read'], // No complete permission
     },
-    { createdBy: 'user-1' } // But user is creator
+    { createdBy: 'user-1' }, // But user is creator
   );
 
   expect(result.isOk()).toBe(true);
@@ -1372,7 +1387,7 @@ The authorization system maintains all core architectural principles:
 export function createTodoService(
   todoStore: TodoStore,
   idGenerator: IdGenerator,
-  clock: Clock
+  clock: Clock,
 ): TodoService {
   return {
     createTodo(command: CreateTodoCommand): ResultAsync<Todo, CreateTodoError> {
@@ -1394,7 +1409,7 @@ export function createTodoService(
           code: 'UNEXPECTED_ERROR',
           message: 'Database error saving todo',
           cause: error,
-        })
+        }),
       ).map(() => todo);
     },
   };
