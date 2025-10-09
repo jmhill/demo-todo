@@ -7,6 +7,7 @@ import {
   extractAuthAndOrgContext,
   requireCreatorOrPermission,
 } from '../../auth/index.js';
+import { logServiceCall } from '../../observability/index.js';
 
 const s = initServer();
 
@@ -39,12 +40,20 @@ export const createTodoRouter = (todoService: TodoService) => {
 
         const { user, orgContext } = contextResult.value;
 
-        const result = await todoService.createTodo({
-          organizationId: orgContext.organizationId,
-          createdBy: user.id,
-          title: body.title,
-          description: body.description,
-        });
+        const result = await logServiceCall(
+          'createTodo',
+          () =>
+            todoService.createTodo({
+              organizationId: orgContext.organizationId,
+              createdBy: user.id,
+              title: body.title,
+              description: body.description,
+            }),
+          {
+            userId: user.id,
+            organizationId: orgContext.organizationId,
+          },
+        );
 
         if (result.isErr()) {
           return {
@@ -74,9 +83,16 @@ export const createTodoRouter = (todoService: TodoService) => {
           };
         }
 
-        const { orgContext } = contextResult.value;
+        const { user, orgContext } = contextResult.value;
 
-        const result = await todoService.listTodos(orgContext.organizationId);
+        const result = await logServiceCall(
+          'listTodos',
+          () => todoService.listTodos(orgContext.organizationId),
+          {
+            userId: user.id,
+            organizationId: orgContext.organizationId,
+          },
+        );
 
         if (result.isErr()) {
           return {

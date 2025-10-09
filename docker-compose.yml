@@ -1,6 +1,45 @@
+version: "3"
+
+x-common: &common
+  networks:
+    - app-network
+  restart: unless-stopped
+  logging:
+    options:
+      max-size: 50m
+      max-file: "3"
+
+x-clickhouse-defaults: &clickhouse-defaults
+  !!merge <<: *common
+  image: clickhouse/clickhouse-server:25.5.6
+  tty: true
+  depends_on:
+    init-clickhouse:
+      condition: service_completed_successfully
+    zookeeper:
+      condition: service_healthy
+  healthcheck:
+    test:
+      - CMD
+      - clickhouse-client
+      - --query=SELECT 1
+    interval: 10s
+    timeout: 5s
+    retries: 5
+  ulimits:
+    nproc: 65535
+    nofile:
+      soft: 262144
+      hard: 262144
+  environment:
+    - CLICKHOUSE_SKIP_USER_SETUP=1
+
 services:
+  # Application services
   mysql:
+    !!merge <<: *common
     image: mysql:8.0
+    container_name: demo-todo-mysql
     environment:
       MYSQL_ROOT_PASSWORD: dev
       MYSQL_DATABASE: todo_dev
@@ -8,5 +47,171 @@ services:
       - '3306:3306'
     volumes:
       - mysql-data:/var/lib/mysql
+
+  # Application OTEL Collector - receives from app, forwards to SigNoz
+  otel-collector:
+    !!merge <<: *common
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: demo-todo-otel-collector
+    command: ['--config=/etc/otel-collector-config.yaml']
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - '4318:4318' # OTLP HTTP (for todo-api)
+      - '4317:4317' # OTLP gRPC
+    depends_on:
+      signoz-otel-collector:
+        condition: service_started
+
+  # SigNoz Stack
+  init-clickhouse:
+    !!merge <<: *common
+    image: clickhouse/clickhouse-server:25.5.6
+    container_name: signoz-init-clickhouse
+    command:
+      - bash
+      - -c
+      - |
+        version="v0.0.1"
+        node_os=$$(uname -s | tr '[:upper:]' '[:lower:]')
+        node_arch=$$(uname -m | sed s/aarch64/arm64/ | sed s/x86_64/amd64/)
+        echo "Fetching histogram-binary for $${node_os}/$${node_arch}"
+        cd /tmp
+        wget -O histogram-quantile.tar.gz "https://github.com/SigNoz/signoz/releases/download/histogram-quantile%2F$${version}/histogram-quantile_$${node_os}_$${node_arch}.tar.gz"
+        tar -xvzf histogram-quantile.tar.gz
+        mv histogram-quantile /var/lib/clickhouse/user_scripts/histogramQuantile
+    restart: on-failure
+    volumes:
+      - ./signoz-config/clickhouse/user_scripts:/var/lib/clickhouse/user_scripts/
+
+  zookeeper:
+    !!merge <<: *common
+    image: signoz/zookeeper:3.7.1
+    container_name: signoz-zookeeper
+    user: root
+    volumes:
+      - zookeeper-data:/bitnami/zookeeper
+    environment:
+      - ZOO_SERVER_ID=1
+      - ALLOW_ANONYMOUS_LOGIN=yes
+      - ZOO_AUTOPURGE_INTERVAL=1
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -s -m 2 http://localhost:8080/commands/ruok | grep error | grep null
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  clickhouse:
+    !!merge <<: *clickhouse-defaults
+    container_name: signoz-clickhouse
+    volumes:
+      - ./signoz-config/clickhouse/config.xml:/etc/clickhouse-server/config.xml
+      - ./signoz-config/clickhouse/users.xml:/etc/clickhouse-server/users.xml
+      - ./signoz-config/clickhouse/custom-function.xml:/etc/clickhouse-server/custom-function.xml
+      - ./signoz-config/clickhouse/user_scripts:/var/lib/clickhouse/user_scripts/
+      - ./signoz-config/clickhouse/cluster.xml:/etc/clickhouse-server/config.d/cluster.xml
+      - clickhouse-data:/var/lib/clickhouse/
+
+  schema-migrator-sync:
+    !!merge <<: *common
+    image: signoz/signoz-schema-migrator:v0.129.6
+    container_name: signoz-schema-migrator-sync
+    command:
+      - sync
+      - --dsn=tcp://clickhouse:9000
+      - --up=
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    restart: on-failure
+
+  signoz:
+    !!merge <<: *common
+    image: signoz/signoz:v0.96.1
+    container_name: signoz
+    command:
+      - --config=/root/config/prometheus.yml
+    ports:
+      - "3301:8080" # SigNoz UI (mapped to 3301)
+    volumes:
+      - ./signoz-config/signoz/prometheus.yml:/root/config/prometheus.yml
+      - ./signoz-config/dashboards:/root/config/dashboards
+      - signoz-data:/var/lib/signoz/
+    environment:
+      - SIGNOZ_ALERTMANAGER_PROVIDER=signoz
+      - SIGNOZ_TELEMETRYSTORE_CLICKHOUSE_DSN=tcp://clickhouse:9000
+      - SIGNOZ_SQLSTORE_SQLITE_PATH=/var/lib/signoz/signoz.db
+      - DASHBOARDS_PATH=/root/config/dashboards
+      - STORAGE=clickhouse
+      - GODEBUG=netdns=go
+      - TELEMETRY_ENABLED=true
+      - DEPLOYMENT_TYPE=docker-standalone
+      - DOT_METRICS_ENABLED=true
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - --spider
+        - -q
+        - localhost:8080/api/v1/health
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      schema-migrator-sync:
+        condition: service_completed_successfully
+
+  signoz-otel-collector:
+    !!merge <<: *common
+    image: signoz/signoz-otel-collector:v0.129.6
+    container_name: signoz-otel-collector
+    command:
+      - --config=/etc/otel-collector-config.yaml
+      - --manager-config=/etc/manager-config.yaml
+      - --copy-path=/var/tmp/collector-config.yaml
+      - --feature-gates=-pkg.translator.prometheus.NormalizeName
+    volumes:
+      - ./signoz-otel-collector-config.yaml:/etc/otel-collector-config.yaml
+      - ./signoz-config/signoz/otel-collector-opamp-config.yaml:/etc/manager-config.yaml
+    environment:
+      - OTEL_RESOURCE_ATTRIBUTES=host.name=signoz-host,os.type=linux
+      - LOW_CARDINAL_EXCEPTION_GROUPING=false
+    # ports:
+    #   - "4319:4317" # OTLP gRPC (internal use only)
+    #   - "4320:4318" # OTLP HTTP (internal use only)
+    depends_on:
+      signoz:
+        condition: service_healthy
+
+  schema-migrator-async:
+    !!merge <<: *common
+    image: signoz/signoz-schema-migrator:v0.129.6
+    container_name: signoz-schema-migrator-async
+    command:
+      - async
+      - --dsn=tcp://clickhouse:9000
+      - --up=
+    restart: on-failure
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      schema-migrator-sync:
+        condition: service_completed_successfully
+
+networks:
+  app-network:
+    name: demo-todo-network
+
 volumes:
   mysql-data:
+    name: demo-todo-mysql-data
+  zookeeper-data:
+    name: signoz-zookeeper-data
+  clickhouse-data:
+    name: signoz-clickhouse-data
+  signoz-data:
+    name: signoz-data

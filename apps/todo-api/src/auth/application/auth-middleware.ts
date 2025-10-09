@@ -3,6 +3,7 @@ import type { AuthService } from '../domain/auth-service.js';
 import type { VerifyTokenError } from '../domain/auth-errors.js';
 import type { UserService } from '../../users/domain/user-service.js';
 import type { GetUserByIdError } from '../../users/domain/user-errors.js';
+import { logger } from '../../observability/index.js';
 
 // Type declarations are now in auth-types.ts to avoid duplication
 
@@ -58,6 +59,12 @@ export function createAuthMiddleware(
     const token = extractBearerToken(req.headers.authorization);
 
     if (!token) {
+      logger.warn('Authentication failed: missing token', {
+        event: 'auth.missing_token',
+        path: req.path,
+        method: req.method,
+      });
+
       res.status(401).json({
         message: 'Missing authorization token',
         code: 'INVALID_TOKEN',
@@ -70,10 +77,23 @@ export function createAuthMiddleware(
       .andThen((result) => userService.getById(result.userId))
       .match(
         (user) => {
+          logger.info('Authentication succeeded', {
+            event: 'auth.success',
+            userId: user.id,
+            username: user.username,
+          });
+
           req.auth = { user, token };
           next();
         },
         (error) => {
+          logger.warn('Authentication failed', {
+            event: 'auth.failed',
+            errorCode: error.code,
+            path: req.path,
+            method: req.method,
+          });
+
           const errorResponse = errorToHttpResponse(error);
           res.status(errorResponse.statusCode).json(errorResponse.body);
         },

@@ -1,0 +1,42 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        cors:
+          allowed_origins:
+            - 'http://localhost:5173' # React app (Vite default port)
+            - 'http://localhost:3000' # Alternative frontend port
+      grpc:
+
+processors:
+  batch:
+    send_batch_size: 10000
+    timeout: 10s
+
+exporters:
+  # OTLP exporter to SigNoz collector
+  otlp/signoz:
+    endpoint: http://signoz-otel-collector:4318
+    tls:
+      insecure: true
+
+  # Debug exporter for local debugging
+  debug:
+    verbosity: detailed
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp/signoz, debug]
+
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp/signoz, debug]
+
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp/signoz, debug]

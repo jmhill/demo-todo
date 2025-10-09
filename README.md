@@ -987,12 +987,14 @@ export function createApp(config: AppConfig): Express {
 In hexagonal architecture, the domain defines interfaces (ports) that can have multiple implementations (adapters). But how do we guarantee that all adapters behave identically?
 
 **The Problem:**
+
 - UserStore has 3 implementations: Sequelize (ORM), MySQL (raw SQL), in-memory (Map)
 - TodoStore has 2 implementations: Sequelize, in-memory
 - OrganizationStore has 2 implementations: Sequelize, in-memory
 - MembershipStore has 2 implementations: Sequelize, in-memory
 
 **Traditional approach problems:**
+
 - ❌ Duplicate test suites for each adapter
 - ❌ Subtle behavior differences slip through
 - ❌ Adding new adapters requires rewriting tests
@@ -1042,6 +1044,7 @@ export function runUserStoreContractTests(options: {
 Each adapter runs the same contract tests:
 
 **Sequelize Adapter:**
+
 ```typescript
 // apps/todo-api/src/users/infrastructure/user-store-sequelize.test.ts
 describe('SequelizeUserStore', () => {
@@ -1061,6 +1064,7 @@ describe('SequelizeUserStore', () => {
 ```
 
 **MySQL Adapter:**
+
 ```typescript
 // apps/todo-api/src/users/infrastructure/user-store-mysql.test.ts
 describe('MySQLUserStore', () => {
@@ -1076,6 +1080,7 @@ describe('MySQLUserStore', () => {
 ```
 
 **In-Memory Adapter:**
+
 ```typescript
 // apps/todo-api/src/users/infrastructure/user-store-in-mem.test.ts
 describe('InMemoryUserStore', () => {
@@ -1134,6 +1139,7 @@ Total: 133 tests passed ✅
 ```
 
 **What this proves:**
+
 - ✅ All adapters implement the contract identically
 - ✅ In-memory stores are drop-in replacements for databases in tests
 - ✅ Business logic tested against in-memory (3ms) gets same behavior as production database (200ms)
@@ -1181,6 +1187,7 @@ apps/todo-api/src/{domain}/infrastructure/
 ```
 
 **Location**: See examples in:
+
 - `apps/todo-api/src/users/infrastructure/user-store-contract-tests.ts`
 - `apps/todo-api/src/todos/infrastructure/todo-store-contract-tests.ts`
 - `apps/todo-api/src/organizations/infrastructure/organization-store-contract-tests.ts`

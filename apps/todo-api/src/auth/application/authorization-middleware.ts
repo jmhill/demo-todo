@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import type { Permission } from '../domain/authorization-schemas.js';
 import { requirePermission, requireAnyPermission } from '../domain/policies.js';
 import { extractOrgContext } from '../domain/auth-types.js';
+import { logPermissionCheck } from '../../observability/index.js';
 
 /**
  * Middleware factory: Check if user has required permission(s)
@@ -42,6 +43,14 @@ export const requirePermissions = (
       const error = authResult.error;
 
       if (error.code === 'MISSING_PERMISSION') {
+        logPermissionCheck({
+          userId: req.auth?.user.id || 'unknown',
+          organizationId: orgContext.organizationId,
+          requiredPermission: permissions,
+          granted: false,
+          userPermissions: orgContext.permissions,
+        });
+
         res.status(403).json({
           message: `Missing required permission: ${error.required}`,
           code: 'MISSING_PERMISSION',
@@ -49,12 +58,28 @@ export const requirePermissions = (
         return;
       }
 
+      logPermissionCheck({
+        userId: req.auth?.user.id || 'unknown',
+        organizationId: orgContext.organizationId,
+        requiredPermission: permissions,
+        granted: false,
+        userPermissions: orgContext.permissions,
+      });
+
       res.status(403).json({
         message: 'Forbidden',
         code: 'FORBIDDEN',
       });
       return;
     }
+
+    logPermissionCheck({
+      userId: req.auth?.user.id || 'unknown',
+      organizationId: orgContext.organizationId,
+      requiredPermission: permissions,
+      granted: true,
+      userPermissions: orgContext.permissions,
+    });
 
     next();
   };

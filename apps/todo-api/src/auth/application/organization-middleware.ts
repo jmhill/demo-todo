@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { OrganizationMembershipStore } from '../../organizations/domain/organization-service.js';
 import { getPermissionsForRole } from '../domain/authorization-schemas.js';
+import { logOrgMembership, logger } from '../../observability/index.js';
 
 /**
  * Middleware: Fetch org membership and attach to req.auth.orgContext
@@ -44,6 +45,12 @@ export const requireOrgMembership = (
       });
 
       if (!membership) {
+        logger.warn('Organization membership not found', {
+          event: 'authz.membership.not_found',
+          userId,
+          organizationId: orgId,
+        });
+
         res.status(403).json({
           message: 'Not a member of this organization',
           code: 'NOT_MEMBER',
@@ -54,6 +61,14 @@ export const requireOrgMembership = (
       // Resolve permissions from role
       const permissions = getPermissionsForRole(membership.role);
 
+      // Log successful membership resolution
+      logOrgMembership({
+        userId,
+        organizationId: orgId,
+        role: membership.role,
+        permissions: [...permissions],
+      });
+
       // Attach org context to req.auth
       req.auth.orgContext = {
         organizationId: orgId,
@@ -62,8 +77,18 @@ export const requireOrgMembership = (
       };
 
       next();
-    } catch {
+    } catch (error) {
       // Handle database errors
+      logger.error('Organization membership check failed', {
+        event: 'authz.membership.error',
+        userId,
+        organizationId: orgId,
+        error:
+          error instanceof Error
+            ? { message: error.message, stack: error.stack }
+            : error,
+      });
+
       res.status(500).json({
         message: 'Internal server error',
         code: 'INTERNAL_ERROR',

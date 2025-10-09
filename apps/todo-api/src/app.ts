@@ -9,6 +9,7 @@ import { configureSecureHeaders } from './security/secure-headers.js';
 import { configureCors } from './security/cors.js';
 import { configureRateLimiting } from './security/rate-limiting.js';
 import { configureRequestLimits } from './security/request-limits.js';
+import { requestLogger, logger } from './observability/index.js';
 import type { AppConfig } from './config/schema.js';
 import { createSequelize } from './database/sequelize-config.js';
 import {
@@ -122,6 +123,9 @@ export function createApp(config: AppConfig): Express {
     app.use(express.urlencoded({ extended: true }));
   }
 
+  // Request logging middleware (after body parsing, before routes)
+  app.use(requestLogger);
+
   // Create auth middleware for protected routes
   const requireAuth = createAuthMiddleware(authService, userService);
 
@@ -188,7 +192,15 @@ export function createApp(config: AppConfig): Express {
 
     // Only log server errors (5xx), not client errors (4xx)
     if (statusCode >= 500) {
-      console.error(err.stack);
+      logger.error('Unhandled error in request', {
+        event: 'http.error.unhandled',
+        statusCode,
+        error: {
+          message: err.message,
+          stack: err.stack,
+          name: err.name,
+        },
+      });
     }
 
     // Send error response

@@ -4,6 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "concurrently -n api,ui -c blue,magenta \"npm run dev --workspace=todo-api\" \"npm run dev --workspace=todo-ui\"",
+    "dev:otel": "docker compose up -d && npm run dev",
+    "otel:up": "docker compose up -d",
+    "otel:down": "docker compose down",
+    "otel:logs": "docker compose logs -f otel-collector signoz-frontend",
     "build": "npm run build --workspaces",
     "start": "npm run start --workspaces",
     "test": "npm run test --workspaces",
