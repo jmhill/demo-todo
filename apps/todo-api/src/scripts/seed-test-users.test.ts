@@ -1,9 +1,17 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { readFile } from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { join, dirname } from 'path';
 import { z } from 'zod';
-import type { CreateUserCommand } from '../users/domain/user-schemas.js';
+import { createUserService } from '../users/domain/user-service.js';
+import { createInMemoryUserStore } from '../users/infrastructure/user-store-in-mem.js';
+import { createMockPasswordHasher } from '../users/infrastructure/password-hasher-fake.js';
+import { createTodoService } from '../todos/domain/todo-service.js';
+import { createInMemoryTodoStore } from '../todos/infrastructure/todo-store-in-mem.js';
+import {
+  createUuidIdGenerator,
+  createSystemClock,
+} from '@demo-todo/infrastructure';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -97,60 +105,96 @@ describe('Test User Seeding', () => {
   });
 
   describe('seeding behavior', () => {
-    it('should create users through service layer', async () => {
-      const mockUserService = {
-        createUser: vi.fn(),
-        getById: vi.fn(),
-        getByEmail: vi.fn(),
-        getByUsername: vi.fn(),
-        authenticateUser: vi.fn(),
-      };
+    let userService: ReturnType<typeof createUserService>;
+    let todoService: ReturnType<typeof createTodoService>;
+    let userStore: ReturnType<typeof createInMemoryUserStore>;
+    let todoStore: ReturnType<typeof createInMemoryTodoStore>;
 
-      const testUser: CreateUserCommand = {
+    beforeEach(() => {
+      userStore = createInMemoryUserStore();
+      userService = createUserService(
+        userStore,
+        createMockPasswordHasher(),
+        createUuidIdGenerator(),
+        createSystemClock(),
+      );
+
+      todoStore = createInMemoryTodoStore();
+      todoService = createTodoService(
+        todoStore,
+        createUuidIdGenerator(),
+        createSystemClock(),
+      );
+    });
+
+    it('should create users through service layer', async () => {
+      const testUser = {
         email: 'test@example.com',
         username: 'testuser',
         password: 'password123',
       };
 
-      await mockUserService.createUser(testUser);
+      const result = await userService.createUser(testUser);
 
-      expect(mockUserService.createUser).toHaveBeenCalledWith(testUser);
-      expect(mockUserService.createUser).toHaveBeenCalledTimes(1);
+      expect(result.isOk()).toBe(true);
+      if (!result.isOk()) return;
+
+      const createdUser = result.value;
+      expect(createdUser.email).toBe(testUser.email);
+      expect(createdUser.username).toBe(testUser.username);
+      expect(createdUser.id).toBeDefined();
+
+      // Verify user exists in store
+      const storedUser = await userStore.findByUsername(testUser.username);
+      expect(storedUser).toBeDefined();
+      expect(storedUser?.id).toBe(createdUser.id);
     });
 
     it('should create todos for users when todos are present', async () => {
-      const mockTodoService = {
-        createTodo: vi.fn(),
-        listTodos: vi.fn(),
-        getTodoById: vi.fn(),
-        completeTodo: vi.fn(),
-      };
+      // First create a user
+      const userResult = await userService.createUser({
+        email: 'test@example.com',
+        username: 'testuser',
+        password: 'password123',
+      });
+      expect(userResult.isOk()).toBe(true);
+      if (!userResult.isOk()) return;
 
-      const userId = 'user-123';
+      const user = userResult.value;
+      const organizationId = user.id; // In the real script, user's personal org
+
+      // Create todos for the user
       const todos = [
         { title: 'Test todo 1', description: 'Description 1' },
-        { title: 'Test todo 2' },
+        { title: 'Test todo 2', description: undefined },
       ];
 
+      const createdTodos = [];
       for (const todo of todos) {
-        await mockTodoService.createTodo({
-          userId,
+        const todoResult = await todoService.createTodo({
+          organizationId,
+          createdBy: user.id,
           title: todo.title,
           description: todo.description,
         });
+
+        expect(todoResult.isOk()).toBe(true);
+        if (todoResult.isOk()) {
+          createdTodos.push(todoResult.value);
+        }
       }
 
-      expect(mockTodoService.createTodo).toHaveBeenCalledTimes(2);
-      expect(mockTodoService.createTodo).toHaveBeenNthCalledWith(1, {
-        userId,
-        title: 'Test todo 1',
-        description: 'Description 1',
-      });
-      expect(mockTodoService.createTodo).toHaveBeenNthCalledWith(2, {
-        userId,
-        title: 'Test todo 2',
-        description: undefined,
-      });
+      expect(createdTodos).toHaveLength(2);
+      expect(createdTodos[0]).toBeDefined();
+      expect(createdTodos[1]).toBeDefined();
+      expect(createdTodos[0]?.title).toBe('Test todo 1');
+      expect(createdTodos[0]?.description).toBe('Description 1');
+      expect(createdTodos[1]?.title).toBe('Test todo 2');
+      expect(createdTodos[1]?.description).toBeUndefined();
+
+      // Verify todos exist in store
+      const storedTodos = await todoStore.findByOrganizationId(organizationId);
+      expect(storedTodos.length).toBe(2);
     });
   });
 });
