@@ -21,5 +21,6 @@
     "noImplicitReturns": true
   },
   "include": ["src"],
+  "exclude": ["node_modules", "dist", ".devbox"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

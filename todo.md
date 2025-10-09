@@ -72,7 +72,7 @@
 - [x] add 'view completed' story
 - [x] revise quality/test scripts to run in parallel with clearer reporting of problems
 - [-] add demo logging infrastructure (otel?)
-- [-] show how to run one set of test against different implementations of an adapter
+- [x] show how to run one set of test against different implementations of an adapter
 
 ## milestone 3: more data adapter and complex service examples
 

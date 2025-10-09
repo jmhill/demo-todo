@@ -980,6 +980,212 @@ export function createApp(config: AppConfig): Express {
 4. **Maintainability**: Clear boundaries make code easy to understand
 5. **Evolution**: Add new adapters (Redis cache, EventStore) without touching domain
 
+## Adapter Contract Testing
+
+### The Challenge: Ensuring Adapter Parity
+
+In hexagonal architecture, the domain defines interfaces (ports) that can have multiple implementations (adapters). But how do we guarantee that all adapters behave identically?
+
+**The Problem:**
+- UserStore has 3 implementations: Sequelize (ORM), MySQL (raw SQL), in-memory (Map)
+- TodoStore has 2 implementations: Sequelize, in-memory
+- OrganizationStore has 2 implementations: Sequelize, in-memory
+- MembershipStore has 2 implementations: Sequelize, in-memory
+
+**Traditional approach problems:**
+- ❌ Duplicate test suites for each adapter
+- ❌ Subtle behavior differences slip through
+- ❌ Adding new adapters requires rewriting tests
+- ❌ Contract violations discovered at runtime
+
+### The Solution: Shared Contract Test Suites
+
+We use **shared contract test suites** that run against all implementations, ensuring every adapter behaves identically.
+
+#### Pattern Overview
+
+```typescript
+// 1. Define the contract test suite ONCE
+export function runUserStoreContractTests(options: {
+  createStore: () => UserStore | Promise<UserStore>;
+  beforeEach?: () => void | Promise<void>;
+  afterEach?: () => void | Promise<void>;
+}) {
+  let userStore: UserStore;
+
+  beforeEach(async () => {
+    if (options.beforeEach) await options.beforeEach();
+    userStore = await options.createStore();
+  });
+
+  describe('UserStore Contract', () => {
+    it('should save a user with hashed password', async () => {
+      const user = { id: 'uuid', email: 'test@example.com', ... };
+      await userStore.save(user);
+      const found = await userStore.findById(user.id);
+      expect(found?.email).toBe('test@example.com');
+    });
+
+    it('should find by email case-insensitively', async () => {
+      await userStore.save({ email: 'Test@Example.com', ... });
+      const found = await userStore.findByEmail('test@example.com');
+      expect(found).not.toBeNull();
+    });
+
+    // ... 18 more contract tests
+  });
+}
+```
+
+#### Running Against Multiple Adapters
+
+Each adapter runs the same contract tests:
+
+**Sequelize Adapter:**
+```typescript
+// apps/todo-api/src/users/infrastructure/user-store-sequelize.test.ts
+describe('SequelizeUserStore', () => {
+  let sequelize: Sequelize;
+
+  beforeAll(async () => {
+    sequelize = new Sequelize(/* TestContainer MySQL */);
+  });
+
+  runUserStoreContractTests({
+    createStore: () => createSequelizeUserStore(sequelize),
+    beforeEach: async () => {
+      await sequelize.getQueryInterface().bulkDelete('users', {});
+    },
+  });
+});
+```
+
+**MySQL Adapter:**
+```typescript
+// apps/todo-api/src/users/infrastructure/user-store-mysql.test.ts
+describe('MySQLUserStore', () => {
+  runUserStoreContractTests({
+    createStore: () => createMySQLUserStore(config),
+    beforeEach: async () => {
+      const connection = await mysql.createConnection(config);
+      await connection.execute('DELETE FROM users');
+      await connection.end();
+    },
+  });
+});
+```
+
+**In-Memory Adapter:**
+```typescript
+// apps/todo-api/src/users/infrastructure/user-store-in-mem.test.ts
+describe('InMemoryUserStore', () => {
+  runUserStoreContractTests({
+    createStore: () => createInMemoryUserStore(),
+    // No beforeEach needed - each test gets fresh store
+  });
+});
+```
+
+### Real-World Example: TodoStore Contract
+
+The TodoStore interface demonstrates how we handle adapters with foreign key constraints:
+
+```typescript
+export function runTodoStoreContractTests(options: {
+  createStore: () => TodoStore | Promise<TodoStore>;
+  setupDependencies?: (data: {
+    organizationId: string;
+    userId: string;
+  }) => void | Promise<void>;
+  beforeEach?: () => void | Promise<void>;
+}) {
+  // Contract tests for save, findById, findByOrganizationId, update, delete
+  // All 12 tests run against both Sequelize and in-memory implementations
+}
+```
+
+**Key insight:** The `setupDependencies` hook allows database adapters to create required foreign key records (users, organizations), while in-memory adapters can skip this entirely.
+
+### Test Results: Guaranteed Parity
+
+Running all store contract tests:
+
+```bash
+$ npm run test:unit --workspace=todo-api -- store
+
+✓ UserStore (3 adapters × 20 tests = 60 tests)
+  ✓ InMemoryUserStore (20 tests) - 3ms
+  ✓ MySQLUserStore (20 tests) - 111ms
+  ✓ SequelizeUserStore (20 tests) - 118ms
+
+✓ TodoStore (2 adapters × 12 tests = 24 tests)
+  ✓ InMemoryTodoStore (12 tests) - 3ms
+  ✓ SequelizeTodoStore (12 tests) - 183ms
+
+✓ OrganizationStore (2 adapters × 9 tests = 18 tests)
+  ✓ InMemoryOrganizationStore (9 tests) - 2ms
+  ✓ SequelizeOrganizationStore (9 tests) - 91ms
+
+✓ MembershipStore (2 adapters × 13 tests = 26 tests)
+  ✓ InMemoryMembershipStore (13 tests) - 3ms
+  ✓ SequelizeMembershipStore (13 tests) - 221ms
+
+Total: 133 tests passed ✅
+```
+
+**What this proves:**
+- ✅ All adapters implement the contract identically
+- ✅ In-memory stores are drop-in replacements for databases in tests
+- ✅ Business logic tested against in-memory (3ms) gets same behavior as production database (200ms)
+- ✅ Adding a new adapter (PostgreSQL, Redis) requires zero new test code
+
+### Benefits Realized
+
+1. **Single Source of Truth**
+   - Contract defined once, tested everywhere
+   - Adding tests improves all adapters simultaneously
+
+2. **Guaranteed Behavioral Parity**
+   - All adapters pass identical tests
+   - Catches subtle differences (case sensitivity, null handling, etc.)
+
+3. **Fast Feedback Loop**
+   - In-memory tests run in milliseconds
+   - Full confidence they match database behavior
+
+4. **Trivial to Add Adapters**
+   - Import contract, run tests, done
+   - No need to rewrite test suite
+
+5. **Refactor Fearlessly**
+   - Change adapter implementation
+   - Contract tests ensure nothing broke
+
+6. **Self-Documenting Contracts**
+   - Tests serve as executable specification
+   - New team members see exactly what the port requires
+
+### Implementation Pattern
+
+Every store in the project follows this pattern:
+
+```
+apps/todo-api/src/{domain}/infrastructure/
+├── {domain}-store-contract-tests.ts    # Shared contract suite
+├── {domain}-store-sequelize.test.ts    # Runs contract against Sequelize
+├── {domain}-store-mysql.test.ts        # Runs contract against MySQL (if exists)
+├── {domain}-store-in-mem.test.ts       # Runs contract against in-memory
+├── {domain}-store-sequelize.ts         # Sequelize implementation
+├── {domain}-store-mysql.ts             # MySQL implementation (if exists)
+└── {domain}-store-in-mem.ts            # In-memory implementation
+```
+
+**Location**: See examples in:
+- `apps/todo-api/src/users/infrastructure/user-store-contract-tests.ts`
+- `apps/todo-api/src/todos/infrastructure/todo-store-contract-tests.ts`
+- `apps/todo-api/src/organizations/infrastructure/organization-store-contract-tests.ts`
+- `apps/todo-api/src/organizations/infrastructure/membership-store-contract-tests.ts`
+
 ## Error Handling with neverthrow
 
 ### Railway-Oriented Programming

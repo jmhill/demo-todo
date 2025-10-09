@@ -3,12 +3,13 @@ import type { OrganizationStore } from '../domain/organization-service.js';
 
 export function createInMemoryOrganizationStore(): OrganizationStore {
   const organizations = new Map<string, Organization>();
-  const slugIndex = new Map<string, string>(); // slug -> id
+  const slugIndex = new Map<string, string>(); // lowercase slug -> id
 
   return {
     async save(org: Organization): Promise<void> {
       organizations.set(org.id, org);
-      slugIndex.set(org.slug, org.id);
+      // Store slug in lowercase for case-insensitive lookup
+      slugIndex.set(org.slug.toLowerCase(), org.id);
     },
 
     async findById(id: string): Promise<Organization | null> {
@@ -16,7 +17,8 @@ export function createInMemoryOrganizationStore(): OrganizationStore {
     },
 
     async findBySlug(slug: string): Promise<Organization | null> {
-      const id = slugIndex.get(slug);
+      // Lookup using lowercase for case-insensitive search
+      const id = slugIndex.get(slug.toLowerCase());
       if (!id) return null;
       return organizations.get(id) ?? null;
     },
@@ -25,8 +27,8 @@ export function createInMemoryOrganizationStore(): OrganizationStore {
       // Update slug index if slug changed
       const existing = organizations.get(org.id);
       if (existing && existing.slug !== org.slug) {
-        slugIndex.delete(existing.slug);
-        slugIndex.set(org.slug, org.id);
+        slugIndex.delete(existing.slug.toLowerCase());
+        slugIndex.set(org.slug.toLowerCase(), org.id);
       }
       organizations.set(org.id, org);
     },
