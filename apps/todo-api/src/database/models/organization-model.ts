@@ -4,9 +4,22 @@ import {
   type ModelCtor,
   type Model,
 } from 'sequelize';
-import type { Organization } from '../../organizations/domain/organization-schemas.js';
+import { z } from 'zod';
 
-export type OrganizationModelAttributes = Organization;
+// Zod schema for runtime validation
+export const OrganizationModelAttributesSchema = z.object({
+  id: z.number().optional(),
+  uuid: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+// Database model attributes (internal representation with integer PK and UUID)
+export type OrganizationModelAttributes = z.infer<
+  typeof OrganizationModelAttributesSchema
+>;
 
 export type OrganizationModel = Model<OrganizationModelAttributes>;
 
@@ -17,9 +30,15 @@ export function defineOrganizationModel(
     'Organization',
     {
       id: {
-        type: DataTypes.UUID,
+        type: DataTypes.BIGINT,
         primaryKey: true,
+        autoIncrement: true,
         allowNull: false,
+      },
+      uuid: {
+        type: DataTypes.CHAR(36),
+        allowNull: false,
+        unique: true,
       },
       name: {
         type: DataTypes.STRING(100),
@@ -46,6 +65,10 @@ export function defineOrganizationModel(
       timestamps: true,
       underscored: true,
       indexes: [
+        {
+          unique: true,
+          fields: ['uuid'],
+        },
         {
           unique: true,
           fields: ['slug'],

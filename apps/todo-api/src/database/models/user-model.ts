@@ -4,9 +4,21 @@ import {
   type ModelCtor,
   type Model,
 } from 'sequelize';
-import type { UserWithHashedPassword } from '../../users/domain/user-schemas.js';
+import { z } from 'zod';
 
-export type UserModelAttributes = UserWithHashedPassword;
+// Zod schema for runtime validation
+export const UserModelAttributesSchema = z.object({
+  id: z.number().optional(),
+  uuid: z.string(),
+  email: z.string(),
+  username: z.string(),
+  passwordHash: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+// Database model attributes (internal representation with integer PK and UUID)
+export type UserModelAttributes = z.infer<typeof UserModelAttributesSchema>;
 
 export type UserModel = Model<UserModelAttributes>;
 
@@ -15,9 +27,15 @@ export function defineUserModel(sequelize: Sequelize): ModelCtor<UserModel> {
     'User',
     {
       id: {
-        type: DataTypes.UUID,
+        type: DataTypes.BIGINT,
         primaryKey: true,
+        autoIncrement: true,
         allowNull: false,
+      },
+      uuid: {
+        type: DataTypes.CHAR(36),
+        allowNull: false,
+        unique: true,
       },
       email: {
         type: DataTypes.STRING(255),
@@ -50,6 +68,10 @@ export function defineUserModel(sequelize: Sequelize): ModelCtor<UserModel> {
       timestamps: true,
       underscored: true,
       indexes: [
+        {
+          unique: true,
+          fields: ['uuid'],
+        },
         {
           unique: true,
           fields: ['email'],

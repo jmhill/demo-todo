@@ -4,9 +4,23 @@ import {
   type ModelCtor,
   type Model,
 } from 'sequelize';
-import type { OrganizationMembership } from '../../organizations/domain/organization-schemas.js';
+import { z } from 'zod';
 
-export type MembershipModelAttributes = OrganizationMembership;
+// Zod schema for runtime validation
+export const MembershipModelAttributesSchema = z.object({
+  id: z.number().optional(),
+  uuid: z.string(),
+  userId: z.number(),
+  organizationId: z.number(),
+  role: z.enum(['owner', 'admin', 'member', 'viewer']),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+// Database model attributes (internal representation with integer PK and FKs)
+export type MembershipModelAttributes = z.infer<
+  typeof MembershipModelAttributesSchema
+>;
 
 export type MembershipModel = Model<MembershipModelAttributes>;
 
@@ -17,17 +31,23 @@ export function defineMembershipModel(
     'OrganizationMembership',
     {
       id: {
-        type: DataTypes.UUID,
+        type: DataTypes.BIGINT,
         primaryKey: true,
+        autoIncrement: true,
         allowNull: false,
       },
+      uuid: {
+        type: DataTypes.CHAR(36),
+        allowNull: false,
+        unique: true,
+      },
       userId: {
-        type: DataTypes.UUID,
+        type: DataTypes.BIGINT,
         allowNull: false,
         field: 'user_id',
       },
       organizationId: {
-        type: DataTypes.UUID,
+        type: DataTypes.BIGINT,
         allowNull: false,
         field: 'organization_id',
       },
@@ -52,6 +72,10 @@ export function defineMembershipModel(
       timestamps: true,
       underscored: true,
       indexes: [
+        {
+          unique: true,
+          fields: ['uuid'],
+        },
         {
           unique: true,
           fields: ['user_id', 'organization_id'],

@@ -4,13 +4,9 @@ import type { MigrationFn } from 'umzug';
 export const up: MigrationFn<QueryInterface> = async ({
   context: queryInterface,
 }) => {
-  const isMySql = queryInterface.sequelize.getDialect() === 'mysql';
-
-  // Add organization_id column (nullable for migration)
+  // Add organization_id column (nullable for migration, integer FK)
   await queryInterface.addColumn('todos', 'organization_id', {
-    type: isMySql
-      ? 'CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin'
-      : DataTypes.CHAR(36),
+    type: DataTypes.BIGINT,
     allowNull: true, // Nullable during migration
     references: {
       model: 'organizations',
@@ -20,11 +16,9 @@ export const up: MigrationFn<QueryInterface> = async ({
     onUpdate: 'CASCADE',
   });
 
-  // Add created_by column (nullable for migration)
+  // Add created_by column (nullable for migration, integer FK)
   await queryInterface.addColumn('todos', 'created_by', {
-    type: isMySql
-      ? 'CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin'
-      : DataTypes.CHAR(36),
+    type: DataTypes.BIGINT,
     allowNull: true, // Nullable during migration
     references: {
       model: 'users',

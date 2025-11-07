@@ -7,11 +7,11 @@ import type { Secret } from '../../config/secrets.js';
 describe('SequelizeTodoStore', () => {
   let sequelize: Sequelize;
 
-  // Helper to create test users
+  // Helper to create test users (insert UUID, database generates integer PK)
   const createTestUser = async (userId: string) => {
     await sequelize.getQueryInterface().bulkInsert('users', [
       {
-        id: userId,
+        uuid: userId, // Insert into uuid column, not id
         email: `user_${userId}@test.com`,
         username: `user_${userId}`,
         password_hash: 'test_hash',
@@ -21,11 +21,11 @@ describe('SequelizeTodoStore', () => {
     ]);
   };
 
-  // Helper to create test organizations
+  // Helper to create test organizations (insert UUID, database generates integer PK)
   const createTestOrganization = async (orgId: string, name: string) => {
     await sequelize.getQueryInterface().bulkInsert('organizations', [
       {
-        id: orgId,
+        uuid: orgId, // Insert into uuid column, not id
         name: name,
         slug: name.toLowerCase().replace(/\s+/g, '-'),
         created_at: new Date(),

@@ -212,8 +212,9 @@ export async function createAuthenticatedUser(
   const userId = uuidv4();
   const passwordHash = await bcrypt.hash(password, 10);
 
+  // Insert with UUID, database will auto-generate integer PK
   await pool.execute(
-    'INSERT INTO users (id, email, username, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())',
+    'INSERT INTO users (uuid, email, username, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())',
     [userId, email, username, passwordHash],
   );
 
@@ -222,15 +223,27 @@ export async function createAuthenticatedUser(
   const organizationId = userId;
   const slug = username.toLowerCase().replace(/[^a-z0-9]/g, '-');
   await pool.execute(
-    'INSERT INTO organizations (id, name, slug, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())',
+    'INSERT INTO organizations (uuid, name, slug, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())',
     [organizationId, `${username}'s Organization`, slug],
   );
 
-  // Create organization membership
+  // Create organization membership (database auto-generates integer PKs, we provide UUIDs)
   const membershipId = uuidv4();
+  // Note: Need to get auto-generated integer IDs for the FKs
+  const [userRows] = (await pool.execute(
+    'SELECT id FROM users WHERE uuid = ?',
+    [userId],
+  )) as [{ id: number }[], unknown];
+  const [orgRows] = (await pool.execute(
+    'SELECT id FROM organizations WHERE uuid = ?',
+    [organizationId],
+  )) as [{ id: number }[], unknown];
+  const userIdInt = userRows[0]!.id;
+  const orgIdInt = orgRows[0]!.id;
+
   await pool.execute(
-    "INSERT INTO organization_memberships (id, user_id, organization_id, role, created_at, updated_at) VALUES (?, ?, ?, 'owner', NOW(), NOW())",
-    [membershipId, userId, organizationId],
+    "INSERT INTO organization_memberships (uuid, user_id, organization_id, role, created_at, updated_at) VALUES (?, ?, ?, 'owner', NOW(), NOW())",
+    [membershipId, userIdInt, orgIdInt],
   );
 
   // Login to get token

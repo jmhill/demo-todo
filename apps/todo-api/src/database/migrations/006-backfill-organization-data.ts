@@ -9,39 +9,42 @@ export const up: MigrationFn<QueryInterface> = async ({
   const transaction = await queryInterface.sequelize.transaction();
 
   try {
-    // Get all existing users
+    // Get all existing users (with integer ID and UUID)
     const users = (await queryInterface.sequelize.query(
-      'SELECT id, username FROM users',
+      'SELECT id, uuid, username FROM users',
       { type: QueryTypes.SELECT, transaction },
-    )) as Array<{ id: string; username: string }>;
+    )) as Array<{ id: number; uuid: string; username: string }>;
 
     // For each user, create an organization and membership
     for (const user of users) {
-      const orgId = randomUUID();
-      const membershipId = randomUUID();
+      const orgUuid = randomUUID();
+      const membershipUuid = randomUUID();
       const now = new Date();
 
       // Create organization (using username as slug and name)
-      await queryInterface.sequelize.query(
-        `INSERT INTO organizations (id, name, slug, created_at, updated_at)
+      // Organization gets auto-increment integer PK, we provide the UUID
+      const orgResult = (await queryInterface.sequelize.query(
+        `INSERT INTO organizations (uuid, name, slug, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?)`,
         {
-          replacements: [orgId, user.username, user.username, now, now],
+          replacements: [orgUuid, user.username, user.username, now, now],
           transaction,
+          type: QueryTypes.INSERT,
         },
-      );
+      )) as [number, number];
+      const orgId = orgResult[0]; // Auto-generated integer ID
 
       // Create owner membership
       await queryInterface.sequelize.query(
-        `INSERT INTO organization_memberships (id, user_id, organization_id, role, created_at, updated_at)
+        `INSERT INTO organization_memberships (uuid, user_id, organization_id, role, created_at, updated_at)
          VALUES (?, ?, ?, 'owner', ?, ?)`,
         {
-          replacements: [membershipId, user.id, orgId, now, now],
+          replacements: [membershipUuid, user.id, orgId, now, now],
           transaction,
         },
       );
 
-      // Update todos: set organization_id and created_by
+      // Update todos: set organization_id and created_by (both use integer user.id)
       await queryInterface.sequelize.query(
         `UPDATE todos
          SET organization_id = ?, created_by = ?

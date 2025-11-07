@@ -4,15 +4,17 @@ import type { MigrationFn } from 'umzug';
 export const up: MigrationFn<QueryInterface> = async ({
   context: queryInterface,
 }) => {
-  const isMySql = queryInterface.sequelize.getDialect() === 'mysql';
-
   await queryInterface.createTable('organizations', {
     id: {
-      type: isMySql
-        ? 'CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin'
-        : DataTypes.CHAR(36),
+      type: DataTypes.BIGINT,
       primaryKey: true,
+      autoIncrement: true,
       allowNull: false,
+    },
+    uuid: {
+      type: DataTypes.CHAR(36),
+      allowNull: false,
+      unique: true,
     },
     name: {
       type: DataTypes.STRING(100),
@@ -36,6 +38,11 @@ export const up: MigrationFn<QueryInterface> = async ({
   });
 
   // Create indexes
+  await queryInterface.addIndex('organizations', ['uuid'], {
+    unique: true,
+    name: 'organizations_uuid_index',
+  });
+
   await queryInterface.addIndex('organizations', ['slug'], {
     unique: true,
     name: 'organizations_slug_unique',

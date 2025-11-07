@@ -4,13 +4,9 @@ import type { MigrationFn } from 'umzug';
 export const up: MigrationFn<QueryInterface> = async ({
   context: queryInterface,
 }) => {
-  const isMySql = queryInterface.sequelize.getDialect() === 'mysql';
-
-  // Change organization_id to NOT NULL
+  // Change organization_id to NOT NULL (integer FK)
   await queryInterface.changeColumn('todos', 'organization_id', {
-    type: isMySql
-      ? 'CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin'
-      : DataTypes.CHAR(36),
+    type: DataTypes.BIGINT,
     allowNull: false,
     references: {
       model: 'organizations',
@@ -20,11 +16,9 @@ export const up: MigrationFn<QueryInterface> = async ({
     onUpdate: 'CASCADE',
   });
 
-  // Change created_by to NOT NULL
+  // Change created_by to NOT NULL (integer FK)
   await queryInterface.changeColumn('todos', 'created_by', {
-    type: isMySql
-      ? 'CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin'
-      : DataTypes.CHAR(36),
+    type: DataTypes.BIGINT,
     allowNull: false,
     references: {
       model: 'users',
@@ -41,13 +35,9 @@ export const up: MigrationFn<QueryInterface> = async ({
 export const down: MigrationFn<QueryInterface> = async ({
   context: queryInterface,
 }) => {
-  const isMySql = queryInterface.sequelize.getDialect() === 'mysql';
-
-  // Re-add user_id column
+  // Re-add user_id column (integer FK)
   await queryInterface.addColumn('todos', 'user_id', {
-    type: isMySql
-      ? 'CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin'
-      : DataTypes.CHAR(36),
+    type: DataTypes.BIGINT,
     allowNull: true, // Nullable for rollback
     references: {
       model: 'users',
@@ -57,11 +47,9 @@ export const down: MigrationFn<QueryInterface> = async ({
     onUpdate: 'CASCADE',
   });
 
-  // Make new columns nullable again
+  // Make new columns nullable again (integer FKs)
   await queryInterface.changeColumn('todos', 'organization_id', {
-    type: isMySql
-      ? 'CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin'
-      : DataTypes.CHAR(36),
+    type: DataTypes.BIGINT,
     allowNull: true,
     references: {
       model: 'organizations',
@@ -72,9 +60,7 @@ export const down: MigrationFn<QueryInterface> = async ({
   });
 
   await queryInterface.changeColumn('todos', 'created_by', {
-    type: isMySql
-      ? 'CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin'
-      : DataTypes.CHAR(36),
+    type: DataTypes.BIGINT,
     allowNull: true,
     references: {
       model: 'users',

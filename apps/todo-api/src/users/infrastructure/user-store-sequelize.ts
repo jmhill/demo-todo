@@ -1,15 +1,18 @@
 import type { Sequelize, Model } from 'sequelize';
 import type { UserStore } from '../domain/user-service.js';
 import type { User, UserWithHashedPassword } from '../domain/user-schemas.js';
-import { defineUserModel } from '../../database/models/user-model.js';
+import {
+  defineUserModel,
+  UserModelAttributesSchema,
+} from '../../database/models/user-model.js';
 
 export function createSequelizeUserStore(sequelize: Sequelize): UserStore {
   const UserModel = defineUserModel(sequelize);
 
   const toUser = (model: Model): User => {
-    const data = model.get({ plain: true }) as UserWithHashedPassword;
+    const data = UserModelAttributesSchema.parse(model.get({ plain: true }));
     return {
-      id: data.id,
+      id: data.uuid, // Map database uuid column to domain id
       email: data.email,
       username: data.username,
       createdAt: data.createdAt,
@@ -18,9 +21,9 @@ export function createSequelizeUserStore(sequelize: Sequelize): UserStore {
   };
 
   const toUserWithPassword = (model: Model): UserWithHashedPassword => {
-    const data = model.get({ plain: true }) as UserWithHashedPassword;
+    const data = UserModelAttributesSchema.parse(model.get({ plain: true }));
     return {
-      id: data.id,
+      id: data.uuid, // Map database uuid column to domain id
       email: data.email,
       username: data.username,
       passwordHash: data.passwordHash,
@@ -32,7 +35,7 @@ export function createSequelizeUserStore(sequelize: Sequelize): UserStore {
   return {
     async save(user: UserWithHashedPassword): Promise<void> {
       await UserModel.upsert({
-        id: user.id,
+        uuid: user.id, // Map domain id to database uuid column
         email: user.email.toLowerCase(),
         username: user.username.toLowerCase(),
         passwordHash: user.passwordHash,
@@ -42,7 +45,8 @@ export function createSequelizeUserStore(sequelize: Sequelize): UserStore {
     },
 
     async findById(id: string): Promise<User | null> {
-      const model = await UserModel.findByPk(id);
+      // Search by uuid column instead of integer PK
+      const model = await UserModel.findOne({ where: { uuid: id } });
       return model ? toUser(model) : null;
     },
 

@@ -4,9 +4,24 @@ import {
   type ModelCtor,
   type Model,
 } from 'sequelize';
-import type { Todo } from '../../todos/domain/todo-schemas.js';
+import { z } from 'zod';
 
-export type TodoModelAttributes = Todo;
+// Zod schema for runtime validation
+export const TodoModelAttributesSchema = z.object({
+  id: z.number().optional(),
+  uuid: z.string(),
+  organizationId: z.number(),
+  createdBy: z.number(),
+  title: z.string(),
+  description: z.string().nullable(),
+  completed: z.boolean(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+  completedAt: z.date().nullable(),
+});
+
+// Database model attributes (internal representation with integer PK, FK, and UUID)
+export type TodoModelAttributes = z.infer<typeof TodoModelAttributesSchema>;
 
 export type TodoModel = Model<TodoModelAttributes>;
 
@@ -15,17 +30,23 @@ export function defineTodoModel(sequelize: Sequelize): ModelCtor<TodoModel> {
     'Todo',
     {
       id: {
-        type: DataTypes.UUID,
+        type: DataTypes.BIGINT,
         primaryKey: true,
+        autoIncrement: true,
         allowNull: false,
       },
+      uuid: {
+        type: DataTypes.CHAR(36),
+        allowNull: false,
+        unique: true,
+      },
       organizationId: {
-        type: DataTypes.UUID,
+        type: DataTypes.BIGINT,
         allowNull: false,
         field: 'organization_id',
       },
       createdBy: {
-        type: DataTypes.UUID,
+        type: DataTypes.BIGINT,
         allowNull: false,
         field: 'created_by',
       },
@@ -64,7 +85,14 @@ export function defineTodoModel(sequelize: Sequelize): ModelCtor<TodoModel> {
       underscored: true,
       indexes: [
         {
+          unique: true,
+          fields: ['uuid'],
+        },
+        {
           fields: ['organization_id'],
+        },
+        {
+          fields: ['created_by'],
         },
         {
           fields: ['completed'],

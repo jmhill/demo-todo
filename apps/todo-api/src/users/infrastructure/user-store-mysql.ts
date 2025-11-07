@@ -45,8 +45,9 @@ export function createMySQLUserStore(config: MySQLConfig): UserStore {
 
   return {
     async save(user: UserWithHashedPassword): Promise<void> {
+      // Insert with UUID, let database auto-generate integer PK
       await pool.execute(
-        `INSERT INTO users (id, email, username, password_hash, created_at, updated_at)
+        `INSERT INTO users (uuid, email, username, password_hash, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE
          email = VALUES(email),
@@ -54,7 +55,7 @@ export function createMySQLUserStore(config: MySQLConfig): UserStore {
          password_hash = VALUES(password_hash),
          updated_at = VALUES(updated_at)`,
         [
-          user.id,
+          user.id, // domain id maps to database uuid column
           user.email.toLowerCase(),
           user.username.toLowerCase(),
           user.passwordHash,
@@ -65,8 +66,9 @@ export function createMySQLUserStore(config: MySQLConfig): UserStore {
     },
 
     async findById(id: string): Promise<User | null> {
+      // Query by uuid column, not integer PK
       const [rows] = await pool.execute<mysql.RowDataPacket[]>(
-        'SELECT * FROM users WHERE id = ?',
+        'SELECT * FROM users WHERE uuid = ?',
         [id],
       );
 
@@ -74,7 +76,7 @@ export function createMySQLUserStore(config: MySQLConfig): UserStore {
 
       const row = rows[0]!;
       return {
-        id: row.id,
+        id: row.uuid, // Map database uuid to domain id
         email: row.email,
         username: row.username,
         createdAt: row.created_at,
@@ -92,7 +94,7 @@ export function createMySQLUserStore(config: MySQLConfig): UserStore {
 
       const row = rows[0]!;
       return {
-        id: row.id,
+        id: row.uuid, // Map database uuid to domain id
         email: row.email,
         username: row.username,
         createdAt: row.created_at,
@@ -110,7 +112,7 @@ export function createMySQLUserStore(config: MySQLConfig): UserStore {
 
       const row = rows[0]!;
       return {
-        id: row.id,
+        id: row.uuid, // Map database uuid to domain id
         email: row.email,
         username: row.username,
         createdAt: row.created_at,
@@ -130,7 +132,7 @@ export function createMySQLUserStore(config: MySQLConfig): UserStore {
 
       const row = rows[0]!;
       return {
-        id: row.id,
+        id: row.uuid, // Map database uuid to domain id
         email: row.email,
         username: row.username,
         passwordHash: row.password_hash,
@@ -151,7 +153,7 @@ export function createMySQLUserStore(config: MySQLConfig): UserStore {
 
       const row = rows[0]!;
       return {
-        id: row.id,
+        id: row.uuid, // Map database uuid to domain id
         email: row.email,
         username: row.username,
         passwordHash: row.password_hash,

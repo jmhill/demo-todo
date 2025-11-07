@@ -1,7 +1,10 @@
 import type { Sequelize, Model } from 'sequelize';
 import type { OrganizationStore } from '../domain/organization-service.js';
 import type { Organization } from '../domain/organization-schemas.js';
-import { defineOrganizationModel } from '../../database/models/organization-model.js';
+import {
+  defineOrganizationModel,
+  OrganizationModelAttributesSchema,
+} from '../../database/models/organization-model.js';
 
 export function createSequelizeOrganizationStore(
   sequelize: Sequelize,
@@ -9,9 +12,11 @@ export function createSequelizeOrganizationStore(
   const OrganizationModel = defineOrganizationModel(sequelize);
 
   const toOrganization = (model: Model): Organization => {
-    const data = model.get({ plain: true }) as Organization;
+    const data = OrganizationModelAttributesSchema.parse(
+      model.get({ plain: true }),
+    );
     return {
-      id: data.id,
+      id: data.uuid, // Map database uuid column to domain id
       name: data.name,
       slug: data.slug,
       createdAt: data.createdAt,
@@ -22,7 +27,7 @@ export function createSequelizeOrganizationStore(
   return {
     async save(org: Organization): Promise<void> {
       await OrganizationModel.create({
-        id: org.id,
+        uuid: org.id, // Map domain id to database uuid column
         name: org.name,
         slug: org.slug,
         createdAt: org.createdAt,
@@ -31,7 +36,8 @@ export function createSequelizeOrganizationStore(
     },
 
     async findById(id: string): Promise<Organization | null> {
-      const model = await OrganizationModel.findByPk(id);
+      // Search by uuid column instead of integer PK
+      const model = await OrganizationModel.findOne({ where: { uuid: id } });
       return model ? toOrganization(model) : null;
     },
 
@@ -53,7 +59,7 @@ export function createSequelizeOrganizationStore(
         },
         {
           where: {
-            id: org.id,
+            uuid: org.id, // Update by uuid column
           },
         },
       );
