@@ -1,12 +1,12 @@
-import { defineConfig } from 'vitest/config';
+import { defineProject } from 'vitest/config';
 
-export default defineConfig({
+/**
+ * Infrastructure library test configuration.
+ * Simple unit tests for shared utilities (clock, ID generator, etc.)
+ */
+export default defineProject({
   test: {
-    name: 'infrastructure',
+    name: 'infrastructure:unit',
     include: ['src/**/*.{test,spec}.{js,ts}'],
-    coverage: {
-      reporter: ['text', 'json', 'html'],
-      exclude: ['vitest*.config.ts', '**/*.d.ts', '**/dist/**'],
-    },
   },
 });

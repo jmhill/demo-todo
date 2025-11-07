@@ -7,6 +7,8 @@
     "build": "npm run build --workspaces",
     "start": "npm run start --workspaces",
     "test": "npm run test --workspaces",
+    "test:unit": "npm run test:unit --workspaces --if-present",
+    "test:acceptance": "npm run test:acceptance --workspaces --if-present",
     "test:api": "npm run test --workspace=todo-api",
     "test:ui": "npm run test --workspace=todo-ui",
     "test:infra": "npm run test --workspace=@demo-todo/infrastructure",
@@ -41,7 +43,7 @@
     "@types/supertest": "^6.0.3",
     "@typescript-eslint/eslint-plugin": "^8.42.0",
     "@typescript-eslint/parser": "^8.42.0",
-    "@vitest/coverage-v8": "^3.2.4",
+    "@vitest/coverage-v8": "^4.0.7",
     "concurrently": "^9.1.2",
     "eslint": "^9.35.0",
     "eslint-config-prettier": "^10.1.8",
@@ -50,7 +52,7 @@
     "supertest": "^7.1.4",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
-    "vitest": "^3.2.4"
+    "vitest": "^4.0.7"
   },
   "dependencies": {
     "cors": "^2.8.5",

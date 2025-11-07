@@ -8,11 +8,11 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "npm-run-all --parallel test:unit test:acceptance",
-    "test:unit": "vitest run --config vitest.config.ts",
-    "test:unit:watch": "vitest watch --config vitest.config.ts",
-    "test:acceptance": "vitest run --config vitest.acceptance.config.ts",
-    "test:acceptance:watch": "vitest watch --config vitest.acceptance.config.ts",
+    "test": "vitest run",
+    "test:unit": "vitest run --project todo-ui:unit",
+    "test:unit:watch": "vitest watch --project todo-ui:unit",
+    "test:acceptance": "vitest run --project todo-ui:acceptance",
+    "test:acceptance:watch": "vitest watch --project todo-ui:acceptance",
     "test:watch": "vitest watch"
   },
   "dependencies": {
