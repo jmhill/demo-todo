@@ -4,9 +4,17 @@ import {
   type ModelCtor,
   type Model,
 } from 'sequelize';
-import type { UserWithHashedPassword } from '../../users/domain/user-schemas.js';
 
-export type UserModelAttributes = UserWithHashedPassword;
+// Database model attributes (internal representation with integer PK and UUID)
+export interface UserModelAttributes {
+  id?: number; // Auto-increment BIGINT PK (optional for creation)
+  uuid: string; // Public UUID identifier (CHAR(36))
+  email: string;
+  username: string;
+  passwordHash: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 export type UserModel = Model<UserModelAttributes>;
 
@@ -15,9 +23,15 @@ export function defineUserModel(sequelize: Sequelize): ModelCtor<UserModel> {
     'User',
     {
       id: {
-        type: DataTypes.UUID,
+        type: DataTypes.BIGINT,
         primaryKey: true,
+        autoIncrement: true,
         allowNull: false,
+      },
+      uuid: {
+        type: DataTypes.CHAR(36),
+        allowNull: false,
+        unique: true,
       },
       email: {
         type: DataTypes.STRING(255),
@@ -50,6 +64,10 @@ export function defineUserModel(sequelize: Sequelize): ModelCtor<UserModel> {
       timestamps: true,
       underscored: true,
       indexes: [
+        {
+          unique: true,
+          fields: ['uuid'],
+        },
         {
           unique: true,
           fields: ['email'],

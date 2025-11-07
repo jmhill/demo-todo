@@ -4,9 +4,19 @@ import {
   type ModelCtor,
   type Model,
 } from 'sequelize';
-import type { Todo } from '../../todos/domain/todo-schemas.js';
 
-export type TodoModelAttributes = Todo;
+// Database model attributes (internal representation with integer PK, FK, and UUID)
+export interface TodoModelAttributes {
+  id?: number; // Auto-increment BIGINT PK (optional for creation)
+  uuid: string; // Public UUID identifier (CHAR(36))
+  userId: number; // Integer FK to users.id (BIGINT)
+  title: string;
+  description?: string;
+  completed: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  completedAt?: Date;
+}
 
 export type TodoModel = Model<TodoModelAttributes>;
 
@@ -15,12 +25,18 @@ export function defineTodoModel(sequelize: Sequelize): ModelCtor<TodoModel> {
     'Todo',
     {
       id: {
-        type: DataTypes.UUID,
+        type: DataTypes.BIGINT,
         primaryKey: true,
+        autoIncrement: true,
         allowNull: false,
       },
+      uuid: {
+        type: DataTypes.CHAR(36),
+        allowNull: false,
+        unique: true,
+      },
       userId: {
-        type: DataTypes.UUID,
+        type: DataTypes.BIGINT,
         allowNull: false,
         field: 'user_id',
       },
@@ -58,6 +74,10 @@ export function defineTodoModel(sequelize: Sequelize): ModelCtor<TodoModel> {
       timestamps: true,
       underscored: true,
       indexes: [
+        {
+          unique: true,
+          fields: ['uuid'],
+        },
         {
           fields: ['user_id'],
         },

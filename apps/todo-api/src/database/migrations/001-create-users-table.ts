@@ -6,9 +6,15 @@ export const up: MigrationFn<QueryInterface> = async ({
 }) => {
   await queryInterface.createTable('users', {
     id: {
-      type: DataTypes.UUID,
+      type: DataTypes.BIGINT,
       primaryKey: true,
+      autoIncrement: true,
       allowNull: false,
+    },
+    uuid: {
+      type: DataTypes.CHAR(36),
+      allowNull: false,
+      unique: true,
     },
     email: {
       type: DataTypes.STRING(255),
@@ -37,6 +43,11 @@ export const up: MigrationFn<QueryInterface> = async ({
   });
 
   // Create indexes
+  await queryInterface.addIndex('users', ['uuid'], {
+    unique: true,
+    name: 'users_uuid_index',
+  });
+
   await queryInterface.addIndex('users', ['email'], {
     unique: true,
     name: 'users_email_unique',
