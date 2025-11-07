@@ -1,7 +1,7 @@
 import {
   DataTypes,
   type Sequelize,
-  type ModelCtor,
+  type ModelStatic,
   type Model,
 } from 'sequelize';
 import { z } from 'zod';
@@ -9,7 +9,7 @@ import { z } from 'zod';
 // Zod schema for runtime validation
 export const MembershipModelAttributesSchema = z.object({
   id: z.number().optional(),
-  uuid: z.string(),
+  uuid: z.string().uuid(),
   userId: z.number(),
   organizationId: z.number(),
   role: z.enum(['owner', 'admin', 'member', 'viewer']),
@@ -26,7 +26,7 @@ export type MembershipModel = Model<MembershipModelAttributes>;
 
 export function defineMembershipModel(
   sequelize: Sequelize,
-): ModelCtor<MembershipModel> {
+): ModelStatic<MembershipModel> {
   return sequelize.define(
     'OrganizationMembership',
     {

@@ -1,7 +1,7 @@
 import {
   DataTypes,
   type Sequelize,
-  type ModelCtor,
+  type ModelStatic,
   type Model,
 } from 'sequelize';
 import { z } from 'zod';
@@ -9,7 +9,7 @@ import { z } from 'zod';
 // Zod schema for runtime validation
 export const TodoModelAttributesSchema = z.object({
   id: z.number().optional(),
-  uuid: z.string(),
+  uuid: z.string().uuid(),
   organizationId: z.number(),
   createdBy: z.number(),
   title: z.string(),
@@ -25,7 +25,7 @@ export type TodoModelAttributes = z.infer<typeof TodoModelAttributesSchema>;
 
 export type TodoModel = Model<TodoModelAttributes>;
 
-export function defineTodoModel(sequelize: Sequelize): ModelCtor<TodoModel> {
+export function defineTodoModel(sequelize: Sequelize): ModelStatic<TodoModel> {
   return sequelize.define(
     'Todo',
     {

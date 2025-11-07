@@ -1,7 +1,7 @@
 import {
   DataTypes,
   type Sequelize,
-  type ModelCtor,
+  type ModelStatic,
   type Model,
 } from 'sequelize';
 import { z } from 'zod';
@@ -9,7 +9,7 @@ import { z } from 'zod';
 // Zod schema for runtime validation
 export const OrganizationModelAttributesSchema = z.object({
   id: z.number().optional(),
-  uuid: z.string(),
+  uuid: z.string().uuid(),
   name: z.string(),
   slug: z.string(),
   createdAt: z.date(),
@@ -25,7 +25,7 @@ export type OrganizationModel = Model<OrganizationModelAttributes>;
 
 export function defineOrganizationModel(
   sequelize: Sequelize,
-): ModelCtor<OrganizationModel> {
+): ModelStatic<OrganizationModel> {
   return sequelize.define(
     'Organization',
     {

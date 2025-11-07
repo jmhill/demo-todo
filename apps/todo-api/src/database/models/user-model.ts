@@ -1,7 +1,7 @@
 import {
   DataTypes,
   type Sequelize,
-  type ModelCtor,
+  type ModelStatic,
   type Model,
 } from 'sequelize';
 import { z } from 'zod';
@@ -9,7 +9,7 @@ import { z } from 'zod';
 // Zod schema for runtime validation
 export const UserModelAttributesSchema = z.object({
   id: z.number().optional(),
-  uuid: z.string(),
+  uuid: z.string().uuid(),
   email: z.string(),
   username: z.string(),
   passwordHash: z.string(),
@@ -22,7 +22,7 @@ export type UserModelAttributes = z.infer<typeof UserModelAttributesSchema>;
 
 export type UserModel = Model<UserModelAttributes>;
 
-export function defineUserModel(sequelize: Sequelize): ModelCtor<UserModel> {
+export function defineUserModel(sequelize: Sequelize): ModelStatic<UserModel> {
   return sequelize.define(
     'User',
     {
