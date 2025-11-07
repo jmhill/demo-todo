@@ -1,4 +1,4 @@
-import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
+import { v7 as uuidv7, validate as uuidValidate } from 'uuid';
 
 // Port: Domain owns this interface, infrastructure implements it
 export interface IdGenerator {
@@ -6,10 +6,10 @@ export interface IdGenerator {
   validate(id: string): boolean;
 }
 
-// Production implementation - uses UUID v4
+// Production implementation - uses UUID v7 (time-ordered for better database performance)
 export const createUuidIdGenerator = (): IdGenerator => {
   return {
-    generate: () => uuidv4(),
+    generate: () => uuidv7(),
     validate: (id: string) => uuidValidate(id),
   };
 };

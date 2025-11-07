@@ -6,14 +6,14 @@ import {
 
 describe('IdGenerator implementations', () => {
   describe('createUuidIdGenerator', () => {
-    it('should generate a valid UUID v4', () => {
+    it('should generate a valid UUID v7', () => {
       const generator = createUuidIdGenerator();
       const id = generator.generate();
 
-      // UUID v4 format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
-      const uuidV4Regex =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      expect(id).toMatch(uuidV4Regex);
+      // UUID v7 format: xxxxxxxx-xxxx-7xxx-yxxx-xxxxxxxxxxxx
+      const uuidV7Regex =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      expect(id).toMatch(uuidV7Regex);
     });
 
     it('should generate unique UUIDs on successive calls', () => {
