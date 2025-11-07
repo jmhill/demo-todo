@@ -40,9 +40,10 @@ Implement a **dual-key strategy**:
 - ✅ **Compatibility**: API remains stable (still uses UUIDs externally)
 
 ### Complexity
-- 🔸 **High** - Requires schema changes, data migration, code updates across all layers
-- 🔸 Estimated effort: 3-5 days for implementation + thorough testing
-- 🔸 Risk level: Medium-High (touching core data model)
+- 🔸 **Medium** - Requires schema changes, code updates across all layers
+- 🔸 Simplified for development: Can use database reset instead of complex migration
+- 🔸 Estimated effort: 2-3 days for implementation + testing
+- 🔸 Risk level: Medium (development-only, no production data concerns)
 
 ---
 
@@ -196,112 +197,332 @@ CREATE TABLE todos (
 
 ## Migration Strategy
 
-### Option A: Blue-Green Deployment (Recommended for Production)
-**Pros**: Zero downtime, easy rollback
-**Cons**: More complex, requires dual-write period
+### Development-Only Context
+**Context**: This application is not deployed to production, so downtime is not a concern.
 
-### Option B: Maintenance Window (Simpler)
-**Pros**: Simpler implementation, one-shot migration
-**Cons**: Requires downtime
-**Recommendation**: Use this for development/staging environment
+**Approach**: Direct migration with database reset option
 
-We'll design for **Option B** initially, with notes for adapting to Option A.
+**Two Implementation Paths**:
+
+#### Path A: Fresh Start (Recommended for Development)
+- Delete existing migrations `001-create-users-table.ts` and `002-create-todos-table.ts`
+- Create new migrations with target schema (integer PKs + UUID v7 columns)
+- Run `npm run db:reset --workspace=todo-api` to recreate database
+- Seed data populates with UUID v7 identifiers
+
+**Benefits**:
+- ✅ Cleanest implementation
+- ✅ No complex data migration logic
+- ✅ Fast iteration
+
+#### Path B: Additive Migration (Learning Experience)
+- Keep existing migrations for reference
+- Create new migrations that alter tables (add columns, migrate data, swap PKs)
+- Provides practice with production-style migrations
+- More complex but teaches migration techniques
+
+**Recommendation**: Use **Path A** for faster development, unless you want to practice complex migrations.
+
+---
+
+## UUID v7: Why Upgrade from UUID v4?
+
+### Current State: UUID v4
+The application currently uses **UUID v4** (random UUIDs):
+- 122 random bits
+- No time or ordering information
+- Good randomness and collision resistance
+
+### Target: UUID v7 (Time-Ordered UUIDs)
+**Decision**: Upgrade to UUID v7 for better database performance
+
+### UUID v7 Benefits
+
+#### 1. **Time-Ordered / Sortable**
+```
+UUID v4: 8f3e4a21-1234-4567-89ab-0123456789ab (random)
+UUID v7: 018c2b4e-f9a0-7xxx-xxxx-xxxxxxxxxxxx (time-prefix)
+         ^^^^^^^^^^ Unix timestamp milliseconds
+```
+- First 48 bits = Unix timestamp (milliseconds)
+- Naturally sorted by creation time
+- UUIDs created at similar times are clustered together
+
+#### 2. **Database Index Performance**
+- **Sequential writes**: New records append to index (vs. random insertion for v4)
+- **Better page utilization**: Reduces index fragmentation
+- **Improved cache locality**: Related records stored near each other
+- **Faster range queries**: Time-based queries are more efficient
+
+#### 3. **B-Tree Optimization**
+MySQL B-Tree indexes work best with sequential keys:
+- UUID v4: Random insertion causes page splits, fragmentation
+- UUID v7: Sequential insertion, minimal page splits, compact indexes
+
+#### 4. **Same Security Properties**
+- Still globally unique
+- Still 128 bits
+- Remaining 74 bits are random (sufficient collision resistance)
+- Time component doesn't leak sensitive information (millisecond precision only)
+
+### Implementation
+
+#### Update ID Generator
+**File**: `libs/infrastructure/src/id-generator.ts`
+
+```typescript
+import { v7 as uuidv7, validate as uuidValidate } from 'uuid';  // Update import
+
+export const createUuidIdGenerator = (): IdGenerator => {
+  return {
+    generate: () => uuidv7(),  // Changed from uuidv4()
+    validate: (id: string) => uuidValidate(id),
+  };
+};
+```
+
+**Note**: The `uuid` package (v11.0.5) already installed supports UUID v7.
+
+### Migration Impact
+- **Existing data**: Can remain as UUID v4 (mixed v4/v7 is fine)
+- **New data**: Will use UUID v7 from implementation forward
+- **Validation**: Both v4 and v7 pass `uuid.validate()`
+- **API**: No breaking changes (still string UUIDs)
 
 ---
 
 ## Implementation Phases
 
+### Phase 0: Upgrade to UUID v7 (Prerequisite)
+**Estimated Time**: 15 minutes
+**Risk**: Very Low
+
+This phase can be done independently and provides immediate benefits even before the schema migration.
+
+#### Step 0.1: Update UUID Generator
+**File**: `libs/infrastructure/src/id-generator.ts`
+
+**Change**:
+```typescript
+// Before
+import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
+
+export const createUuidIdGenerator = (): IdGenerator => {
+  return {
+    generate: () => uuidv4(),
+    validate: (id: string) => uuidValidate(id),
+  };
+};
+
+// After
+import { v7 as uuidv7, validate as uuidValidate } from 'uuid';  // ← Change import
+
+export const createUuidIdGenerator = (): IdGenerator => {
+  return {
+    generate: () => uuidv7(),  // ← Change from uuidv4() to uuidv7()
+    validate: (id: string) => uuidValidate(id),
+  };
+};
+```
+
+#### Step 0.2: Update Tests (if needed)
+Most tests should continue to work since:
+- UUID v7 is still a valid UUID string
+- Same format (36 characters with dashes)
+- Passes all UUID validation
+
+**Only update tests that**:
+- Assert specific UUID format (unlikely)
+- Mock UUID generation (update mocks to use v7 format)
+
+#### Step 0.3: Reset Database with New UUIDs
+```bash
+npm run db:reset --workspace=todo-api
+```
+
+All newly seeded data will now use UUID v7!
+
+**Verification**:
+- Create a new user/todo
+- Check database: UUID should start with time-based prefix
+- Example UUID v7: `018c2b4e-f9a0-7xxx-xxxx-xxxxxxxxxxxx`
+- Compare to UUID v4: `8f3e4a21-1234-4567-89ab-0123456789ab`
+
+**Benefits of doing this first**:
+- ✅ Immediate index performance improvement (even with UUID PKs)
+- ✅ Can be deployed independently
+- ✅ No breaking changes
+- ✅ Easy to verify
+
+---
+
 ### Phase 1: Schema Migration (Database Layer)
-**Estimated Time**: 2-3 hours
-**Risk**: High
+**Estimated Time**: 1-2 hours (using Path A: Fresh Start)
+**Risk**: Low (development only, using db:reset)
 
-#### Step 1.1: Create New Migration File
-**File**: `apps/todo-api/src/database/migrations/003-add-integer-pks-and-uuid-columns.ts`
+**Approach**: Since we're in development, we'll **replace** the existing migrations with new ones that implement the target schema directly.
 
-**Actions**:
-1. **Users table**:
-   - Add new `id_new BIGINT AUTO_INCREMENT` column (temporary name)
-   - Add new `uuid CHAR(36) UNIQUE NOT NULL` column
-   - Populate `uuid` with existing `id` values (copy UUID → uuid)
-   - Create index on `uuid` column
+#### Step 1.1: Delete Old Migration Files (Optional)
+You can either:
+1. **Delete** old migrations `001-*` and `002-*` (clean slate)
+2. **Keep** them for reference and create `003-*` and `004-*` (historical record)
 
-2. **Todos table**:
-   - Add new `id_new BIGINT AUTO_INCREMENT` column
-   - Add new `uuid CHAR(36) UNIQUE NOT NULL` column
-   - Add new `user_id_new BIGINT` column
-   - Populate `uuid` with existing `id` values
-   - Map `user_id_new` by joining users table (UUID → integer)
-   - Create index on `uuid` column
+**Recommendation**: Delete old migrations for cleaner codebase.
 
-**SQL Pseudo-code**:
-```sql
--- Users table
-ALTER TABLE users
-  ADD COLUMN id_new BIGINT AUTO_INCREMENT UNIQUE,
-  ADD COLUMN uuid CHAR(36) UNIQUE NOT NULL;
+```bash
+# Backup first (optional)
+cp apps/todo-api/src/database/migrations/001-create-users-table.ts apps/todo-api/src/database/migrations/001-create-users-table.ts.backup
+cp apps/todo-api/src/database/migrations/002-create-todos-table.ts apps/todo-api/src/database/migrations/002-create-todos-table.ts.backup
 
-UPDATE users SET uuid = id;
-CREATE INDEX users_uuid_index ON users(uuid);
-
--- Todos table
-ALTER TABLE todos
-  ADD COLUMN id_new BIGINT AUTO_INCREMENT UNIQUE,
-  ADD COLUMN uuid CHAR(36) UNIQUE NOT NULL,
-  ADD COLUMN user_id_new BIGINT;
-
-UPDATE todos SET uuid = id;
-
--- Map user_id_new from UUID to integer
-UPDATE todos t
-JOIN users u ON t.user_id = u.uuid
-SET t.user_id_new = u.id_new;
-
-CREATE INDEX todos_uuid_index ON todos(uuid);
+# Delete old migrations
+rm apps/todo-api/src/database/migrations/001-create-users-table.ts
+rm apps/todo-api/src/database/migrations/002-create-todos-table.ts
 ```
 
-#### Step 1.2: Drop Old Constraints and Rename Columns
-**File**: `apps/todo-api/src/database/migrations/004-swap-pks-to-integers.ts`
+#### Step 1.2: Create New Users Table Migration
+**File**: `apps/todo-api/src/database/migrations/001-create-users-table.ts`
 
-**Actions**:
-1. Drop foreign key constraint on `todos.user_id`
-2. Drop primary keys on both tables
-3. Drop old `id` and `user_id` columns
-4. Rename `id_new` → `id` and `user_id_new` → `user_id`
-5. Re-add primary key constraints on new integer `id` columns
-6. Re-add foreign key constraint `todos.user_id` → `users.id`
-7. Recreate indexes that were affected
+**Implementation**: Direct target schema with integer PK and UUID v7 column
 
-**SQL Pseudo-code**:
-```sql
--- Drop FK constraint
-ALTER TABLE todos DROP FOREIGN KEY todos_user_id_fk;
+```typescript
+export async function up({ context: queryInterface }: MigrationContext) {
+  await queryInterface.createTable('users', {
+    id: {
+      type: DataTypes.BIGINT,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    uuid: {
+      type: DataTypes.CHAR(36),
+      allowNull: false,
+      unique: true,
+    },
+    email: {
+      type: DataTypes.STRING(255),
+      allowNull: false,
+      unique: true,
+    },
+    username: {
+      type: DataTypes.STRING(50),
+      allowNull: false,
+      unique: true,
+    },
+    password_hash: {
+      type: DataTypes.STRING(255),
+      allowNull: false,
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  });
 
--- Drop PKs
-ALTER TABLE users DROP PRIMARY KEY;
-ALTER TABLE todos DROP PRIMARY KEY;
-
--- Drop old columns
-ALTER TABLE users DROP COLUMN id;
-ALTER TABLE todos DROP COLUMN id, DROP COLUMN user_id;
-
--- Rename new columns
-ALTER TABLE users CHANGE COLUMN id_new id BIGINT AUTO_INCREMENT;
-ALTER TABLE todos CHANGE COLUMN id_new id BIGINT AUTO_INCREMENT;
-ALTER TABLE todos CHANGE COLUMN user_id_new user_id BIGINT NOT NULL;
-
--- Re-add PKs
-ALTER TABLE users ADD PRIMARY KEY (id);
-ALTER TABLE todos ADD PRIMARY KEY (id);
-
--- Re-add FK
-ALTER TABLE todos ADD CONSTRAINT todos_user_id_fk
-  FOREIGN KEY (user_id) REFERENCES users(id)
-  ON DELETE CASCADE ON UPDATE CASCADE;
-
--- Recreate indexes
-CREATE INDEX todos_user_id_index ON todos(user_id);
-CREATE INDEX todos_user_id_completed_index ON todos(user_id, completed);
+  // Create indexes
+  await queryInterface.addIndex('users', ['uuid'], {
+    name: 'users_uuid_index',
+    unique: true,
+  });
+  await queryInterface.addIndex('users', ['email'], {
+    name: 'users_email_unique',
+    unique: true,
+  });
+  await queryInterface.addIndex('users', ['username'], {
+    name: 'users_username_unique',
+    unique: true,
+  });
+}
 ```
+
+#### Step 1.3: Create New Todos Table Migration
+**File**: `apps/todo-api/src/database/migrations/002-create-todos-table.ts`
+
+**Implementation**: Direct target schema with integer PK, FK, and UUID v7 column
+
+```typescript
+export async function up({ context: queryInterface }: MigrationContext) {
+  await queryInterface.createTable('todos', {
+    id: {
+      type: DataTypes.BIGINT,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    uuid: {
+      type: DataTypes.CHAR(36),
+      allowNull: false,
+      unique: true,
+    },
+    user_id: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    },
+    title: {
+      type: DataTypes.STRING(500),
+      allowNull: false,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    completed: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    completed_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+  });
+
+  // Create indexes
+  await queryInterface.addIndex('todos', ['uuid'], {
+    name: 'todos_uuid_index',
+    unique: true,
+  });
+  await queryInterface.addIndex('todos', ['user_id'], {
+    name: 'todos_user_id_index',
+  });
+  await queryInterface.addIndex('todos', ['completed'], {
+    name: 'todos_completed_index',
+  });
+  await queryInterface.addIndex('todos', ['user_id', 'completed'], {
+    name: 'todos_user_id_completed_index',
+  });
+}
+```
+
+#### Step 1.4: Reset Database
+```bash
+npm run db:reset --workspace=todo-api
+```
+
+This will:
+1. Destroy existing MySQL container and volume
+2. Create new MySQL container
+3. Run new migrations (creates tables with target schema)
+4. Seed test users with UUID v7 identifiers
 
 ### Phase 2: Data Layer (Sequelize Models)
 **Estimated Time**: 1-2 hours
@@ -523,33 +744,51 @@ See [Testing Strategy](#testing-strategy) section below.
 
 ## Rollback Plan
 
-### Automated Rollback (Development)
-**Trigger**: Any migration failure or test failure
-**Action**: Run migration down commands
+### Development Rollback (Simple)
+**Context**: Since we're in development without production data, rollback is straightforward.
+
+#### Option 1: Database Reset (Recommended)
+**Use when**: Something goes wrong, and you want to start fresh
 
 ```bash
-# Rollback both migrations
+# Simply reset the database - destroys everything and recreates
+npm run db:reset --workspace=todo-api
+```
+
+This will:
+1. Destroy MySQL container and volume
+2. Recreate from scratch
+3. Run all migrations
+4. Re-seed test data
+
+#### Option 2: Git Revert + Reset
+**Use when**: You want to go back to the old schema
+
+```bash
+# Revert code changes
+git revert HEAD  # or git reset --hard <previous-commit>
+
+# Reset database with old schema
+npm run db:reset --workspace=todo-api
+```
+
+#### Option 3: Migration Rollback (Learning)
+**Use when**: You want to practice rollback procedures
+
+```bash
+# Rollback migrations one by one
 npm run db:migrate:down --workspace=todo-api
 npm run db:migrate:down --workspace=todo-api
 ```
 
-### Manual Rollback (Production)
-**Scenario**: Issue discovered after deployment
+**Note**: Each migration should have a `down()` function that reverses the `up()` changes.
 
-1. **Immediate**: Deploy previous application version
-2. **Database**: Restore from backup taken before migration
-3. **Validation**: Verify all data integrity checks pass
-
-### Down Migration Scripts
-Each migration file must include comprehensive `down()` function:
-
-```typescript
-export async function down({ context: queryInterface }: MigrationContext) {
-  // Reverse all changes in exact opposite order
-  // 004: Restore old PK structure
-  // 003: Remove new columns
-}
-```
+### No Production Concerns
+Since this is development-only:
+- ❌ No need for backup/restore procedures
+- ❌ No need for zero-downtime rollback
+- ❌ No need for data preservation
+- ✅ Can always recreate from scratch
 
 ---
 
@@ -651,37 +890,44 @@ export async function down({ context: queryInterface }: MigrationContext) {
 ## Prerequisites
 
 ### Before Starting
-- [ ] Review and approve this plan with team
-- [ ] Schedule time for implementation (3-5 days)
-- [ ] Set up development database copy for testing
-- [ ] Ensure all existing tests pass
-- [ ] Create database backup
-- [ ] Document current table sizes and record counts
+- [ ] Ensure all existing tests pass: `npm run quality`
+- [ ] Current database is running: `docker ps` (should see MySQL container)
+- [ ] Allocate time for implementation: 2-3 days
+- [ ] Familiarize yourself with current schema (read existing migration files)
 
 ### During Implementation
 - [ ] Work on feature branch: `claude/mysql-database-update-plan-011CUsjVGuHPkUSrYFU7LcJ3`
 - [ ] Commit after each phase completion
-- [ ] Run `npm run quality` after each phase
-- [ ] Test migrations thoroughly before proceeding
-- [ ] Keep team updated on progress
+- [ ] Run `npm run quality` after each phase to ensure no regressions
+- [ ] Test database operations after schema changes
+- [ ] Keep git history clean with descriptive commits
 
 ### After Implementation
-- [ ] All tests passing (unit, integration)
-- [ ] Performance benchmarks completed
-- [ ] Documentation updated
-- [ ] Rollback tested successfully
+- [ ] All tests passing: `npm run quality`
+- [ ] Manual testing completed (see Testing Strategy section)
+- [ ] Database reset works: `npm run db:reset --workspace=todo-api`
+- [ ] API endpoints work with UUID identifiers
+- [ ] Seed data populates correctly
 - [ ] Create PR for review
-- [ ] Schedule production deployment with maintenance window
+- [ ] Update this plan document with any lessons learned
 
 ---
 
 ## Questions for Review
 
-1. **Downtime Acceptable?**: Can we afford a maintenance window, or do we need zero-downtime deployment?
-2. **Performance Priority?**: Are there specific query patterns we should optimize for?
-3. **Existing Data Volume?**: How many users and todos exist in production?
-4. **UUID Version?**: Continue with UUID v4, or consider UUID v7 (time-sortable)?
-5. **Sharding Plans?**: Any plans for database sharding that would benefit from integer PKs?
+### Answered ✓
+
+1. **Downtime Acceptable?**: ✅ Yes - application is not deployed to production
+2. **Performance Priority?**: ✅ No specific query patterns to optimize for
+3. **Existing Data Volume?**: ✅ Not in production - development data only
+4. **UUID Version?**: ✅ **Use UUID v7** (time-sortable, better performance)
+5. **Sharding Plans?**: N/A - not applicable for development
+
+### Decisions Made
+- **Migration Approach**: Use database reset (Path A) for clean implementation
+- **UUID Strategy**: Upgrade to UUID v7 for better index performance
+- **Risk Level**: Medium (no production data concerns)
+- **Timeline**: 2-3 days implementation + testing
 
 ---
 
@@ -706,22 +952,48 @@ export async function down({ context: queryInterface }: MigrationContext) {
 
 ---
 
-## Approval Sign-off
-
-- [ ] **Technical Lead**: Reviewed and approved
-- [ ] **Database Admin**: Reviewed and approved
-- [ ] **Product Owner**: Aware of potential downtime
-- [ ] **QA Lead**: Testing strategy approved
-
-**Approved By**: _________________
-**Date**: _________________
-
----
-
 ## Next Steps
 
-1. **Review this plan** with the team
-2. **Answer questions** in the "Questions for Review" section
-3. **Get approvals** from stakeholders
-4. **Create implementation branch** (already created)
-5. **Begin Phase 1**: Schema migration implementation
+Ready to implement! Follow these phases in order:
+
+### Quick Start (Immediate Value)
+1. **Phase 0: Upgrade to UUID v7** (~15 minutes)
+   - Update `libs/infrastructure/src/id-generator.ts`
+   - Change `v4` to `v7` in imports and function call
+   - Run `npm run quality` to ensure no breaks
+   - Reset database: `npm run db:reset --workspace=todo-api`
+   - Benefit: Immediate index performance improvement
+
+### Full Implementation (After Phase 0)
+2. **Phase 1: Schema Migration** (1-2 hours)
+   - Replace migration files with new target schema
+   - Reset database to apply new schema
+
+3. **Phase 2: Update Sequelize Models** (1-2 hours)
+   - Modify UserModel and TodoModel
+   - Add `uuid` field, change `id` to BIGINT
+
+4. **Phase 3: Update Domain Layer** (2-3 hours)
+   - Update domain schemas (keep UUID as primary identifier)
+   - Optional: Add internal ID fields
+
+5. **Phase 4: Update Store Layer** (2-3 hours)
+   - Modify mapping functions (toDomain/toPersistence)
+   - Update queries to use UUID lookups
+
+6. **Phase 5: Verify API Layer** (30 minutes)
+   - Test endpoints (should work without changes)
+
+7. **Phase 6: Update Seed Data** (1 hour)
+   - Modify seed script to use `uuid` field
+
+8. **Phase 7: Testing** (4-6 hours)
+   - Run all tests, fix any failures
+   - Manual QA testing
+   - Performance verification
+
+### Branch & Commit Strategy
+- Already on: `claude/mysql-database-update-plan-011CUsjVGuHPkUSrYFU7LcJ3`
+- Commit after each phase
+- Run `npm run quality` before each commit
+- Create PR when all phases complete
